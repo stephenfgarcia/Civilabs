@@ -64,7 +64,7 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-3xl font-bold">Create Account</CardTitle>
-          <CardDescription>Join Absorb LMS today</CardDescription>
+          <CardDescription>Join Civilabs today</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

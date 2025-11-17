@@ -25,7 +25,7 @@ async function main() {
   const adminPassword = await bcrypt.hash('admin123', 10)
   const admin = await prisma.user.create({
     data: {
-      email: 'admin@absorblms.com',
+      email: 'admin@civilabs.com',
       passwordHash: adminPassword,
       firstName: 'Admin',
       lastName: 'User',
@@ -38,7 +38,7 @@ async function main() {
   const instructorPassword = await bcrypt.hash('instructor123', 10)
   const instructor = await prisma.user.create({
     data: {
-      email: 'instructor@absorblms.com',
+      email: 'instructor@civilabs.com',
       passwordHash: instructorPassword,
       firstName: 'John',
       lastName: 'Instructor',
@@ -51,7 +51,7 @@ async function main() {
   const learnerPassword = await bcrypt.hash('learner123', 10)
   const learner = await prisma.user.create({
     data: {
-      email: 'learner@absorblms.com',
+      email: 'learner@civilabs.com',
       passwordHash: learnerPassword,
       firstName: 'Jane',
       lastName: 'Learner',
@@ -178,9 +178,9 @@ async function main() {
 
   console.log('✅ Database seeded successfully!')
   console.log('\n📧 Test Accounts:')
-  console.log('Admin: admin@absorblms.com / admin123')
-  console.log('Instructor: instructor@absorblms.com / instructor123')
-  console.log('Learner: learner@absorblms.com / learner123')
+  console.log('Admin: admin@civilabs.com / admin123')
+  console.log('Instructor: instructor@civilabs.com / instructor123')
+  console.log('Learner: learner@civilabs.com / learner123')
 }
 
 main()

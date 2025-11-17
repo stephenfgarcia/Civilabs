@@ -14,7 +14,7 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'Absorb LMS - Learning Management System',
+  title: 'Civilabs - Learning Management System',
   description: 'Comprehensive Learning Management System for online education',
 }
 

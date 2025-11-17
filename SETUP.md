@@ -1,4 +1,4 @@
-# Absorb LMS - Setup Guide
+# Civilabs - Setup Guide
 
 ## Quick Start (5 minutes)
 
@@ -24,11 +24,11 @@ Download from https://www.postgresql.org/download/windows/
 
 ```bash
 # Create database
-createdb absorb_lms
+createdb civilabs_lms
 
 # Or using psql
 psql postgres
-CREATE DATABASE absorb_lms;
+CREATE DATABASE civilabs_lms;
 \q
 ```
 
@@ -39,7 +39,7 @@ CREATE DATABASE absorb_lms;
 cp .env.example .env
 
 # Edit .env with your database URL
-# Example: DATABASE_URL="postgresql://username:password@localhost:5432/absorb_lms"
+# Example: DATABASE_URL="postgresql://username:password@localhost:5432/civilabs_lms"
 ```
 
 ### 4. Setup Database Schema
@@ -65,15 +65,15 @@ Visit http://localhost:3000
 After seeding, you can login with:
 
 **Super Admin:**
-- Email: admin@absorblms.com
+- Email: admin@civilabs.com
 - Password: admin123
 
 **Instructor:**
-- Email: instructor@absorblms.com
+- Email: instructor@civilabs.com
 - Password: instructor123
 
 **Learner:**
-- Email: learner@absorblms.com
+- Email: learner@civilabs.com
 - Password: learner123
 
 ## Troubleshooting
@@ -93,12 +93,12 @@ sudo systemctl status postgresql
 
 2. Verify database exists:
 ```bash
-psql -l | grep absorb_lms
+psql -l | grep civilabs_lms
 ```
 
 3. Test connection:
 ```bash
-psql absorb_lms
+psql civilabs_lms
 ```
 
 4. Check .env DATABASE_URL format:
@@ -183,7 +183,7 @@ NEXTAUTH_URL="https://yourdomain.com"
 
 - Documentation: `/docs`
 - Issues: GitHub Issues
-- Email: support@absorblms.com
+- Email: support@civilabs.com
 
 ## License
 

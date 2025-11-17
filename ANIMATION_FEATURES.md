@@ -1,4 +1,4 @@
-# Absorb LMS - Animation & UI/UX Enhancements
+# Civilabs - Animation & UI/UX Enhancements
 
 ## 🎨 Implemented Features
 

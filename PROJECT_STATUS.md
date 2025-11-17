@@ -1,4 +1,4 @@
-# Absorb LMS - Project Implementation Status
+# Civilabs - Project Implementation Status
 
 ## ✅ Completed Features
 
@@ -44,7 +44,7 @@
 
 ### File Structure Created
 ```
-absorb-lms/
+civilabs-lms/
 ├── app/
 │   ├── (auth)/
 │   │   ├── login/page.tsx          ✅
@@ -192,9 +192,9 @@ npm run db:studio
 
 After running `npm run db:seed`:
 
-- **Admin**: admin@absorblms.com / admin123
-- **Instructor**: instructor@absorblms.com / instructor123
-- **Learner**: learner@absorblms.com / learner123
+- **Admin**: admin@civilabs.com / admin123
+- **Instructor**: instructor@civilabs.com / instructor123
+- **Learner**: learner@civilabs.com / learner123
 
 ## 📊 Current Progress
 

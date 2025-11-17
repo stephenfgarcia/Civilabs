@@ -1,7 +1,7 @@
 {
-  "name": "absorb-lms",
+  "name": "civilabs-lms",
   "version": "1.0.0",
-  "description": "",
+  "description": "Civilabs Learning Management System",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

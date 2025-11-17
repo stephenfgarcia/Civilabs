@@ -1,8 +1,8 @@
-# Absorb LMS - Quick Start Guide
+# Civilabs - Quick Start Guide
 
 ## ✅ Your Application is Ready!
 
-The Absorb LMS application is now fully set up and running at **http://localhost:3000**
+The Civilabs application is now fully set up and running at **http://localhost:3000**
 
 ## 🔑 Test Accounts
 
@@ -10,9 +10,9 @@ Login with these credentials:
 
 | Role | Email | Password |
 |------|-------|----------|
-| **Admin** | admin@absorblms.com | admin123 |
-| **Instructor** | instructor@absorblms.com | instructor123 |
-| **Learner** | learner@absorblms.com | learner123 |
+| **Admin** | admin@civilabs.com | admin123 |
+| **Instructor** | instructor@civilabs.com | instructor123 |
+| **Learner** | learner@civilabs.com | learner123 |
 
 ## 📱 Available Pages
 
@@ -72,7 +72,7 @@ Login with these credentials:
    - Click on user avatar (top right) to logout
 
 4. **Admin Access**:
-   - Login with admin@absorblms.com
+   - Login with admin@civilabs.com
    - Access admin panel at /admin
 
 ## 🛠️ Development Commands

@@ -99,7 +99,7 @@ export default function HomePage() {
         <div className="text-center max-w-5xl mx-auto">
           <div className="hero-title opacity-0">
             <h1 className="text-6xl md:text-8xl font-bold mb-6 gradient-text leading-tight">
-              Absorb LMS
+              Civilabs
             </h1>
           </div>
 
@@ -136,7 +136,7 @@ export default function HomePage() {
       <div ref={featuresRef} className="relative z-10 container mx-auto px-4 py-20">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">
-            Why Choose Absorb LMS?
+            Why Choose Civilabs?
           </h2>
           <p className="text-xl text-neutral-600">
             Everything you need to deliver world-class online learning
@@ -225,7 +225,7 @@ export default function HomePage() {
             Ready to Transform Your Learning?
           </h2>
           <p className="text-xl text-neutral-600 mb-8 max-w-2xl mx-auto">
-            Join thousands of organizations already using Absorb LMS to deliver exceptional learning experiences.
+            Join thousands of organizations already using Civilabs to deliver exceptional learning experiences.
           </p>
           <Link href="/register">
             <AnimatedButton size="lg" className="text-xl px-12 py-8 bg-gradient-to-r from-primary via-secondary to-purple-600 hover:shadow-2xl text-white">

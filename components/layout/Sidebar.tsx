@@ -74,7 +74,7 @@ export function Sidebar() {
           <div className="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg">
             <Sparkles className="text-white" size={24} />
           </div>
-          <h1 className="text-2xl font-bold gradient-text">Absorb LMS</h1>
+          <h1 className="text-2xl font-bold gradient-text">Civilabs</h1>
         </div>
 
         <nav className="space-y-2">

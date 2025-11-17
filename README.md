@@ -1,4 +1,4 @@
-# Absorb LMS - Learning Management System
+# Civilabs - Learning Management System
 
 A comprehensive Learning Management System built with Next.js 14, TypeScript, Prisma, and PostgreSQL.
 
@@ -48,7 +48,7 @@ A comprehensive Learning Management System built with Next.js 14, TypeScript, Pr
 1. Clone the repository
 ```bash
 git clone <repository-url>
-cd absorb-lms
+cd civilabs-lms
 ```
 
 2. Install dependencies
@@ -63,7 +63,7 @@ cp .env.example .env
 
 Edit `.env` with your database credentials and secrets:
 ```env
-DATABASE_URL="postgresql://user:password@localhost:5432/absorb_lms"
+DATABASE_URL="postgresql://user:password@localhost:5432/civilabs_lms"
 NEXTAUTH_SECRET="your-secret-key"
 JWT_SECRET="your-jwt-secret"
 ```
@@ -71,7 +71,7 @@ JWT_SECRET="your-jwt-secret"
 4. Set up the database
 ```bash
 # Create database
-createdb absorb_lms
+createdb civilabs_lms
 
 # Run migrations
 npx prisma migrate dev --name init
@@ -97,21 +97,21 @@ Visit [http://localhost:3000](http://localhost:3000)
 After seeding, you can login with:
 
 **Super Admin:**
-- Email: admin@absorblms.com
+- Email: admin@civilabs.com
 - Password: admin123
 
 **Instructor:**
-- Email: instructor@absorblms.com  
+- Email: instructor@civilabs.com
 - Password: instructor123
 
 **Learner:**
-- Email: learner@absorblms.com
+- Email: learner@civilabs.com
 - Password: learner123
 
 ## Project Structure
 
 ```
-absorb-lms/
+civilabs-lms/
 ├── app/
 │   ├── (auth)/           # Authentication pages
 │   │   ├── login/
@@ -228,4 +228,4 @@ MIT License
 
 ## Support
 
-For support, email support@absorblms.com or open an issue in the repository.
+For support, email support@civilabs.com or open an issue in the repository.
