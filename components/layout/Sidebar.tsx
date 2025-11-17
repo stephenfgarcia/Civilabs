@@ -12,6 +12,7 @@ import {
   Award,
   Trophy,
   User,
+  Bell,
   HelpCircle,
   Sparkles,
 } from 'lucide-react'
@@ -22,6 +23,7 @@ const navigationItems = [
   { name: 'Course Catalog', href: '/courses', icon: BookOpen, color: 'from-success to-green-600' },
   { name: 'Certificates', href: '/certificates', icon: Award, color: 'from-warning to-orange-600' },
   { name: 'Leaderboard', href: '/leaderboard', icon: Trophy, color: 'from-pink-500 to-rose-600' },
+  { name: 'Notifications', href: '/notifications', icon: Bell, color: 'from-orange-500 to-amber-600' },
   { name: 'Profile', href: '/profile', icon: User, color: 'from-indigo-500 to-blue-600' },
   { name: 'Help', href: '/help', icon: HelpCircle, color: 'from-teal-500 to-cyan-600' },
 ]
