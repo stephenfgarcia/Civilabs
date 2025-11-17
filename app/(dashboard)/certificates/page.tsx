@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Award, Download, Share2, Calendar, CheckCircle, Shield, HardHat, Zap, Eye, ExternalLink } from 'lucide-react'

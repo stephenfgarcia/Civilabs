@@ -79,7 +79,7 @@ export default function ProfilePage() {
           firstName: parsedUser.firstName || '',
           lastName: parsedUser.lastName || '',
           email: parsedUser.email || '',
-          department: parsedUser.department || 'Engineering',
+          department: typeof parsedUser.department === 'string' ? parsedUser.department : (parsedUser.department?.name || 'Engineering'),
           position: parsedUser.position || 'Construction Worker',
           phone: parsedUser.phone || '+1 (555) 123-4567',
           location: parsedUser.location || 'New York, NY'
@@ -116,7 +116,7 @@ export default function ProfilePage() {
         firstName: user.firstName || '',
         lastName: user.lastName || '',
         email: user.email || '',
-        department: user.department || 'Engineering',
+        department: typeof user.department === 'string' ? user.department : (user.department?.name || 'Engineering'),
         position: user.position || 'Construction Worker',
         phone: user.phone || '+1 (555) 123-4567',
         location: user.location || 'New York, NY'

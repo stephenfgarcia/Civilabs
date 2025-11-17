@@ -318,7 +318,7 @@ export default function LeaderboardPage() {
                             <span className="text-xs font-bold px-2 py-1 rounded-full bg-warning/20 text-warning">YOU</span>
                           )}
                         </h3>
-                        <p className="text-xs text-neutral-600">{user.department}</p>
+                        <p className="text-xs text-neutral-600">{typeof user.department === 'string' ? user.department : user.department?.name || 'N/A'}</p>
                         <p className="text-xs font-semibold text-primary mt-1">{user.badge}</p>
                       </div>
                     </div>
