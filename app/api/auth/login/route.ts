@@ -9,7 +9,16 @@ export async function POST(request: NextRequest) {
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Both worker email and security code are required to access the site.' },
+        { status: 400 }
+      )
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Invalid email format. Please enter a valid email address.' },
         { status: 400 }
       )
     }
@@ -23,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     if (!user || !user.passwordHash) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: 'No worker account found with this email address. Please check your email or register for site access.' },
         { status: 401 }
       )
     }
@@ -32,14 +41,14 @@ export async function POST(request: NextRequest) {
 
     if (!isValidPassword) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: 'Incorrect security code. Please verify your password and try again.' },
         { status: 401 }
       )
     }
 
     if (user.status !== 'ACTIVE') {
       return NextResponse.json(
-        { error: 'Account is not active' },
+        { error: 'Your worker account has been suspended or deactivated. Please contact site administrator.' },
         { status: 403 }
       )
     }

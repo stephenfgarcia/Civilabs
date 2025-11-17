@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter, Poppins } from 'next/font/google'
 import './globals.css'
-import { CustomCursor } from '@/components/ui/custom-cursor'
 import { ConstructionBackground } from '@/components/ui/construction-background'
 
 const inter = Inter({
@@ -28,7 +27,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
       <body className={inter.className}>
-        <CustomCursor />
         <ConstructionBackground />
         {children}
       </body>

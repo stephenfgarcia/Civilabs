@@ -1,124 +1,28 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import Link from 'next/link'
-import anime from 'animejs'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { HardHat, Building2, Ruler, Users, Award, TrendingUp, Hammer, Shield, Layers } from 'lucide-react'
 
 export default function HomePage() {
-  const heroRef = useRef<HTMLDivElement>(null)
-  const featuresRef = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
-    // Check performance level
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const cores = navigator.hardwareConcurrency || 4
-    const isLowPower = cores < 4 || prefersReducedMotion
-
-    if (isLowPower) {
-      // Simple CSS-based animations for low-power devices
-      document.querySelectorAll('.hero-title, .hero-subtitle, .hero-description, .hero-buttons, .hero-icon').forEach((el) => {
-        (el as HTMLElement).style.animation = 'fadeInUp 0.6s ease-out forwards'
-      })
-      return
-    }
-
-    // Simplified hero section animations
-    anime.timeline()
-      .add({
-        targets: '.hero-title',
-        opacity: [0, 1],
-        translateY: [-50, 0],
-        duration: 800,
-        easing: 'easeOutCubic',
-      })
-      .add({
-        targets: '.hero-subtitle',
-        opacity: [0, 1],
-        translateY: [20, 0],
-        duration: 600,
-        easing: 'easeOutCubic',
-      }, '-=400')
-      .add({
-        targets: '.hero-description',
-        opacity: [0, 1],
-        duration: 500,
-        easing: 'easeOutCubic',
-      }, '-=300')
-      .add({
-        targets: '.hero-buttons',
-        opacity: [0, 1],
-        translateY: [20, 0],
-        duration: 600,
-        easing: 'easeOutCubic',
-      }, '-=200')
-      .add({
-        targets: '.hero-icon',
-        opacity: [0, 1],
-        scale: [0, 1],
-        delay: anime.stagger(80),
-        duration: 500,
-        easing: 'easeOutCubic',
-      }, '-=400')
-
-    // Simplified floating orbs
-    anime({
-      targets: '.orb',
-      translateY: [
-        { value: -15, duration: 4000 },
-        { value: 0, duration: 4000 }
-      ],
-      opacity: [
-        { value: 0.7, duration: 4000 },
-        { value: 0.4, duration: 4000 }
-      ],
-      easing: 'easeInOutSine',
-      loop: true,
-      delay: anime.stagger(1000),
+    // Simple CSS-only animations for all devices
+    document.querySelectorAll('.hero-title, .hero-subtitle, .hero-description, .hero-buttons, .hero-icon').forEach((el, index) => {
+      const htmlEl = el as HTMLElement
+      htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.08}s`
     })
 
-    // Simplified 3D tilt effect for feature cards
-    document.querySelectorAll('.feature-card').forEach((card) => {
-      const htmlCard = card as HTMLElement
-
-      htmlCard.addEventListener('mousemove', (e: MouseEvent) => {
-        const rect = htmlCard.getBoundingClientRect()
-        const x = e.clientX - rect.left
-        const y = e.clientY - rect.top
-
-        const centerX = rect.width / 2
-        const centerY = rect.height / 2
-
-        const rotateX = (y - centerY) / 20 // Reduced sensitivity
-        const rotateY = (centerX - x) / 20
-
-        // Use CSS transforms directly
-        htmlCard.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`
-        htmlCard.style.transition = 'transform 0.2s ease-out'
-      })
-
-      htmlCard.addEventListener('mouseleave', () => {
-        htmlCard.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)'
-        htmlCard.style.transition = 'transform 0.4s ease-out'
-      })
-    })
-
-    // Simplified scroll animations with larger threshold
+    // Simple scroll-triggered fade-in for feature cards
     const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
+      entries.forEach((entry, index) => {
         if (entry.isIntersecting) {
-          anime({
-            targets: entry.target,
-            opacity: [0, 1],
-            translateY: [40, 0],
-            duration: 600,
-            easing: 'easeOutCubic',
-          })
+          const htmlEl = entry.target as HTMLElement
+          htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.1}s`
           observer.unobserve(entry.target)
         }
       })
-    }, { threshold: 0.2 }) // Larger threshold for earlier triggering
+    }, { threshold: 0.15 })
 
     document.querySelectorAll('.feature-card').forEach((el) => observer.observe(el))
 
@@ -131,11 +35,10 @@ export default function HomePage() {
       <div className="absolute inset-0 blueprint-grid opacity-20"></div>
       <div className="absolute inset-0 concrete-texture"></div>
 
-      {/* Animated Construction-themed Orbs */}
+      {/* Simplified Background Orbs - static for performance */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="orb absolute top-20 left-10 w-96 h-96 bg-gradient-to-r from-warning/40 to-orange-500/40 rounded-full blur-3xl"></div>
-        <div className="orb absolute top-40 right-20 w-[500px] h-[500px] bg-gradient-to-r from-primary/35 to-blue-600/35 rounded-full blur-3xl"></div>
-        <div className="orb absolute bottom-20 left-1/3 w-[450px] h-[450px] bg-gradient-to-r from-success/30 to-green-600/30 rounded-full blur-3xl"></div>
+        <div className="absolute top-20 left-10 w-80 h-80 bg-gradient-to-r from-warning/25 to-orange-500/25 rounded-full blur-3xl"></div>
+        <div className="absolute top-40 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-blue-600/20 rounded-full blur-3xl"></div>
       </div>
 
       {/* Construction warning stripes - top and bottom */}
@@ -143,7 +46,7 @@ export default function HomePage() {
       <div className="absolute bottom-0 left-0 w-full h-3 warning-stripes opacity-70 z-50"></div>
 
       {/* Hero Section */}
-      <div ref={heroRef} className="relative z-10 container mx-auto px-4 py-16 md:py-28">
+      <div className="relative z-10 container mx-auto px-4 py-16 md:py-28">
         <div className="text-center max-w-6xl mx-auto">
           {/* Construction icons */}
           <div className="flex items-center justify-center gap-8 mb-8">
@@ -206,7 +109,7 @@ export default function HomePage() {
       </div>
 
       {/* Features Grid with Construction Theme */}
-      <div ref={featuresRef} className="relative z-10 container mx-auto px-4 py-24">
+      <div className="relative z-10 container mx-auto px-4 py-24">
         <div className="text-center mb-20">
           <div className="flex items-center justify-center gap-4 mb-6">
             <div className="w-16 h-1 bg-gradient-to-r from-transparent to-warning"></div>

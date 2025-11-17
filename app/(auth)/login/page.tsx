@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import anime from 'animejs'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { ConstructionLoader } from '@/components/ui/construction-loader'
 import { Input } from '@/components/ui/input'
@@ -19,85 +18,53 @@ export default function LoginPage() {
   const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // Check performance level
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const cores = navigator.hardwareConcurrency || 4
-    const isLowPower = cores < 4 || prefersReducedMotion
-
-    if (isLowPower) {
-      // Simple CSS-based entrance for low-power devices
-      if (cardRef.current) {
-        cardRef.current.style.animation = 'fadeInUp 0.6s ease-out forwards'
-      }
-      return
-    }
-
-    // Simplified card entrance with construction theme
+    // Simple CSS-only entrance animation for all devices
     if (cardRef.current) {
-      anime.timeline()
-        .add({
-          targets: cardRef.current,
-          opacity: [0, 1],
-          scale: [0.9, 1],
-          translateY: [50, 0],
-          duration: 800,
-          easing: 'easeOutCubic',
-        })
-        .add({
-          targets: '.login-icon',
-          opacity: [0, 1],
-          scale: [0, 1],
-          duration: 500,
-          easing: 'easeOutCubic',
-        }, '-=400')
-        .add({
-          targets: '.login-title',
-          opacity: [0, 1],
-          translateY: [-10, 0],
-          duration: 400,
-          easing: 'easeOutCubic',
-        }, '-=200')
+      cardRef.current.style.animation = 'fadeInUp 0.5s ease-out forwards'
     }
 
-    // Simplified floating orbs animation
-    anime({
-      targets: '.login-orb',
-      translateY: [
-        { value: -20, duration: 4000 },
-        { value: 0, duration: 4000 }
-      ],
-      opacity: [
-        { value: 0.6, duration: 4000 },
-        { value: 0.3, duration: 4000 }
-      ],
-      easing: 'easeInOutSine',
-      loop: true,
-      delay: anime.stagger(1000),
-    })
-
-    // Simplified blueprint animation
-    anime({
-      targets: '.blueprint-line',
-      opacity: [0.1, 0.2, 0.1],
-      duration: 5000,
-      loop: true,
-      easing: 'linear',
-      delay: anime.stagger(500),
+    // Simple fade-in for icons and titles
+    const elements = document.querySelectorAll('.login-icon, .login-title')
+    elements.forEach((el, index) => {
+      const htmlEl = el as HTMLElement
+      htmlEl.style.animation = `fadeInUp 0.4s ease-out forwards ${0.1 + index * 0.05}s`
     })
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
 
-    // Construction crane loading animation
-    anime({
-      targets: '.submit-button',
-      scale: [1, 0.98, 1],
-      duration: 400,
-      easing: 'easeInOutCubic',
-    })
+    // Client-side validation
+    if (!email.trim() || !password.trim()) {
+      setError('Both worker email and security code are required to access the site.')
+      if (cardRef.current) {
+        cardRef.current.style.animation = 'shake 0.4s ease-in-out'
+        setTimeout(() => {
+          if (cardRef.current) {
+            cardRef.current.style.animation = ''
+          }
+        }, 400)
+      }
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError('Invalid email format. Please enter a valid worker email address.')
+      if (cardRef.current) {
+        cardRef.current.style.animation = 'shake 0.4s ease-in-out'
+        setTimeout(() => {
+          if (cardRef.current) {
+            cardRef.current.style.animation = ''
+          }
+        }, 400)
+      }
+      return
+    }
+
+    setLoading(true)
 
     try {
       const res = await fetch('/api/auth/login', {
@@ -115,44 +82,29 @@ export default function LoginPage() {
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
 
-      // Epic success animation - construction site access granted
-      anime.timeline({
-        complete: () => {
-          if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN') {
-            router.push('/admin')
-          } else {
-            router.push('/dashboard')
-          }
+      // Simple fade out before redirect
+      if (cardRef.current) {
+        cardRef.current.style.transition = 'opacity 0.3s ease-out'
+        cardRef.current.style.opacity = '0'
+      }
+
+      setTimeout(() => {
+        if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN') {
+          router.push('/admin')
+        } else {
+          router.push('/dashboard')
         }
-      })
-        .add({
-          targets: cardRef.current,
-          scale: [1, 1.1],
-          duration: 300,
-          easing: 'easeOutCubic',
-        })
-        .add({
-          targets: cardRef.current,
-          scale: [1.1, 0],
-          opacity: [1, 0],
-          rotateY: [0, 180],
-          duration: 600,
-          easing: 'easeInCubic',
-        })
+      }, 300)
     } catch (err: any) {
       setError(err.message)
-      // Simplified warning shake
+      // Simple CSS shake animation
       if (cardRef.current) {
-        anime({
-          targets: cardRef.current,
-          translateX: [
-            { value: -10, duration: 100 },
-            { value: 10, duration: 100 },
-            { value: -10, duration: 100 },
-            { value: 0, duration: 100 },
-          ],
-          easing: 'easeInOutSine',
-        })
+        cardRef.current.style.animation = 'shake 0.4s ease-in-out'
+        setTimeout(() => {
+          if (cardRef.current) {
+            cardRef.current.style.animation = ''
+          }
+        }, 400)
       }
     } finally {
       setLoading(false)
@@ -169,19 +121,10 @@ export default function LoginPage() {
       <div className="absolute top-0 left-0 w-full h-4 warning-stripes opacity-60 z-40"></div>
       <div className="absolute bottom-0 left-0 w-full h-4 warning-stripes opacity-60 z-40"></div>
 
-      {/* Animated Construction-themed Background Orbs */}
+      {/* Simplified Background Orbs - static for performance */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="login-orb absolute top-10 left-10 w-[500px] h-[500px] bg-gradient-to-r from-warning/40 to-orange-600/40 rounded-full blur-3xl"></div>
-        <div className="login-orb absolute bottom-10 right-10 w-[500px] h-[500px] bg-gradient-to-r from-primary/35 to-blue-600/35 rounded-full blur-3xl"></div>
-        <div className="login-orb absolute top-1/2 left-1/2 w-96 h-96 bg-gradient-to-r from-success/25 to-green-600/25 rounded-full blur-3xl"></div>
-      </div>
-
-      {/* Blueprint scanning lines */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="blueprint-line absolute top-0 left-0 w-full h-px bg-primary opacity-20"></div>
-        <div className="blueprint-line absolute top-1/4 left-0 w-full h-px bg-warning opacity-20"></div>
-        <div className="blueprint-line absolute top-1/2 left-0 w-full h-px bg-success opacity-20"></div>
-        <div className="blueprint-line absolute top-3/4 left-0 w-full h-px bg-primary opacity-20"></div>
+        <div className="absolute top-10 left-10 w-[400px] h-[400px] bg-gradient-to-r from-warning/25 to-orange-600/25 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-10 right-10 w-[400px] h-[400px] bg-gradient-to-r from-primary/20 to-blue-600/20 rounded-full blur-3xl"></div>
       </div>
 
       <Card ref={cardRef} className="w-full max-w-lg relative z-10 glass-effect concrete-texture border-4 border-warning/40 shadow-2xl opacity-0">
