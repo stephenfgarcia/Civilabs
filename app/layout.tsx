@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Inter, Poppins } from 'next/font/google'
 import './globals.css'
+import { CustomCursor } from '@/components/ui/custom-cursor'
+import { ConstructionBackground } from '@/components/ui/construction-background'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -14,8 +16,8 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'Civilabs - Learning Management System',
-  description: 'Comprehensive Learning Management System for online education',
+  title: 'Civilabs - Construction Engineering LMS',
+  description: 'Immersive Learning Management System for Civil Engineering Education',
 }
 
 export default function RootLayout({
@@ -25,7 +27,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <CustomCursor />
+        <ConstructionBackground />
+        {children}
+      </body>
     </html>
   )
 }
