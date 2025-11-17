@@ -384,41 +384,46 @@ export default function CourseDetailPage() {
                             const isLocked = !course.enrolled
 
                             return (
-                              <div
+                              <Link
                                 key={lesson.id}
-                                className="p-4 flex items-center gap-3 hover:bg-white/30 transition-colors border-b border-neutral-200 last:border-0"
+                                href={isLocked ? '#' : `/courses/${course.id}/lessons/${lesson.id}`}
+                                className={isLocked ? 'pointer-events-none' : ''}
                               >
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                                  lesson.completed
-                                    ? 'bg-gradient-to-br from-success to-green-600'
-                                    : isLocked
-                                    ? 'bg-gradient-to-br from-neutral-300 to-neutral-500'
-                                    : 'bg-gradient-to-br from-secondary to-purple-600'
-                                }`}>
-                                  {lesson.completed ? (
-                                    <CheckCircle className="text-white" size={16} />
-                                  ) : isLocked ? (
-                                    <Lock className="text-white" size={16} />
-                                  ) : (
-                                    <LessonIcon className="text-white" size={16} />
+                                <div
+                                  className="p-4 flex items-center gap-3 hover:bg-white/30 transition-colors border-b border-neutral-200 last:border-0"
+                                >
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                    lesson.completed
+                                      ? 'bg-gradient-to-br from-success to-green-600'
+                                      : isLocked
+                                      ? 'bg-gradient-to-br from-neutral-300 to-neutral-500'
+                                      : 'bg-gradient-to-br from-secondary to-purple-600'
+                                  }`}>
+                                    {lesson.completed ? (
+                                      <CheckCircle className="text-white" size={16} />
+                                    ) : isLocked ? (
+                                      <Lock className="text-white" size={16} />
+                                    ) : (
+                                      <LessonIcon className="text-white" size={16} />
+                                    )}
+                                  </div>
+
+                                  <div className="flex-1">
+                                    <h4 className={`font-bold ${lesson.completed ? 'text-neutral-600 line-through' : 'text-neutral-800'}`}>
+                                      {lesson.title}
+                                    </h4>
+                                    <p className="text-xs font-semibold text-neutral-500 uppercase">
+                                      {lesson.type} • {lesson.duration}
+                                    </p>
+                                  </div>
+
+                                  {!isLocked && !lesson.completed && (
+                                    <div className="bg-gradient-to-r from-primary to-blue-600 text-white font-black text-sm px-4 py-2 rounded-lg">
+                                      START
+                                    </div>
                                   )}
                                 </div>
-
-                                <div className="flex-1">
-                                  <h4 className={`font-bold ${lesson.completed ? 'text-neutral-600 line-through' : 'text-neutral-800'}`}>
-                                    {lesson.title}
-                                  </h4>
-                                  <p className="text-xs font-semibold text-neutral-500 uppercase">
-                                    {lesson.type} • {lesson.duration}
-                                  </p>
-                                </div>
-
-                                {!isLocked && !lesson.completed && (
-                                  <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black text-sm px-4 py-2">
-                                    START
-                                  </MagneticButton>
-                                )}
-                              </div>
+                              </Link>
                             )
                           })}
                         </div>
