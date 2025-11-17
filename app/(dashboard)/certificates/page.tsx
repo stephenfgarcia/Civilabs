@@ -237,13 +237,14 @@ export default function CertificatesPage() {
                     {/* Actions */}
                     <div className="lg:col-span-5">
                       <div className="flex flex-col gap-3">
-                        <MagneticButton
-                          onClick={() => handleView(certificate)}
-                          className="w-full bg-gradient-to-r from-primary to-blue-600 text-white font-black flex items-center justify-center gap-2"
-                        >
-                          <Eye size={18} />
-                          VIEW CERTIFICATE
-                        </MagneticButton>
+                        <Link href={`/certificates/${certificate.id}`} className="w-full">
+                          <MagneticButton
+                            className="w-full bg-gradient-to-r from-primary to-blue-600 text-white font-black flex items-center justify-center gap-2"
+                          >
+                            <Eye size={18} />
+                            VIEW CERTIFICATE
+                          </MagneticButton>
+                        </Link>
 
                         <MagneticButton
                           onClick={() => handleDownload(certificate)}
