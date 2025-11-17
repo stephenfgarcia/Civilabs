@@ -11,74 +11,74 @@ export default function HomePage() {
   const featuresRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // Animate hero section with construction theme
+    // Check performance level
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const cores = navigator.hardwareConcurrency || 4
+    const isLowPower = cores < 4 || prefersReducedMotion
+
+    if (isLowPower) {
+      // Simple CSS-based animations for low-power devices
+      document.querySelectorAll('.hero-title, .hero-subtitle, .hero-description, .hero-buttons, .hero-icon').forEach((el) => {
+        (el as HTMLElement).style.animation = 'fadeInUp 0.6s ease-out forwards'
+      })
+      return
+    }
+
+    // Simplified hero section animations
     anime.timeline()
       .add({
         targets: '.hero-title',
         opacity: [0, 1],
-        translateY: [-100, 0],
-        scale: [0.8, 1],
-        rotate: [5, 0],
-        duration: 1400,
-        easing: 'easeOutElastic(1, .7)',
+        translateY: [-50, 0],
+        duration: 800,
+        easing: 'easeOutCubic',
       })
       .add({
         targets: '.hero-subtitle',
         opacity: [0, 1],
-        translateY: [30, 0],
-        duration: 900,
+        translateY: [20, 0],
+        duration: 600,
         easing: 'easeOutCubic',
-      }, '-=800')
+      }, '-=400')
       .add({
         targets: '.hero-description',
         opacity: [0, 1],
-        scale: [0.9, 1],
-        duration: 700,
+        duration: 500,
         easing: 'easeOutCubic',
-      }, '-=600')
+      }, '-=300')
       .add({
         targets: '.hero-buttons',
         opacity: [0, 1],
-        translateY: [40, 0],
-        scale: [0.8, 1],
-        duration: 800,
-        easing: 'easeOutElastic(1, .8)',
-      }, '-=400')
+        translateY: [20, 0],
+        duration: 600,
+        easing: 'easeOutCubic',
+      }, '-=200')
       .add({
         targets: '.hero-icon',
         opacity: [0, 1],
-        rotate: [180, 0],
         scale: [0, 1],
-        delay: anime.stagger(100),
-        duration: 800,
-        easing: 'easeOutElastic(1, .6)',
-      }, '-=600')
+        delay: anime.stagger(80),
+        duration: 500,
+        easing: 'easeOutCubic',
+      }, '-=400')
 
-    // Animate floating orbs with construction colors
+    // Simplified floating orbs
     anime({
       targets: '.orb',
       translateY: [
-        { value: -30, duration: 3000 },
-        { value: 0, duration: 3000 }
-      ],
-      translateX: [
-        { value: 20, duration: 2500 },
-        { value: -20, duration: 2500 }
-      ],
-      scale: [
-        { value: 1.15, duration: 3000 },
-        { value: 1, duration: 3000 }
+        { value: -15, duration: 4000 },
+        { value: 0, duration: 4000 }
       ],
       opacity: [
-        { value: 0.9, duration: 3000 },
-        { value: 0.6, duration: 3000 }
+        { value: 0.7, duration: 4000 },
+        { value: 0.4, duration: 4000 }
       ],
       easing: 'easeInOutSine',
       loop: true,
-      delay: anime.stagger(600),
+      delay: anime.stagger(1000),
     })
 
-    // 3D tilt effect for feature cards
+    // Simplified 3D tilt effect for feature cards
     document.querySelectorAll('.feature-card').forEach((card) => {
       const htmlCard = card as HTMLElement
 
@@ -90,46 +90,35 @@ export default function HomePage() {
         const centerX = rect.width / 2
         const centerY = rect.height / 2
 
-        const rotateX = (y - centerY) / 10
-        const rotateY = (centerX - x) / 10
+        const rotateX = (y - centerY) / 20 // Reduced sensitivity
+        const rotateY = (centerX - x) / 20
 
-        anime({
-          targets: htmlCard,
-          rotateX: rotateX,
-          rotateY: rotateY,
-          duration: 300,
-          easing: 'easeOutCubic',
-        })
+        // Use CSS transforms directly
+        htmlCard.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`
+        htmlCard.style.transition = 'transform 0.2s ease-out'
       })
 
       htmlCard.addEventListener('mouseleave', () => {
-        anime({
-          targets: htmlCard,
-          rotateX: 0,
-          rotateY: 0,
-          duration: 600,
-          easing: 'easeOutElastic(1, .6)',
-        })
+        htmlCard.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)'
+        htmlCard.style.transition = 'transform 0.4s ease-out'
       })
     })
 
-    // Animate feature cards on scroll with stagger
+    // Simplified scroll animations with larger threshold
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           anime({
             targets: entry.target,
             opacity: [0, 1],
-            translateY: [80, 0],
-            rotateX: [45, 0],
-            scale: [0.8, 1],
-            duration: 1000,
-            easing: 'easeOutElastic(1, .8)',
+            translateY: [40, 0],
+            duration: 600,
+            easing: 'easeOutCubic',
           })
           observer.unobserve(entry.target)
         }
       })
-    })
+    }, { threshold: 0.2 }) // Larger threshold for earlier triggering
 
     document.querySelectorAll('.feature-card').forEach((el) => observer.observe(el))
 
@@ -236,8 +225,8 @@ export default function HomePage() {
 
         <div className="grid md:grid-cols-3 gap-10 max-w-7xl mx-auto">
           {/* Feature 1: Structural Learning */}
-          <div className="feature-card opacity-0 group tilt-3d">
-            <div className="glass-effect concrete-texture rounded-3xl p-10 h-full hover:shadow-2xl transition-all duration-500 border-3 border-transparent hover:border-warning/60 relative overflow-hidden">
+          <div className="feature-card opacity-0 group tilt-3d will-change-transform">
+            <div className="glass-effect concrete-texture rounded-3xl p-10 h-full hover:shadow-2xl transition-all duration-500 border-3 border-transparent hover:border-warning/60 relative overflow-hidden will-change-transform">
               <div className="absolute top-0 right-0 w-20 h-20 bg-warning/10 rotate-45 transform translate-x-10 -translate-y-10"></div>
               <div className="w-20 h-20 bg-gradient-to-br from-warning to-orange-600 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 shadow-lg">
                 <Layers className="text-white" size={40} />
@@ -251,8 +240,8 @@ export default function HomePage() {
           </div>
 
           {/* Feature 2: Project Management */}
-          <div className="feature-card opacity-0 group tilt-3d">
-            <div className="glass-effect concrete-texture rounded-3xl p-10 h-full hover:shadow-2xl transition-all duration-500 border-3 border-transparent hover:border-primary/60 relative overflow-hidden">
+          <div className="feature-card opacity-0 group tilt-3d will-change-transform">
+            <div className="glass-effect concrete-texture rounded-3xl p-10 h-full hover:shadow-2xl transition-all duration-500 border-3 border-transparent hover:border-primary/60 relative overflow-hidden will-change-transform">
               <div className="absolute top-0 right-0 w-20 h-20 bg-primary/10 rotate-45 transform translate-x-10 -translate-y-10"></div>
               <div className="w-20 h-20 bg-gradient-to-br from-primary to-blue-600 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 shadow-lg">
                 <TrendingUp className="text-white" size={40} />
@@ -266,8 +255,8 @@ export default function HomePage() {
           </div>
 
           {/* Feature 3: Safety & Certification */}
-          <div className="feature-card opacity-0 group tilt-3d">
-            <div className="glass-effect concrete-texture rounded-3xl p-10 h-full hover:shadow-2xl transition-all duration-500 border-3 border-transparent hover:border-success/60 relative overflow-hidden">
+          <div className="feature-card opacity-0 group tilt-3d will-change-transform">
+            <div className="glass-effect concrete-texture rounded-3xl p-10 h-full hover:shadow-2xl transition-all duration-500 border-3 border-transparent hover:border-success/60 relative overflow-hidden will-change-transform">
               <div className="absolute top-0 right-0 w-20 h-20 bg-success/10 rotate-45 transform translate-x-10 -translate-y-10"></div>
               <div className="w-20 h-20 bg-gradient-to-br from-success to-green-600 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 shadow-lg">
                 <Shield className="text-white" size={40} />
@@ -281,8 +270,8 @@ export default function HomePage() {
           </div>
 
           {/* Feature 4: Team Collaboration */}
-          <div className="feature-card opacity-0 group tilt-3d">
-            <div className="glass-effect concrete-texture rounded-3xl p-10 h-full hover:shadow-2xl transition-all duration-500 border-3 border-transparent hover:border-purple-500/60 relative overflow-hidden">
+          <div className="feature-card opacity-0 group tilt-3d will-change-transform">
+            <div className="glass-effect concrete-texture rounded-3xl p-10 h-full hover:shadow-2xl transition-all duration-500 border-3 border-transparent hover:border-purple-500/60 relative overflow-hidden will-change-transform">
               <div className="absolute top-0 right-0 w-20 h-20 bg-purple-500/10 rotate-45 transform translate-x-10 -translate-y-10"></div>
               <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 shadow-lg">
                 <Users className="text-white" size={40} />
@@ -296,8 +285,8 @@ export default function HomePage() {
           </div>
 
           {/* Feature 5: Professional Recognition */}
-          <div className="feature-card opacity-0 group tilt-3d">
-            <div className="glass-effect concrete-texture rounded-3xl p-10 h-full hover:shadow-2xl transition-all duration-500 border-3 border-transparent hover:border-indigo-500/60 relative overflow-hidden">
+          <div className="feature-card opacity-0 group tilt-3d will-change-transform">
+            <div className="glass-effect concrete-texture rounded-3xl p-10 h-full hover:shadow-2xl transition-all duration-500 border-3 border-transparent hover:border-indigo-500/60 relative overflow-hidden will-change-transform">
               <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/10 rotate-45 transform translate-x-10 -translate-y-10"></div>
               <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-blue-700 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 shadow-lg">
                 <Award className="text-white" size={40} />
@@ -311,8 +300,8 @@ export default function HomePage() {
           </div>
 
           {/* Feature 6: Site Performance */}
-          <div className="feature-card opacity-0 group tilt-3d">
-            <div className="glass-effect concrete-texture rounded-3xl p-10 h-full hover:shadow-2xl transition-all duration-500 border-3 border-transparent hover:border-rose-500/60 relative overflow-hidden">
+          <div className="feature-card opacity-0 group tilt-3d will-change-transform">
+            <div className="glass-effect concrete-texture rounded-3xl p-10 h-full hover:shadow-2xl transition-all duration-500 border-3 border-transparent hover:border-rose-500/60 relative overflow-hidden will-change-transform">
               <div className="absolute top-0 right-0 w-20 h-20 bg-rose-500/10 rotate-45 transform translate-x-10 -translate-y-10"></div>
               <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-red-600 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 shadow-lg">
                 <Hammer className="text-white" size={40} />

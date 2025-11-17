@@ -61,7 +61,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-secondary p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md will-change-transform">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-3xl font-bold">Create Account</CardTitle>
           <CardDescription>Join Civilabs today</CardDescription>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import anime from 'animejs'
 import { Button, ButtonProps } from './button'
 import { cn } from '@/lib/utils/cn'
@@ -8,109 +8,123 @@ import { cn } from '@/lib/utils/cn'
 export function MagneticButton({ children, className, ...props }: ButtonProps) {
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [isHovering, setIsHovering] = useState(false)
+  const [isLowPower, setIsLowPower] = useState(false)
+
+  useEffect(() => {
+    // Detect performance level
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const cores = navigator.hardwareConcurrency || 4
+    setIsLowPower(cores < 4 || prefersReducedMotion)
+  }, [])
 
   const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (!buttonRef.current) return
+    if (!buttonRef.current || isLowPower) return
 
     const rect = buttonRef.current.getBoundingClientRect()
     const x = e.clientX - rect.left - rect.width / 2
     const y = e.clientY - rect.top - rect.height / 2
 
-    // Magnetic pull effect
+    // Magnetic pull effect - reduced distance for better performance
     const distance = Math.sqrt(x * x + y * y)
-    const maxDistance = 150
+    const maxDistance = 100 // Reduced from 150
 
     if (distance < maxDistance) {
       const strength = 1 - distance / maxDistance
-      const pullX = x * strength * 0.3
-      const pullY = y * strength * 0.3
+      const pullX = x * strength * 0.2 // Reduced from 0.3
+      const pullY = y * strength * 0.2
 
-      anime({
-        targets: buttonRef.current,
-        translateX: pullX,
-        translateY: pullY,
-        scale: 1 + strength * 0.1,
-        duration: 300,
-        easing: 'easeOutCubic',
-      })
+      // Use CSS transforms directly instead of anime.js for better performance
+      buttonRef.current.style.transform = `translate(${pullX}px, ${pullY}px) scale(${1 + strength * 0.05})`
+      buttonRef.current.style.transition = 'transform 0.2s ease-out'
     }
   }
 
   const handleMouseEnter = () => {
     setIsHovering(true)
-    if (!buttonRef.current) return
+    if (!buttonRef.current || isLowPower) return
 
-    // Glow effect on hover
-    anime({
-      targets: buttonRef.current,
-      boxShadow: [
-        '0 0 0px rgba(0, 163, 224, 0)',
-        '0 0 30px rgba(0, 163, 224, 0.6), 0 0 60px rgba(107, 72, 255, 0.4)',
-      ],
-      duration: 400,
-      easing: 'easeOutCubic',
-    })
+    // Simplified glow effect
+    if (!isLowPower) {
+      anime({
+        targets: buttonRef.current,
+        boxShadow: [
+          '0 0 0px rgba(0, 163, 224, 0)',
+          '0 0 20px rgba(0, 163, 224, 0.4), 0 0 40px rgba(107, 72, 255, 0.3)', // Reduced intensity
+        ],
+        duration: 300, // Faster
+        easing: 'easeOutCubic',
+      })
+    }
   }
 
   const handleMouseLeave = () => {
     setIsHovering(false)
     if (!buttonRef.current) return
 
-    anime({
-      targets: buttonRef.current,
-      translateX: 0,
-      translateY: 0,
-      scale: 1,
-      boxShadow: '0 0 0px rgba(0, 163, 224, 0)',
-      duration: 500,
-      easing: 'easeOutElastic(1, .6)',
-    })
+    if (isLowPower) {
+      // Simple CSS transition for low-power
+      buttonRef.current.style.transform = 'translate(0, 0) scale(1)'
+      buttonRef.current.style.transition = 'transform 0.3s ease-out'
+    } else {
+      // Simplified animation
+      anime({
+        targets: buttonRef.current,
+        translateX: 0,
+        translateY: 0,
+        scale: 1,
+        boxShadow: '0 0 0px rgba(0, 163, 224, 0)',
+        duration: 400, // Reduced from 500
+        easing: 'easeOutCubic', // Simpler easing
+      })
+    }
   }
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
+    if (!isLowPower) {
+      const rect = e.currentTarget.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
 
-    // Ripple effect
-    const ripple = document.createElement('span')
-    ripple.style.cssText = `
-      position: absolute;
-      left: ${x}px;
-      top: ${y}px;
-      width: 0;
-      height: 0;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.6);
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-    `
-    e.currentTarget.appendChild(ripple)
+      // Simplified ripple effect
+      const ripple = document.createElement('span')
+      ripple.style.cssText = `
+        position: absolute;
+        left: ${x}px;
+        top: ${y}px;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.5);
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+      `
+      e.currentTarget.appendChild(ripple)
 
-    anime({
-      targets: ripple,
-      width: 400,
-      height: 400,
-      opacity: [1, 0],
-      duration: 800,
-      easing: 'easeOutExpo',
-      complete: () => ripple.remove(),
-    })
-
-    // Button press animation
-    anime.timeline()
-      .add({
-        targets: buttonRef.current,
-        scale: 0.95,
-        duration: 100,
-        easing: 'easeInCubic',
+      anime({
+        targets: ripple,
+        width: 300, // Reduced from 400
+        height: 300,
+        opacity: [1, 0],
+        duration: 600, // Faster
+        easing: 'easeOutCubic', // Simpler easing
+        complete: () => ripple.remove(),
       })
-      .add({
-        targets: buttonRef.current,
-        scale: isHovering ? 1.1 : 1,
-        duration: 200,
-        easing: 'easeOutElastic(1, .8)',
-      })
+
+      // Simplified button press animation
+      anime.timeline()
+        .add({
+          targets: buttonRef.current,
+          scale: 0.96,
+          duration: 80,
+          easing: 'easeInCubic',
+        })
+        .add({
+          targets: buttonRef.current,
+          scale: 1,
+          duration: 150,
+          easing: 'easeOutCubic',
+        })
+    }
 
     props.onClick?.(e)
   }
@@ -118,8 +132,8 @@ export function MagneticButton({ children, className, ...props }: ButtonProps) {
   return (
     <Button
       ref={buttonRef}
-      className={cn('relative overflow-hidden transition-all duration-300', className)}
-      onMouseMove={handleMouseMove}
+      className={cn('relative overflow-hidden will-change-transform transition-all duration-200', className)}
+      onMouseMove={isLowPower ? undefined : handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}

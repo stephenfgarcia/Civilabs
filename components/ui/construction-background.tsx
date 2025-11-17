@@ -1,59 +1,77 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import anime from 'animejs'
 
 export function ConstructionBackground() {
   const canvasRef = useRef<HTMLDivElement>(null)
+  const [isLowPower, setIsLowPower] = useState(false)
 
   useEffect(() => {
+    // Detect performance level
+    const checkPerformance = () => {
+      // Check for reduced motion preference
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      // Check hardware concurrency (CPU cores)
+      const cores = navigator.hardwareConcurrency || 4
+      // Basic performance check
+      const isLowEnd = cores < 4 || prefersReducedMotion
+      setIsLowPower(isLowEnd)
+      return isLowEnd
+    }
+
+    const lowPower = checkPerformance()
     if (!canvasRef.current) return
 
-    // Create floating construction particles
-    const particleCount = 30
+    // Reduce particle count for midrange laptops: 30 -> 12
+    const particleCount = lowPower ? 8 : 12
     const particles: HTMLDivElement[] = []
 
     for (let i = 0; i < particleCount; i++) {
       const particle = document.createElement('div')
-      particle.className = 'construction-particle absolute'
+      particle.className = 'construction-particle absolute will-change-transform'
 
-      // Random construction symbols: ▢ ▣ ▤ ▥ ▦ ▧ ▨ ▩ ◆ ◇ ○ □
-      const symbols = ['▢', '▣', '○', '□', '◇', '▧', '▨', '◆']
+      // Random construction symbols
+      const symbols = ['▢', '▣', '○', '□']
       particle.textContent = symbols[Math.floor(Math.random() * symbols.length)]
 
       particle.style.left = `${Math.random() * 100}%`
       particle.style.top = `${Math.random() * 100}%`
-      particle.style.fontSize = `${Math.random() * 20 + 10}px`
-      particle.style.opacity = `${Math.random() * 0.3 + 0.1}`
+      particle.style.fontSize = `${Math.random() * 15 + 10}px`
+      particle.style.opacity = `${Math.random() * 0.2 + 0.1}`
       particle.style.color = `hsl(${Math.random() * 60 + 180}, 70%, 60%)`
+      particle.style.pointerEvents = 'none'
 
       canvasRef.current.appendChild(particle)
       particles.push(particle)
     }
 
-    // Animate particles
-    anime({
-      targets: '.construction-particle',
-      translateY: [
-        { value: () => anime.random(-100, 100), duration: () => anime.random(3000, 6000) },
-        { value: () => anime.random(-100, 100), duration: () => anime.random(3000, 6000) },
-      ],
-      translateX: [
-        { value: () => anime.random(-100, 100), duration: () => anime.random(3000, 6000) },
-        { value: () => anime.random(-100, 100), duration: () => anime.random(3000, 6000) },
-      ],
-      rotate: [
-        { value: () => anime.random(-180, 180), duration: () => anime.random(3000, 6000) },
-        { value: () => anime.random(-180, 180), duration: () => anime.random(3000, 6000) },
-      ],
-      opacity: [
-        { value: () => anime.random(0.1, 0.4), duration: () => anime.random(2000, 4000) },
-        { value: () => anime.random(0.1, 0.4), duration: () => anime.random(2000, 4000) },
-      ],
-      easing: 'easeInOutSine',
-      loop: true,
-      delay: anime.stagger(100),
-    })
+    // Simplified animation for better performance
+    if (!lowPower) {
+      anime({
+        targets: '.construction-particle',
+        translateY: [
+          { value: () => anime.random(-50, 50), duration: () => anime.random(4000, 7000) },
+          { value: () => anime.random(-50, 50), duration: () => anime.random(4000, 7000) },
+        ],
+        translateX: [
+          { value: () => anime.random(-50, 50), duration: () => anime.random(4000, 7000) },
+          { value: () => anime.random(-50, 50), duration: () => anime.random(4000, 7000) },
+        ],
+        opacity: [
+          { value: () => anime.random(0.1, 0.3), duration: () => anime.random(3000, 5000) },
+          { value: () => anime.random(0.1, 0.3), duration: () => anime.random(3000, 5000) },
+        ],
+        easing: 'linear',
+        loop: true,
+        delay: anime.stagger(200),
+      })
+    } else {
+      // CSS-only animation for low power mode
+      particles.forEach(p => {
+        p.style.animation = `float ${Math.random() * 10 + 10}s ease-in-out infinite`
+      })
+    }
 
     return () => {
       particles.forEach(p => p.remove())

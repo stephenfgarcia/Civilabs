@@ -19,67 +19,70 @@ export default function LoginPage() {
   const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // Epic card entrance with construction theme
+    // Check performance level
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const cores = navigator.hardwareConcurrency || 4
+    const isLowPower = cores < 4 || prefersReducedMotion
+
+    if (isLowPower) {
+      // Simple CSS-based entrance for low-power devices
+      if (cardRef.current) {
+        cardRef.current.style.animation = 'fadeInUp 0.6s ease-out forwards'
+      }
+      return
+    }
+
+    // Simplified card entrance with construction theme
     if (cardRef.current) {
       anime.timeline()
         .add({
           targets: cardRef.current,
           opacity: [0, 1],
-          scale: [0.7, 1],
-          rotateX: [90, 0],
-          translateY: [100, 0],
-          duration: 1200,
-          easing: 'easeOutElastic(1, .7)',
+          scale: [0.9, 1],
+          translateY: [50, 0],
+          duration: 800,
+          easing: 'easeOutCubic',
         })
         .add({
           targets: '.login-icon',
           opacity: [0, 1],
           scale: [0, 1],
-          rotate: [180, 0],
-          duration: 800,
-          easing: 'easeOutElastic(1, .6)',
-        }, '-=800')
+          duration: 500,
+          easing: 'easeOutCubic',
+        }, '-=400')
         .add({
           targets: '.login-title',
           opacity: [0, 1],
-          translateY: [-20, 0],
-          duration: 600,
+          translateY: [-10, 0],
+          duration: 400,
           easing: 'easeOutCubic',
-        }, '-=400')
+        }, '-=200')
     }
 
-    // Animate construction-themed floating orbs
+    // Simplified floating orbs animation
     anime({
       targets: '.login-orb',
       translateY: [
-        { value: -40, duration: 3500 },
-        { value: 0, duration: 3500 }
-      ],
-      translateX: [
-        { value: 30, duration: 3000 },
-        { value: -30, duration: 3000 }
-      ],
-      scale: [
-        { value: 1.3, duration: 3500 },
-        { value: 1, duration: 3500 }
+        { value: -20, duration: 4000 },
+        { value: 0, duration: 4000 }
       ],
       opacity: [
-        { value: 0.8, duration: 3000 },
-        { value: 0.4, duration: 3000 }
+        { value: 0.6, duration: 4000 },
+        { value: 0.3, duration: 4000 }
       ],
       easing: 'easeInOutSine',
       loop: true,
-      delay: anime.stagger(700),
+      delay: anime.stagger(1000),
     })
 
-    // Blueprint grid animation
+    // Simplified blueprint animation
     anime({
       targets: '.blueprint-line',
-      opacity: [0.1, 0.3, 0.1],
-      duration: 4000,
+      opacity: [0.1, 0.2, 0.1],
+      duration: 5000,
       loop: true,
-      easing: 'easeInOutSine',
-      delay: anime.stagger(200),
+      easing: 'linear',
+      delay: anime.stagger(500),
     })
   }, [])
 
@@ -138,27 +141,19 @@ export default function LoginPage() {
         })
     } catch (err: any) {
       setError(err.message)
-      // Construction warning shake - access denied
-      anime({
-        targets: cardRef.current,
-        translateX: [
-          { value: -15, duration: 80 },
-          { value: 15, duration: 80 },
-          { value: -15, duration: 80 },
-          { value: 15, duration: 80 },
-          { value: -10, duration: 80 },
-          { value: 10, duration: 80 },
-          { value: 0, duration: 80 },
-        ],
-        rotate: [
-          { value: -2, duration: 80 },
-          { value: 2, duration: 80 },
-          { value: -2, duration: 80 },
-          { value: 2, duration: 80 },
-          { value: 0, duration: 80 },
-        ],
-        easing: 'easeInOutSine',
-      })
+      // Simplified warning shake
+      if (cardRef.current) {
+        anime({
+          targets: cardRef.current,
+          translateX: [
+            { value: -10, duration: 100 },
+            { value: 10, duration: 100 },
+            { value: -10, duration: 100 },
+            { value: 0, duration: 100 },
+          ],
+          easing: 'easeInOutSine',
+        })
+      }
     } finally {
       setLoading(false)
     }
