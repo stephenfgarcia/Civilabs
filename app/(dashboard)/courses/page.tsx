@@ -4,89 +4,48 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { MagneticButton } from '@/components/ui/magnetic-button'
-import { BookOpen, Search, Filter, HardHat, Award, Clock, Users, ChevronRight, Zap, Shield, Wrench } from 'lucide-react'
+import { BookOpen, Search, Filter, HardHat, Award, Clock, Users, ChevronRight, Zap, Shield, Wrench, Loader2, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { coursesService } from '@/lib/services'
 
-// Mock course data
-const MOCK_COURSES = [
-  {
-    id: 1,
-    title: 'Construction Safety Fundamentals',
-    description: 'Essential safety protocols and procedures for construction sites',
-    category: 'Safety',
-    level: 'Beginner',
-    duration: '4 hours',
-    students: 245,
-    icon: Shield,
-    color: 'from-danger to-red-600'
-  },
-  {
-    id: 2,
-    title: 'Heavy Equipment Operation',
-    description: 'Learn to operate excavators, bulldozers, and cranes safely',
-    category: 'Equipment',
-    level: 'Intermediate',
-    duration: '12 hours',
-    students: 189,
-    icon: Wrench,
-    color: 'from-warning to-orange-600'
-  },
-  {
-    id: 3,
-    title: 'Blueprint Reading & Interpretation',
-    description: 'Master the art of reading construction blueprints and technical drawings',
-    category: 'Technical',
-    level: 'Beginner',
-    duration: '6 hours',
-    students: 312,
-    icon: BookOpen,
-    color: 'from-primary to-blue-600'
-  },
-  {
-    id: 4,
-    title: 'Project Management Essentials',
-    description: 'Essential skills for managing construction projects effectively',
-    category: 'Management',
-    level: 'Advanced',
-    duration: '10 hours',
-    students: 156,
-    icon: HardHat,
-    color: 'from-success to-green-600'
-  },
-  {
-    id: 5,
-    title: 'Quality Control & Inspection',
-    description: 'Learn industry standards for quality control and site inspection',
-    category: 'Quality',
-    level: 'Intermediate',
-    duration: '8 hours',
-    students: 201,
-    icon: Award,
-    color: 'from-secondary to-purple-600'
-  },
-  {
-    id: 6,
-    title: 'Electrical Systems Installation',
-    description: 'Comprehensive guide to electrical systems in construction',
-    category: 'Technical',
-    level: 'Advanced',
-    duration: '15 hours',
-    students: 134,
-    icon: Zap,
-    color: 'from-warning to-yellow-600'
-  }
-]
+// Icon mapping for categories
+const CATEGORY_ICONS: Record<string, any> = {
+  Safety: Shield,
+  Equipment: Wrench,
+  Technical: BookOpen,
+  Management: HardHat,
+  Quality: Award,
+  Construction: HardHat,
+  Engineering: Zap,
+}
 
-const CATEGORIES = ['All', 'Safety', 'Equipment', 'Technical', 'Management', 'Quality']
-const LEVELS = ['All Levels', 'Beginner', 'Intermediate', 'Advanced']
+// Color mapping for categories
+const CATEGORY_COLORS: Record<string, string> = {
+  Safety: 'from-danger to-red-600',
+  Equipment: 'from-warning to-orange-600',
+  Technical: 'from-primary to-blue-600',
+  Management: 'from-success to-green-600',
+  Quality: 'from-secondary to-purple-600',
+  Construction: 'from-warning to-orange-600',
+  Engineering: 'from-primary to-blue-600',
+}
+
+const LEVELS = ['All Levels', 'BEGINNER', 'INTERMEDIATE', 'ADVANCED']
 
 export default function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedLevel, setSelectedLevel] = useState('All Levels')
-  const [filteredCourses, setFilteredCourses] = useState(MOCK_COURSES)
+  const [courses, setCourses] = useState<any[]>([])
+  const [categories, setCategories] = useState<string[]>(['All'])
+  const [filteredCourses, setFilteredCourses] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Fetch courses on mount
+    fetchCourses()
+
     // Simple CSS-only entrance animations
     const elements = document.querySelectorAll('.courses-item')
     elements.forEach((el, index) => {
@@ -96,26 +55,87 @@ export default function CoursesPage() {
   }, [])
 
   useEffect(() => {
-    // Filter courses
-    let filtered = MOCK_COURSES
+    // Filter courses whenever filters change
+    let filtered = courses
 
     if (searchQuery) {
       filtered = filtered.filter(course =>
         course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        course.description.toLowerCase().includes(searchQuery.toLowerCase())
+        course.description?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     }
 
     if (selectedCategory !== 'All') {
-      filtered = filtered.filter(course => course.category === selectedCategory)
+      filtered = filtered.filter(course => course.category?.name === selectedCategory)
     }
 
     if (selectedLevel !== 'All Levels') {
-      filtered = filtered.filter(course => course.level === selectedLevel)
+      filtered = filtered.filter(course => course.difficultyLevel === selectedLevel)
     }
 
     setFilteredCourses(filtered)
-  }, [searchQuery, selectedCategory, selectedLevel])
+  }, [searchQuery, selectedCategory, selectedLevel, courses])
+
+  const fetchCourses = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Fetch all courses
+      const response = await coursesService.getCourses()
+
+      if (response.error) {
+        throw new Error(response.error)
+      }
+
+      const coursesData = response.data?.data || []
+      setCourses(coursesData)
+      setFilteredCourses(coursesData)
+
+      // Extract unique categories
+      const uniqueCategories = ['All', ...Array.from(new Set(coursesData.map((c: any) => c.category?.name).filter(Boolean)))]
+      setCategories(uniqueCategories)
+    } catch (err) {
+      console.error('Error fetching courses:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load courses')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
+          <p className="text-lg font-bold text-neutral-700">Loading courses...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="glass-effect concrete-texture border-4 border-red-500/40 max-w-md">
+          <CardHeader>
+            <CardTitle className="text-xl font-black flex items-center gap-2 text-red-600">
+              <AlertCircle />
+              Error Loading Courses
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-neutral-700 mb-4">{error}</p>
+            <MagneticButton onClick={fetchCourses} className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
+              Try Again
+            </MagneticButton>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -167,7 +187,7 @@ export default function CoursesPage() {
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="w-full h-12 glass-effect border-2 border-warning/30 focus:border-warning rounded-lg px-4 font-medium"
                 >
-                  {CATEGORIES.map(category => (
+                  {categories.map(category => (
                     <option key={category} value={category}>{category}</option>
                   ))}
                 </select>
@@ -217,26 +237,30 @@ export default function CoursesPage() {
       {filteredCourses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses.map((course, index) => {
-            const IconComponent = course.icon
+            const categoryName = course.category?.name || 'General'
+            const IconComponent = CATEGORY_ICONS[categoryName] || BookOpen
+            const colorClass = CATEGORY_COLORS[categoryName] || 'from-primary to-blue-600'
+            const difficultyLevel = course.difficultyLevel || 'BEGINNER'
+
             return (
               <Link key={course.id} href={`/courses/${course.id}`}>
                 <Card
                   className="courses-item opacity-0 glass-effect concrete-texture border-4 border-primary/20 hover:border-primary/40 transition-all group relative overflow-hidden cursor-pointer"
                 >
                   {/* Accent Bar */}
-                  <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${course.color}`}></div>
+                  <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${colorClass}`}></div>
 
                   <CardHeader>
                     <div className="flex items-start justify-between">
-                      <div className={`w-14 h-14 bg-gradient-to-br ${course.color} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                      <div className={`w-14 h-14 bg-gradient-to-br ${colorClass} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
                         <IconComponent className="text-white" size={28} />
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <span className="text-xs font-bold px-3 py-1 rounded-full bg-warning/20 text-warning">
-                          {course.category}
+                          {categoryName}
                         </span>
                         <span className="text-xs font-semibold text-neutral-600">
-                          {course.level}
+                          {difficultyLevel}
                         </span>
                       </div>
                     </div>
