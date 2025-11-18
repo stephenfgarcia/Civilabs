@@ -54,8 +54,8 @@ class NotificationsService {
   /**
    * Mark notification as read
    */
-  async markAsRead(id: number) {
-    return apiClient.patch(`/notifications/${id}/read`)
+  async markAsRead(id: string) {
+    return apiClient.put(`/notifications/${id}`)
   }
 
   /**
@@ -68,7 +68,7 @@ class NotificationsService {
   /**
    * Delete notification
    */
-  async deleteNotification(id: number) {
+  async deleteNotification(id: string) {
     return apiClient.delete(`/notifications/${id}`)
   }
 
