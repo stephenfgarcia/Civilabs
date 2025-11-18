@@ -12,65 +12,63 @@ import { withAuth, withAdmin } from '@/lib/auth/api-auth'
  * GET /api/certificates
  * Get all certificates for the authenticated user
  */
-export async function GET(request: NextRequest) {
-  return withAuth(async (req, user) => {
-    try {
-      const certificates = await prisma.userCertificate.findMany({
-        where: {
-          userId: user.userId,
-        },
-        include: {
-          certificate: {
-            include: {
-              course: {
-                select: {
-                  id: true,
-                  title: true,
-                  category: {
-                    select: {
-                      name: true,
-                    },
+export const GET = withAuth(async (request, user) => {
+  try {
+    const certificates = await prisma.userCertificate.findMany({
+      where: {
+        userId: user.userId,
+      },
+      include: {
+        certificate: {
+          include: {
+            course: {
+              select: {
+                id: true,
+                title: true,
+                category: {
+                  select: {
+                    name: true,
                   },
-                  instructor: {
-                    select: {
-                      firstName: true,
-                      lastName: true,
-                    },
+                },
+                instructor: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
                   },
                 },
               },
             },
           },
-          enrollment: {
-            select: {
-              enrolledAt: true,
-              completedAt: true,
-            },
+        },
+        enrollment: {
+          select: {
+            enrolledAt: true,
+            completedAt: true,
           },
         },
-        orderBy: {
-          issuedAt: 'desc',
-        },
-      })
+      },
+      orderBy: {
+        issuedAt: 'desc',
+      },
+    })
 
-      return NextResponse.json({
-        success: true,
-        data: certificates,
-        count: certificates.length,
-      })
-    } catch (error) {
-      console.error('Error fetching certificates:', error)
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Failed to fetch certificates',
-          message: error instanceof Error ? error.message : 'Unknown error',
-        },
-        { status: 500 }
-      )
-    }
-  })(request)
-}
+    return NextResponse.json({
+      success: true,
+      data: certificates,
+      count: certificates.length,
+    })
+  } catch (error) {
+    console.error('Error fetching certificates:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to fetch certificates',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
+  }
+})
 
 /**
  * POST /api/certificates

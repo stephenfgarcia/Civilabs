@@ -12,52 +12,50 @@ import { withAuth, withAdmin } from '@/lib/auth/api-auth'
  * GET /api/notifications
  * Get all notifications for the authenticated user
  */
-export async function GET(request: NextRequest) {
-  return withAuth(async (req, user) => {
-    try {
-      const { searchParams } = new URL(request.url)
-      const unreadOnly = searchParams.get('unreadOnly') === 'true'
-      const limit = searchParams.get('limit')
-      const offset = searchParams.get('offset')
+export const GET = withAuth(async (request, user) => {
+  try {
+    const { searchParams } = new URL(request.url)
+    const unreadOnly = searchParams.get('unreadOnly') === 'true'
+    const limit = searchParams.get('limit')
+    const offset = searchParams.get('offset')
 
-      const notifications = await prisma.notification.findMany({
-        where: {
-          userId: user.userId,
-          ...(unreadOnly && { isRead: false }),
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        ...(limit && { take: parseInt(limit) }),
-        ...(offset && { skip: parseInt(offset) }),
-      })
+    const notifications = await prisma.notification.findMany({
+      where: {
+        userId: user.userId,
+        ...(unreadOnly && { isRead: false }),
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      ...(limit && { take: parseInt(limit) }),
+      ...(offset && { skip: parseInt(offset) }),
+    })
 
-      const unreadCount = await prisma.notification.count({
-        where: {
-          userId: user.userId,
-          isRead: false,
-        },
-      })
+    const unreadCount = await prisma.notification.count({
+      where: {
+        userId: user.userId,
+        isRead: false,
+      },
+    })
 
-      return NextResponse.json({
-        success: true,
-        data: notifications,
-        count: notifications.length,
-        unreadCount,
-      })
-    } catch (error) {
-      console.error('Error fetching notifications:', error)
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Failed to fetch notifications',
-          message: error instanceof Error ? error.message : 'Unknown error',
-        },
-        { status: 500 }
-      )
-    }
-  })(request)
-}
+    return NextResponse.json({
+      success: true,
+      data: notifications,
+      count: notifications.length,
+      unreadCount,
+    })
+  } catch (error) {
+    console.error('Error fetching notifications:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to fetch notifications',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
+  }
+})
 
 /**
  * POST /api/notifications
