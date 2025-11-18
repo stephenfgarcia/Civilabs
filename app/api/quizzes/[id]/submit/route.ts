@@ -27,10 +27,11 @@ interface SubmissionBody {
  */
 export async function POST(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteParams
 ) {
   return withAuth(async (req, user) => {
     try {
+      const params = await context.params
       const { id: quizId } = params
       const body: SubmissionBody = await request.json()
       const { attemptId, answers } = body

@@ -19,9 +19,10 @@ interface RouteParams {
  */
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteParams
 ) {
   try {
+    const params = await context.params
     const { id } = params
     const user = authenticateRequest(request)
 
@@ -37,29 +38,30 @@ export async function GET(
             bio: true,
           },
         },
-        modules: {
-          include: {
-            lessons: {
-              orderBy: {
-                order: 'asc',
-              },
-            },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
           },
+        },
+        lessons: {
           orderBy: {
             order: 'asc',
           },
-        },
-        quizzes: {
-          select: {
-            id: true,
-            title: true,
-            description: true,
-            passingScore: true,
-            timeLimit: true,
-            moduleId: true,
-            _count: {
+          include: {
+            quiz: {
               select: {
-                questions: true,
+                id: true,
+                title: true,
+                description: true,
+                passingScore: true,
+                timeLimitMinutes: true,
+                _count: {
+                  select: {
+                    questions: true,
+                  },
+                },
               },
             },
           },
@@ -93,7 +95,14 @@ export async function GET(
           courseId: id,
         },
         include: {
-          completedLessons: true,
+          lessonProgress: {
+            where: {
+              status: 'COMPLETED',
+            },
+            select: {
+              lessonId: true,
+            },
+          },
         },
       })
     }
@@ -135,10 +144,11 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteParams
 ) {
   return withInstructor(async (req, user) => {
     try {
+      const params = await context.params
       const { id } = params
       const body = await request.json()
 
@@ -222,10 +232,11 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteParams
 ) {
   return withAdmin(async (req, user) => {
     try {
+      const params = await context.params
       const { id } = params
 
       // Check if course exists

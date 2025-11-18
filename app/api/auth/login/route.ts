@@ -64,7 +64,8 @@ export async function POST(request: NextRequest) {
       { expiresIn: '7d' }
     )
 
-    return NextResponse.json({
+    // Create response with user data
+    const response = NextResponse.json({
       token,
       user: {
         id: user.id,
@@ -76,6 +77,17 @@ export async function POST(request: NextRequest) {
         department: user.department,
       },
     })
+
+    // Set HTTP-only cookie for middleware authentication
+    response.cookies.set('authToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    })
+
+    return response
   } catch (error) {
     console.error('Login error:', error)
     return NextResponse.json(

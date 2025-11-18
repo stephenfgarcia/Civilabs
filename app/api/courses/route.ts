@@ -24,7 +24,12 @@ export async function GET(request: NextRequest) {
       where: {
         ...(category && { category }),
         ...(difficulty && { difficulty }),
-        ...(published !== null && { published: published === 'true' }),
+        ...(published !== null && published === 'true' && {
+          publishedAt: { not: null }
+        }),
+        ...(published !== null && published === 'false' && {
+          publishedAt: null
+        }),
         ...(search && {
           OR: [
             { title: { contains: search, mode: 'insensitive' } },

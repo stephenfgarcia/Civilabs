@@ -16,8 +16,9 @@ interface RouteParams {
  * GET /api/enrollments/[id]
  * Get detailed enrollment information
  */
-export const GET = withAuth(async (request, user, { params }: RouteParams) => {
+export const GET = withAuth(async (request, user, context: RouteParams) => {
   try {
+    const params = await context.params
     const { id } = params
 
     const enrollment = await prisma.enrollment.findUnique({
@@ -99,8 +100,9 @@ export const GET = withAuth(async (request, user, { params }: RouteParams) => {
  * DELETE /api/enrollments/[id]
  * Unenroll from a course
  */
-export const DELETE = withAuth(async (request, user, { params }: RouteParams) => {
+export const DELETE = withAuth(async (request, user, context: RouteParams) => {
   try {
+    const params = await context.params
     const { id } = params
 
     // Get the enrollment first

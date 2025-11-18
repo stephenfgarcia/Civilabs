@@ -17,10 +17,11 @@ interface RouteParams {
  */
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteParams
 ) {
   return withAuth(async (req, user) => {
     try {
+      const params = await context.params
       const { id } = params
 
       const quiz = await prisma.quiz.findUnique({

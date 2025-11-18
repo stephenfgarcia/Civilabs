@@ -17,10 +17,11 @@ interface RouteParams {
  */
 export async function POST(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteParams
 ) {
   return withAuth(async (req, user) => {
     try {
+      const params = await context.params
       const { id: threadId } = params
       const body = await request.json()
 

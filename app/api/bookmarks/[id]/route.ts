@@ -15,8 +15,9 @@ interface RouteParams {
  * DELETE /api/bookmarks/[id]
  * Remove a course from user's bookmarks
  */
-export const DELETE = withAuth(async (request, user, { params }: RouteParams) => {
+export const DELETE = withAuth(async (request, user, context: RouteParams) => {
   try {
+    const params = await context.params
     const { id } = params
 
     // Check if bookmark exists

@@ -20,10 +20,11 @@ interface RouteParams {
  */
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteParams
 ) {
   return withAdmin(async (req, user) => {
     try {
+      const params = await context.params
       const { id } = params
 
       const userData = await prisma.user.findUnique({
@@ -92,10 +93,11 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteParams
 ) {
   return withAdmin(async (req, user) => {
     try {
+      const params = await context.params
       const { id } = params
       const body = await request.json()
 
@@ -210,10 +212,11 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteParams
 ) {
   return withAdmin(async (req, user) => {
     try {
+      const params = await context.params
       const { id } = params
 
       // Prevent admin from deleting themselves
