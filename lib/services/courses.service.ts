@@ -82,50 +82,43 @@ class CoursesService {
   /**
    * Enroll in a course
    */
-  async enrollCourse(courseId: number) {
-    return apiClient.post(`/courses/${courseId}/enroll`)
+  async enrollCourse(courseId: string) {
+    return apiClient.post(`/enrollments`, { courseId })
   }
 
   /**
-   * Unenroll from a course
+   * Get user enrollments
    */
-  async unenrollCourse(courseId: number) {
-    return apiClient.delete(`/courses/${courseId}/enroll`)
-  }
-
-  /**
-   * Get course progress
-   */
-  async getCourseProgress(courseId: number) {
-    return apiClient.get<CourseProgress>(`/courses/${courseId}/progress`)
+  async getEnrollments() {
+    return apiClient.get(`/enrollments`)
   }
 
   /**
    * Mark lesson as completed
    */
-  async markLessonComplete(courseId: number, lessonId: number) {
-    return apiClient.post(`/courses/${courseId}/lessons/${lessonId}/complete`)
+  async markLessonComplete(lessonId: string) {
+    return apiClient.post(`/progress`, { lessonId })
   }
 
   /**
-   * Get lesson by ID
+   * Get quiz by ID
    */
-  async getLesson(courseId: number, lessonId: number) {
-    return apiClient.get<Lesson>(`/courses/${courseId}/lessons/${lessonId}`)
+  async getQuiz(quizId: string) {
+    return apiClient.get<Quiz>(`/quizzes/${quizId}`)
   }
 
   /**
-   * Get quiz for a lesson
+   * Start quiz attempt
    */
-  async getQuiz(courseId: number, quizId: number) {
-    return apiClient.get<Quiz>(`/courses/${courseId}/quizzes/${quizId}`)
+  async startQuizAttempt(quizId: string) {
+    return apiClient.post(`/quizzes/${quizId}/attempts`)
   }
 
   /**
    * Submit quiz answers
    */
-  async submitQuiz(courseId: number, quizId: number, answers: Record<number, number>) {
-    return apiClient.post(`/courses/${courseId}/quizzes/${quizId}/submit`, { answers })
+  async submitQuiz(quizId: string, attemptId: string, answers: any[]) {
+    return apiClient.post(`/quizzes/${quizId}/submit`, { attemptId, answers })
   }
 
   /**
