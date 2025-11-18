@@ -110,6 +110,7 @@ model User {
   coursesCreated       Course[]
   learningPathsCreated LearningPath[]
   assignedEnrollments  Enrollment[]         @relation("AssignedBy")
+  bookmarks            Bookmark[]
 
   @@index([email])
   @@index([departmentId])
@@ -171,6 +172,7 @@ model Course {
   enrollments     Enrollment[]
   certificate     Certificate?
   learningPathItems LearningPathItem[]
+  bookmarks       Bookmark[]
 
   @@index([slug])
   @@index([instructorId])
@@ -440,4 +442,18 @@ model ActivityLog {
   @@index([userId])
   @@index([entityType])
   @@index([createdAt])
+}
+
+model Bookmark {
+  id        String   @id @default(uuid())
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
 }

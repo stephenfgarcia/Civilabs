@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { MagneticButton } from '@/components/ui/magnetic-button'
-import { BookOpen, Search, Filter, HardHat, Award, Clock, Users, ChevronRight, Zap, Shield, Wrench, Loader2, AlertCircle } from 'lucide-react'
+import { BookOpen, Search, Filter, HardHat, Award, Clock, Users, ChevronRight, Zap, Shield, Wrench, Loader2, AlertCircle, Bookmark, BookmarkCheck } from 'lucide-react'
 import Link from 'next/link'
 import { coursesService } from '@/lib/services'
 
@@ -41,10 +41,12 @@ export default function CoursesPage() {
   const [filteredCourses, setFilteredCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [bookmarkedCourses, setBookmarkedCourses] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    // Fetch courses on mount
+    // Fetch courses and bookmarks on mount
     fetchCourses()
+    fetchBookmarks()
 
     // Simple CSS-only entrance animations
     const elements = document.querySelectorAll('.courses-item')
@@ -100,6 +102,87 @@ export default function CoursesPage() {
       setError(err instanceof Error ? err.message : 'Failed to load courses')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchBookmarks = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      const response = await fetch('/api/bookmarks', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const bookmarkedCourseIds = new Set(
+          data.data.map((bookmark: any) => bookmark.courseId)
+        )
+        setBookmarkedCourses(bookmarkedCourseIds)
+      }
+    } catch (error) {
+      console.error('Error fetching bookmarks:', error)
+    }
+  }
+
+  const toggleBookmark = async (courseId: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert('Please login to bookmark courses')
+        return
+      }
+
+      const isBookmarked = bookmarkedCourses.has(courseId)
+
+      if (isBookmarked) {
+        // Remove bookmark - find the bookmark ID first
+        const response = await fetch('/api/bookmarks', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const data = await response.json()
+        const bookmark = data.data.find((b: any) => b.courseId === courseId)
+
+        if (bookmark) {
+          await fetch(`/api/bookmarks/${bookmark.id}`, {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+
+          const newBookmarks = new Set(bookmarkedCourses)
+          newBookmarks.delete(courseId)
+          setBookmarkedCourses(newBookmarks)
+        }
+      } else {
+        // Add bookmark
+        const response = await fetch('/api/bookmarks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ courseId }),
+        })
+
+        if (response.ok) {
+          const newBookmarks = new Set(bookmarkedCourses)
+          newBookmarks.add(courseId)
+          setBookmarkedCourses(newBookmarks)
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error)
+      alert('Failed to update bookmark. Please try again.')
     }
   }
 
@@ -242,28 +325,48 @@ export default function CoursesPage() {
             const colorClass = CATEGORY_COLORS[categoryName] || 'from-primary to-blue-600'
             const difficultyLevel = course.difficultyLevel || 'BEGINNER'
 
-            return (
-              <Link key={course.id} href={`/courses/${course.id}`}>
-                <Card
-                  className="courses-item opacity-0 glass-effect concrete-texture border-4 border-primary/20 hover:border-primary/40 transition-all group relative overflow-hidden cursor-pointer"
-                >
-                  {/* Accent Bar */}
-                  <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${colorClass}`}></div>
+            const isBookmarked = bookmarkedCourses.has(course.id)
 
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className={`w-14 h-14 bg-gradient-to-br ${colorClass} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                        <IconComponent className="text-white" size={28} />
+            return (
+              <div key={course.id} className="relative">
+                <Link href={`/courses/${course.id}`}>
+                  <Card
+                    className="courses-item opacity-0 glass-effect concrete-texture border-4 border-primary/20 hover:border-primary/40 transition-all group relative overflow-hidden cursor-pointer"
+                  >
+                    {/* Accent Bar */}
+                    <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${colorClass}`}></div>
+
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className={`w-14 h-14 bg-gradient-to-br ${colorClass} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                          <IconComponent className="text-white" size={28} />
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <button
+                            onClick={(e) => toggleBookmark(course.id, e)}
+                            className={`p-2 rounded-lg transition-all ${
+                              isBookmarked
+                                ? 'bg-warning/20 text-warning hover:bg-warning/30'
+                                : 'bg-neutral-100 text-neutral-400 hover:bg-neutral-200'
+                            }`}
+                            title={isBookmarked ? 'Remove bookmark' : 'Bookmark course'}
+                          >
+                            {isBookmarked ? (
+                              <BookmarkCheck size={18} />
+                            ) : (
+                              <Bookmark size={18} />
+                            )}
+                          </button>
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="text-xs font-bold px-3 py-1 rounded-full bg-warning/20 text-warning">
+                              {categoryName}
+                            </span>
+                            <span className="text-xs font-semibold text-neutral-600">
+                              {difficultyLevel}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-warning/20 text-warning">
-                          {categoryName}
-                        </span>
-                        <span className="text-xs font-semibold text-neutral-600">
-                          {difficultyLevel}
-                        </span>
-                      </div>
-                    </div>
                     <CardTitle className="text-xl font-black mt-4 group-hover:text-primary transition-colors">
                       {course.title}
                     </CardTitle>
@@ -303,6 +406,7 @@ export default function CoursesPage() {
                   </CardContent>
                 </Card>
               </Link>
+              </div>
             )
           })}
         </div>

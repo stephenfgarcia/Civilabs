@@ -24,7 +24,9 @@ import {
   ChevronRight,
   Loader2,
   AlertCircle,
-  MessageSquare
+  MessageSquare,
+  Bookmark,
+  BookmarkCheck
 } from 'lucide-react'
 import Link from 'next/link'
 import { coursesService } from '@/lib/services'
@@ -190,9 +192,12 @@ export default function CourseDetailPage() {
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
+  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [bookmarkId, setBookmarkId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchCourseData()
+    fetchBookmarkStatus()
   }, [courseId])
 
   useEffect(() => {
@@ -311,6 +316,74 @@ export default function CourseDetailPage() {
       setError(err instanceof Error ? err.message : 'Failed to enroll in course')
     } finally {
       setEnrolling(false)
+    }
+  }
+
+  const fetchBookmarkStatus = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      const response = await fetch('/api/bookmarks', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const bookmark = data.data.find((b: any) => b.courseId === courseId)
+        if (bookmark) {
+          setIsBookmarked(true)
+          setBookmarkId(bookmark.id)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching bookmark status:', error)
+    }
+  }
+
+  const toggleBookmark = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert('Please login to bookmark courses')
+        return
+      }
+
+      if (isBookmarked && bookmarkId) {
+        // Remove bookmark
+        const response = await fetch(`/api/bookmarks/${bookmarkId}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          setIsBookmarked(false)
+          setBookmarkId(null)
+        }
+      } else {
+        // Add bookmark
+        const response = await fetch('/api/bookmarks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ courseId }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setIsBookmarked(true)
+          setBookmarkId(data.data.id)
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error)
+      alert('Failed to update bookmark. Please try again.')
     }
   }
 
@@ -493,6 +566,26 @@ export default function CourseDetailPage() {
                       )}
                     </MagneticButton>
                   )}
+                  <MagneticButton
+                    onClick={toggleBookmark}
+                    className={`font-black ${
+                      isBookmarked
+                        ? 'bg-gradient-to-r from-warning to-orange-600 text-white'
+                        : 'glass-effect border-2 border-warning text-warning'
+                    }`}
+                  >
+                    {isBookmarked ? (
+                      <>
+                        <BookmarkCheck className="mr-2" size={20} />
+                        BOOKMARKED
+                      </>
+                    ) : (
+                      <>
+                        <Bookmark className="mr-2" size={20} />
+                        BOOKMARK
+                      </>
+                    )}
+                  </MagneticButton>
                   <MagneticButton className="glass-effect border-2 border-neutral-400 text-neutral-700 font-black">
                     <Download className="mr-2" size={20} />
                     DOWNLOAD SYLLABUS
