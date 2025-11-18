@@ -189,11 +189,51 @@ const SORT_OPTIONS = [
 ]
 
 export default function DiscussionsPage() {
-  const [discussions, setDiscussions] = useState(MOCK_DISCUSSIONS)
+  const [discussions, setDiscussions] = useState<Discussion[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [apiMessage, setApiMessage] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [sortBy, setSortBy] = useState('recent')
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Fetch discussions from API
+  useEffect(() => {
+    const fetchDiscussions = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const token = localStorage.getItem('token')
+        const response = await fetch('/api/discussions', {
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` })
+          }
+        })
+
+        const data = await response.json()
+
+        if (data.success) {
+          setDiscussions(data.data || [])
+          // Store API message if discussions are empty (e.g., "coming soon" message)
+          if (data.message && data.data.length === 0) {
+            setApiMessage(data.message)
+          }
+        } else {
+          setError(data.message || 'Failed to fetch discussions')
+        }
+      } catch (err) {
+        console.error('Error fetching discussions:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch discussions')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDiscussions()
+  }, [])
+
+  // Entrance animations
   useEffect(() => {
     // Simple CSS-only entrance animations
     const elements = document.querySelectorAll('.discussion-item')
@@ -201,7 +241,7 @@ export default function DiscussionsPage() {
       const htmlEl = el as HTMLElement
       htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
     })
-  }, [selectedCategory, sortBy])
+  }, [selectedCategory, sortBy, loading])
 
   const filteredDiscussions = discussions
     .filter(d => {
@@ -225,6 +265,39 @@ export default function DiscussionsPage() {
   const totalDiscussions = discussions.length
   const totalReplies = discussions.reduce((acc, d) => acc + d.replies, 0)
   const activeToday = discussions.filter(d => d.lastActivity.includes('hour') || d.lastActivity.includes('minute')).length
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-secondary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-lg font-bold text-neutral-600">Loading discussions...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <Card className="glass-effect concrete-texture border-4 border-danger/40">
+        <CardContent className="py-16 text-center">
+          <div className="w-24 h-24 bg-danger/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MessageSquare className="text-danger" size={48} />
+          </div>
+          <h3 className="text-2xl font-black text-neutral-700 mb-2">ERROR LOADING DISCUSSIONS</h3>
+          <p className="text-neutral-600 font-semibold mb-6">{error}</p>
+          <MagneticButton
+            onClick={() => window.location.reload()}
+            className="bg-gradient-to-r from-danger to-red-600 text-white font-black"
+          >
+            RETRY
+          </MagneticButton>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -396,10 +469,13 @@ export default function DiscussionsPage() {
               </div>
               <h3 className="text-2xl font-black text-neutral-700 mb-2">NO DISCUSSIONS FOUND</h3>
               <p className="text-neutral-600 font-semibold mb-6">
-                {searchQuery
-                  ? `No discussions match "${searchQuery}"`
-                  : `No discussions in ${selectedCategory} category`
-                }
+                {apiMessage ? (
+                  apiMessage
+                ) : searchQuery ? (
+                  `No discussions match "${searchQuery}"`
+                ) : (
+                  `No discussions in ${selectedCategory} category`
+                )}
               </p>
               <MagneticButton className="bg-gradient-to-r from-success to-green-600 text-white font-black">
                 <Plus className="mr-2" size={20} />
