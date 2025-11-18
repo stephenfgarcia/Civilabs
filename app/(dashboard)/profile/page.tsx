@@ -4,61 +4,44 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { MagneticButton } from '@/components/ui/magnetic-button'
-import { User, Mail, Building2, Briefcase, Phone, MapPin, Calendar, Award, Edit2, Save, X, Camera, Shield, Trophy, Target, Zap } from 'lucide-react'
+import { User, Mail, Building2, Briefcase, Phone, MapPin, Calendar, Award, Edit2, Save, X, Camera, Shield, Trophy, Target, Zap, Loader2, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
+import { usersService } from '@/lib/services'
 
-// Mock achievements data
-const ACHIEVEMENTS = [
-  {
-    id: 1,
-    title: 'First Course',
-    description: 'Completed your first training course',
-    icon: Award,
-    color: 'from-success to-green-600',
-    earned: true,
-    date: '2024-01-15'
-  },
-  {
-    id: 2,
-    title: 'Safety Expert',
-    description: 'Completed all safety training modules',
-    icon: Shield,
-    color: 'from-danger to-red-600',
-    earned: true,
-    date: '2024-02-20'
-  },
-  {
-    id: 3,
-    title: 'Quick Learner',
-    description: 'Complete 3 courses in one month',
-    icon: Zap,
-    color: 'from-warning to-orange-600',
-    earned: false,
-    date: null
-  },
-  {
-    id: 4,
-    title: 'Top Performer',
-    description: 'Score 100% on 5 assessments',
-    icon: Trophy,
-    color: 'from-secondary to-purple-600',
-    earned: false,
-    date: null
-  },
-  {
-    id: 5,
-    title: 'Dedicated',
-    description: 'Maintain a 30-day learning streak',
-    icon: Target,
-    color: 'from-primary to-blue-600',
-    earned: false,
-    date: null
-  }
-]
+// Icon mapping for achievements/badges
+const ACHIEVEMENT_ICONS: Record<string, any> = {
+  'First Course': Award,
+  'Safety Expert': Shield,
+  'Quick Learner': Zap,
+  'Top Performer': Trophy,
+  'Dedicated': Target,
+  'Award': Award,
+  'Shield': Shield,
+  'Zap': Zap,
+  'Trophy': Trophy,
+  'Target': Target
+}
+
+const ACHIEVEMENT_COLORS: Record<string, string> = {
+  'First Course': 'from-success to-green-600',
+  'Safety Expert': 'from-danger to-red-600',
+  'Quick Learner': 'from-warning to-orange-600',
+  'Top Performer': 'from-secondary to-purple-600',
+  'Dedicated': 'from-primary to-blue-600',
+  'default': 'from-primary to-blue-600'
+}
 
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [achievements, setAchievements] = useState<any[]>([])
+  const [badges, setBadges] = useState<any[]>([])
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -70,22 +53,7 @@ export default function ProfilePage() {
   })
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const userData = localStorage.getItem('user')
-      if (userData) {
-        const parsedUser = JSON.parse(userData)
-        setUser(parsedUser)
-        setFormData({
-          firstName: parsedUser.firstName || '',
-          lastName: parsedUser.lastName || '',
-          email: parsedUser.email || '',
-          department: typeof parsedUser.department === 'string' ? parsedUser.department : (parsedUser.department?.name || 'Engineering'),
-          position: parsedUser.position || 'Construction Worker',
-          phone: parsedUser.phone || '+1 (555) 123-4567',
-          location: parsedUser.location || 'New York, NY'
-        })
-      }
-    }
+    fetchProfileData()
 
     // Simple CSS-only entrance animations
     const elements = document.querySelectorAll('.profile-item')
@@ -95,17 +63,81 @@ export default function ProfilePage() {
     })
   }, [])
 
+  const fetchProfileData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Fetch user profile
+      const userResponse = await usersService.getCurrentUser()
+      if (userResponse.error) {
+        throw new Error(userResponse.error)
+      }
+
+      const userData = userResponse.data?.data
+      if (!userData) {
+        throw new Error('User data not found')
+      }
+
+      setUser(userData)
+      setFormData({
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
+        email: userData.email || '',
+        department: typeof userData.department === 'string' ? userData.department : (userData.department?.name || ''),
+        position: userData.position || '',
+        phone: userData.phone || '',
+        location: userData.location || ''
+      })
+
+      // Fetch achievements and badges
+      const achievementsResponse = await usersService.getUserAchievements()
+      const badgesResponse = await usersService.getUserBadges()
+
+      if (achievementsResponse.data?.data) {
+        setAchievements(achievementsResponse.data.data)
+      }
+
+      if (badgesResponse.data?.data) {
+        setBadges(badgesResponse.data.data)
+      }
+    } catch (err) {
+      console.error('Error fetching profile data:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load profile data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
-  const handleSave = () => {
-    // Update localStorage
-    if (typeof window !== 'undefined') {
-      const updatedUser = { ...user, ...formData }
-      localStorage.setItem('user', JSON.stringify(updatedUser))
-      setUser(updatedUser)
+  const handleSave = async () => {
+    try {
+      setSaving(true)
+      setError(null)
+
+      // Update profile via API
+      const response = await usersService.updateProfile({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        location: formData.location
+      })
+
+      if (response.error) {
+        throw new Error(response.error)
+      }
+
+      // Refresh profile data
+      await fetchProfileData()
       setIsEditing(false)
+    } catch (err) {
+      console.error('Error updating profile:', err)
+      setError(err instanceof Error ? err.message : 'Failed to update profile')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -116,20 +148,133 @@ export default function ProfilePage() {
         firstName: user.firstName || '',
         lastName: user.lastName || '',
         email: user.email || '',
-        department: typeof user.department === 'string' ? user.department : (user.department?.name || 'Engineering'),
-        position: user.position || 'Construction Worker',
-        phone: user.phone || '+1 (555) 123-4567',
-        location: user.location || 'New York, NY'
+        department: typeof user.department === 'string' ? user.department : (user.department?.name || ''),
+        position: user.position || '',
+        phone: user.phone || '',
+        location: user.location || ''
       })
     }
     setIsEditing(false)
+    setError(null)
+    setAvatarFile(null)
+    setAvatarPreview(null)
   }
 
-  const earnedAchievements = ACHIEVEMENTS.filter(a => a.earned)
-  const lockedAchievements = ACHIEVEMENTS.filter(a => !a.earned)
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size must be less than 5MB')
+      return
+    }
+
+    setAvatarFile(file)
+    setError(null)
+
+    // Create preview
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleAvatarUpload = async () => {
+    if (!avatarFile) return
+
+    try {
+      setUploadingAvatar(true)
+      setError(null)
+
+      const formData = new FormData()
+      formData.append('avatar', avatarFile)
+
+      const response = await fetch('/api/users/avatar', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to upload avatar')
+      }
+
+      // Refresh profile data to show new avatar
+      await fetchProfileData()
+      setAvatarFile(null)
+      setAvatarPreview(null)
+    } catch (err) {
+      console.error('Avatar upload error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to upload avatar')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
+          <p className="text-lg font-bold text-neutral-700">Loading your profile...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Combine achievements and badges for display
+  const allAchievements = [
+    ...achievements.map(a => ({
+      id: a.id,
+      title: a.title,
+      description: a.description,
+      icon: ACHIEVEMENT_ICONS[a.title] || Award,
+      color: ACHIEVEMENT_COLORS[a.title] || ACHIEVEMENT_COLORS['default'],
+      earned: true,
+      date: new Date(a.earnedDate).toLocaleDateString()
+    })),
+    ...badges.map(b => ({
+      id: `badge-${b.id}`,
+      title: b.name,
+      description: b.description,
+      icon: ACHIEVEMENT_ICONS[b.icon] || Award,
+      color: ACHIEVEMENT_COLORS[b.name] || ACHIEVEMENT_COLORS['default'],
+      earned: !!b.earnedDate,
+      date: b.earnedDate ? new Date(b.earnedDate).toLocaleDateString() : null
+    }))
+  ]
+
+  const earnedAchievements = allAchievements.filter(a => a.earned)
+  const lockedAchievements = allAchievements.filter(a => !a.earned)
 
   return (
     <div className="space-y-6">
+      {/* Error Alert */}
+      {error && (
+        <Card className="glass-effect concrete-texture border-4 border-red-500/40">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="text-red-500" size={24} />
+              <div>
+                <p className="font-bold text-red-600">Error</p>
+                <p className="text-sm text-neutral-700">{error}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Page Header */}
       <div className="profile-item opacity-0">
         <div className="flex items-center justify-between">
@@ -174,14 +319,25 @@ export default function ProfilePage() {
               <div className="flex gap-2">
                 <MagneticButton
                   onClick={handleSave}
-                  className="bg-gradient-to-r from-success to-green-600 text-white font-black flex items-center gap-2"
+                  disabled={saving}
+                  className="bg-gradient-to-r from-success to-green-600 text-white font-black flex items-center gap-2 disabled:opacity-50"
                 >
-                  <Save size={16} />
-                  SAVE
+                  {saving ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      SAVING...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      SAVE
+                    </>
+                  )}
                 </MagneticButton>
                 <MagneticButton
                   onClick={handleCancel}
-                  className="bg-gradient-to-r from-neutral-400 to-neutral-600 text-white font-black flex items-center gap-2"
+                  disabled={saving}
+                  className="bg-gradient-to-r from-neutral-400 to-neutral-600 text-white font-black flex items-center gap-2 disabled:opacity-50"
                 >
                   <X size={16} />
                   CANCEL
@@ -198,14 +354,57 @@ export default function ProfilePage() {
               <div className="flex flex-col items-center">
                 <div className="relative group">
                   <div className="w-48 h-48 bg-gradient-to-br from-warning to-orange-600 rounded-2xl flex items-center justify-center overflow-hidden border-4 border-warning/40">
-                    <User className="text-white" size={96} />
+                    {avatarPreview || user?.avatarUrl ? (
+                      <Image
+                        src={avatarPreview || user.avatarUrl}
+                        alt="Avatar"
+                        width={192}
+                        height={192}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="text-white" size={96} />
+                    )}
                   </div>
                   {isEditing && (
-                    <button className="absolute bottom-2 right-2 w-12 h-12 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
-                      <Camera className="text-white" size={20} />
-                    </button>
+                    <>
+                      <input
+                        type="file"
+                        id="avatar-upload"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="avatar-upload"
+                        className="absolute bottom-2 right-2 w-12 h-12 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center shadow-lg hover:scale-110 transition-transform cursor-pointer"
+                      >
+                        <Camera className="text-white" size={20} />
+                      </label>
+                    </>
                   )}
                 </div>
+                {avatarFile && (
+                  <div className="mt-3">
+                    <MagneticButton
+                      onClick={handleAvatarUpload}
+                      disabled={uploadingAvatar}
+                      className="bg-gradient-to-r from-success to-green-600 text-white font-black flex items-center gap-2 disabled:opacity-50 text-sm"
+                    >
+                      {uploadingAvatar ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />
+                          UPLOADING...
+                        </>
+                      ) : (
+                        <>
+                          <Camera size={14} />
+                          UPLOAD AVATAR
+                        </>
+                      )}
+                    </MagneticButton>
+                  </div>
+                )}
                 <h2 className="text-2xl font-black text-neutral-800 mt-4">
                   {formData.firstName} {formData.lastName}
                 </h2>
@@ -381,7 +580,9 @@ export default function ProfilePage() {
                     </div>
                     <div>
                       <p className="text-xs font-bold text-neutral-600">MEMBER SINCE</p>
-                      <p className="text-lg font-black text-neutral-800">January 2024</p>
+                      <p className="text-lg font-black text-neutral-800">
+                        {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -393,7 +594,7 @@ export default function ProfilePage() {
                     </div>
                     <div>
                       <p className="text-xs font-bold text-neutral-600">ACHIEVEMENTS</p>
-                      <p className="text-lg font-black text-neutral-800">{earnedAchievements.length} / {ACHIEVEMENTS.length}</p>
+                      <p className="text-lg font-black text-neutral-800">{earnedAchievements.length} / {allAchievements.length}</p>
                     </div>
                   </div>
                 </div>

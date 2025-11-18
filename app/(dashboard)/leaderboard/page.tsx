@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Trophy, Medal, Award, Target, Zap, TrendingUp, Crown, Star, User } from 'lucide-react'
+import { Trophy, Medal, Award, Target, Zap, TrendingUp, Crown, Star, User, Loader2 } from 'lucide-react'
 
 // Mock leaderboard data
 const MOCK_LEADERBOARD = [
@@ -114,16 +114,72 @@ const FILTER_TABS = [
 
 export default function LeaderboardPage() {
   const [selectedFilter, setSelectedFilter] = useState('all')
-  const [leaderboard, setLeaderboard] = useState(MOCK_LEADERBOARD)
+  const [leaderboard, setLeaderboard] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   useEffect(() => {
-    // Simple CSS-only entrance animations
-    const elements = document.querySelectorAll('.leaderboard-item')
-    elements.forEach((el, index) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.animation = `fadeInUp 0.4s ease-out forwards ${index * 0.05}s`
-    })
-  }, [])
+    fetchLeaderboard()
+  }, [selectedFilter])
+
+  useEffect(() => {
+    if (leaderboard.length > 0) {
+      // Simple CSS-only entrance animations
+      const elements = document.querySelectorAll('.leaderboard-item')
+      elements.forEach((el, index) => {
+        const htmlEl = el as HTMLElement
+        htmlEl.style.animation = `fadeInUp 0.4s ease-out forwards ${index * 0.05}s`
+      })
+    }
+  }, [leaderboard])
+
+  const fetchLeaderboard = async () => {
+    try {
+      setLoading(true)
+
+      // Fetch current user
+      const userResponse = await fetch('/api/users/me', {
+        credentials: 'include'
+      })
+      const userData = await userResponse.json()
+      if (userData.success && userData.data) {
+        setCurrentUserId(userData.data.id)
+      }
+
+      // Fetch leaderboard
+      const response = await fetch(`/api/leaderboard?limit=50&period=${selectedFilter}`, {
+        credentials: 'include'
+      })
+      const data = await response.json()
+
+      if (data.success && data.data) {
+        // Add mock data for missing fields (coursesCompleted, certificates, streak, badge)
+        // In a real implementation, these would come from the API
+        const enrichedData = data.data.map((entry: any, index: number) => ({
+          ...entry,
+          id: entry.userId,
+          coursesCompleted: Math.floor(entry.points / 200), // Mock calculation
+          certificates: Math.floor(entry.points / 300), // Mock calculation
+          streak: Math.floor(Math.random() * 50), // Mock data
+          badge: index === 0 ? 'Master Builder' :
+                 index === 1 ? 'Expert Learner' :
+                 index === 2 ? 'Safety Champion' :
+                 index < 5 ? 'Rising Star' : 'Dedicated Learner',
+          isCurrentUser: entry.userId === currentUserId
+        }))
+        setLeaderboard(enrichedData)
+      } else {
+        // Fall back to mock data if API fails
+        setLeaderboard(MOCK_LEADERBOARD)
+      }
+    } catch (err) {
+      console.error('Error fetching leaderboard:', err)
+      // Fall back to mock data on error
+      setLeaderboard(MOCK_LEADERBOARD)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -150,6 +206,22 @@ export default function LeaderboardPage() {
         return 'from-primary to-blue-600'
     }
   }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
+          <p className="text-lg font-bold text-neutral-700">Loading leaderboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Find current user's position
+  const currentUserEntry = leaderboard.find(entry => entry.isCurrentUser)
+  const currentUserRank = currentUserEntry?.rank || 8
 
   return (
     <div className="space-y-6">
@@ -353,40 +425,46 @@ export default function LeaderboardPage() {
       </Card>
 
       {/* Your Stats Summary */}
-      <Card className="leaderboard-item opacity-0 glass-effect concrete-texture border-4 border-warning/40">
-        <CardHeader>
-          <CardTitle className="text-2xl font-black flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-warning to-orange-600 rounded-lg flex items-center justify-center">
-              <Target className="text-white" size={20} />
+      {currentUserEntry && (
+        <Card className="leaderboard-item opacity-0 glass-effect concrete-texture border-4 border-warning/40">
+          <CardHeader>
+            <CardTitle className="text-2xl font-black flex items-center gap-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-warning to-orange-600 rounded-lg flex items-center justify-center">
+                <Target className="text-white" size={20} />
+              </div>
+              YOUR RANKING STATS
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="glass-effect border-2 border-primary/20 rounded-lg p-4 text-center">
+                <Award className="mx-auto text-primary mb-2" size={32} />
+                <p className="text-3xl font-black text-primary">#{currentUserRank}</p>
+                <p className="text-sm font-bold text-neutral-600 mt-1">Current Rank</p>
+              </div>
+              <div className="glass-effect border-2 border-success/20 rounded-lg p-4 text-center">
+                <TrendingUp className="mx-auto text-success mb-2" size={32} />
+                <p className="text-3xl font-black text-success">+3</p>
+                <p className="text-sm font-bold text-neutral-600 mt-1">This Week</p>
+              </div>
+              <div className="glass-effect border-2 border-warning/20 rounded-lg p-4 text-center">
+                <Zap className="mx-auto text-warning mb-2" size={32} />
+                <p className="text-3xl font-black text-warning">
+                  {currentUserRank > 1 ? leaderboard[currentUserRank - 2]?.points - currentUserEntry.points : 0}
+                </p>
+                <p className="text-sm font-bold text-neutral-600 mt-1">Points to #{currentUserRank - 1}</p>
+              </div>
+              <div className="glass-effect border-2 border-secondary/20 rounded-lg p-4 text-center">
+                <Trophy className="mx-auto text-secondary mb-2" size={32} />
+                <p className="text-3xl font-black text-secondary">
+                  Top {Math.round((currentUserRank / leaderboard.length) * 100)}%
+                </p>
+                <p className="text-sm font-bold text-neutral-600 mt-1">Percentile</p>
+              </div>
             </div>
-            YOUR RANKING STATS
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="glass-effect border-2 border-primary/20 rounded-lg p-4 text-center">
-              <Award className="mx-auto text-primary mb-2" size={32} />
-              <p className="text-3xl font-black text-primary">8th</p>
-              <p className="text-sm font-bold text-neutral-600 mt-1">Current Rank</p>
-            </div>
-            <div className="glass-effect border-2 border-success/20 rounded-lg p-4 text-center">
-              <TrendingUp className="mx-auto text-success mb-2" size={32} />
-              <p className="text-3xl font-black text-success">+3</p>
-              <p className="text-sm font-bold text-neutral-600 mt-1">This Week</p>
-            </div>
-            <div className="glass-effect border-2 border-warning/20 rounded-lg p-4 text-center">
-              <Zap className="mx-auto text-warning mb-2" size={32} />
-              <p className="text-3xl font-black text-warning">250</p>
-              <p className="text-sm font-bold text-neutral-600 mt-1">Points to #7</p>
-            </div>
-            <div className="glass-effect border-2 border-secondary/20 rounded-lg p-4 text-center">
-              <Trophy className="mx-auto text-secondary mb-2" size={32} />
-              <p className="text-3xl font-black text-secondary">Top 20%</p>
-              <p className="text-sm font-bold text-neutral-600 mt-1">Percentile</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
