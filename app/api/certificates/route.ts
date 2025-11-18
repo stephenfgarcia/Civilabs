@@ -15,20 +15,28 @@ import { withAuth, withAdmin } from '@/lib/auth/api-auth'
 export async function GET(request: NextRequest) {
   return withAuth(async (req, user) => {
     try {
-      const certificates = await prisma.certificate.findMany({
+      const certificates = await prisma.userCertificate.findMany({
         where: {
           userId: user.userId,
         },
         include: {
-          course: {
-            select: {
-              id: true,
-              title: true,
-              category: true,
-              instructor: {
+          certificate: {
+            include: {
+              course: {
                 select: {
-                  firstName: true,
-                  lastName: true,
+                  id: true,
+                  title: true,
+                  category: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                  instructor: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                    },
+                  },
                 },
               },
             },
@@ -117,11 +125,27 @@ export const POST = withAdmin(async (request, user) => {
       )
     }
 
-    // Check if certificate already exists
-    const existingCertificate = await prisma.certificate.findFirst({
+    // Get or create certificate template for course
+    let certificateTemplate = await prisma.certificate.findUnique({
+      where: { courseId },
+    })
+
+    if (!certificateTemplate) {
+      // Create a basic certificate template if none exists
+      certificateTemplate = await prisma.certificate.create({
+        data: {
+          courseId,
+          templateHtml: '<div>Certificate of Completion</div>',
+          isActive: true,
+        },
+      })
+    }
+
+    // Check if certificate already issued to user
+    const existingCertificate = await prisma.userCertificate.findFirst({
       where: {
         userId,
-        courseId,
+        certificateId: certificateTemplate.id,
       },
     })
 
@@ -136,48 +160,64 @@ export const POST = withAdmin(async (request, user) => {
       )
     }
 
-    // Verify enrollment exists (if enrollmentId provided)
-    let enrollment = null
+    // Get enrollment (required for UserCertificate)
+    let enrollment
     if (enrollmentId) {
       enrollment = await prisma.enrollment.findUnique({
         where: { id: enrollmentId },
       })
-
-      if (!enrollment) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Not Found',
-            message: 'Enrollment not found',
-          },
-          { status: 404 }
-        )
-      }
-
-      if (enrollment.userId !== userId || enrollment.courseId !== courseId) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Bad Request',
-            message: 'Enrollment does not match user and course',
-          },
-          { status: 400 }
-        )
-      }
+    } else {
+      // Find enrollment by userId and courseId
+      enrollment = await prisma.enrollment.findFirst({
+        where: {
+          userId,
+          courseId,
+        },
+      })
     }
 
-    // Create certificate
-    const certificate = await prisma.certificate.create({
+    if (!enrollment) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Not Found',
+          message: 'Enrollment not found for this user and course',
+        },
+        { status: 404 }
+      )
+    }
+
+    if (enrollment.userId !== userId || enrollment.courseId !== courseId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Bad Request',
+          message: 'Enrollment does not match user and course',
+        },
+        { status: 400 }
+      )
+    }
+
+    // Generate verification code
+    const verificationCode = `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+
+    // Issue user certificate
+    const userCertificate = await prisma.userCertificate.create({
       data: {
+        certificateId: certificateTemplate.id,
         userId,
-        courseId,
-        enrollmentId: enrollmentId || undefined,
+        enrollmentId: enrollment.id,
+        verificationCode,
         issuedAt: new Date(),
       },
       include: {
-        course: {
-          select: {
-            title: true,
+        certificate: {
+          include: {
+            course: {
+              select: {
+                title: true,
+              },
+            },
           },
         },
         user: {
@@ -195,14 +235,14 @@ export const POST = withAdmin(async (request, user) => {
         userId,
         type: 'achievement',
         title: 'Certificate Issued',
-        message: `A certificate has been issued for ${course.title}`,
+        message: `A certificate has been issued for ${userCertificate.certificate.course.title}`,
       },
     })
 
     return NextResponse.json(
       {
         success: true,
-        data: certificate,
+        data: userCertificate,
         message: 'Certificate issued successfully',
       },
       { status: 201 }

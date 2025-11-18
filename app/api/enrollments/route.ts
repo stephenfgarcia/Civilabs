@@ -42,12 +42,15 @@ export const GET = withAuth(async (request, user) => {
             },
             _count: {
               select: {
-                modules: true,
+                lessons: true,
               },
             },
           },
         },
-        completedLessons: {
+        lessonProgress: {
+          where: {
+            status: 'COMPLETED',
+          },
           select: {
             id: true,
             lessonId: true,
@@ -65,20 +68,18 @@ export const GET = withAuth(async (request, user) => {
         // Count total lessons in course
         const totalLessons = await prisma.lesson.count({
           where: {
-            module: {
-              courseId: enrollment.courseId,
-            },
+            courseId: enrollment.courseId,
           },
         })
 
-        const completedCount = enrollment.completedLessons.length
+        const completedCount = enrollment.lessonProgress.length
         const progress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0
 
         return {
           ...enrollment,
           totalLessons,
           completedLessonsCount: completedCount,
-          progress,
+          calculatedProgress: progress,
         }
       })
     )
@@ -137,7 +138,7 @@ export const POST = withAuth(async (request, user) => {
       )
     }
 
-    if (!course.published) {
+    if (course.status !== 'PUBLISHED') {
       return NextResponse.json(
         {
           success: false,
@@ -172,8 +173,8 @@ export const POST = withAuth(async (request, user) => {
       data: {
         userId: user.userId,
         courseId,
-        status: 'active',
-        progress: 0,
+        status: 'ENROLLED',
+        progressPercentage: 0,
       },
       include: {
         course: {
@@ -197,7 +198,7 @@ export const POST = withAuth(async (request, user) => {
         type: 'enrollment',
         title: 'Enrollment Successful',
         message: `You have successfully enrolled in ${course.title}`,
-        read: false,
+        isRead: false,
       },
     })
 

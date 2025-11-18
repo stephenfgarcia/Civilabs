@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAuth } from '@/lib/auth/api-auth'
-import { hashPassword } from '@/lib/auth/auth-helpers'
+import bcrypt from 'bcryptjs'
 
 /**
  * GET /api/users/me
@@ -24,23 +24,28 @@ export async function GET(request: NextRequest) {
           firstName: true,
           lastName: true,
           role: true,
-          department: true,
-          avatar: true,
-          bio: true,
-          phone: true,
-          location: true,
-          timezone: true,
-          language: true,
-          points: true,
+          status: true,
+          departmentId: true,
+          avatarUrl: true,
           createdAt: true,
           lastLogin: true,
+          department: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          points: {
+            select: {
+              points: true,
+              level: true,
+            },
+          },
           _count: {
             select: {
               enrollments: true,
               certificates: true,
               badges: true,
-              discussionThreads: true,
-              discussionReplies: true,
             },
           },
         },
@@ -111,7 +116,7 @@ export async function PUT(request: NextRequest) {
             { status: 400 }
           )
         }
-        updateData.password = await hashPassword(password)
+        updateData.passwordHash = await bcrypt.hash(password, 10)
       }
 
       const updatedUser = await prisma.user.update({
@@ -123,14 +128,15 @@ export async function PUT(request: NextRequest) {
           firstName: true,
           lastName: true,
           role: true,
-          department: true,
-          avatar: true,
-          bio: true,
-          phone: true,
-          location: true,
-          timezone: true,
-          language: true,
-          points: true,
+          status: true,
+          departmentId: true,
+          avatarUrl: true,
+          department: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       })
 

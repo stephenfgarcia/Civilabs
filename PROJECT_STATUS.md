@@ -327,12 +327,15 @@ After running `npm run db:seed`:
    - ✅ Built notification management API
    - ✅ Added discussions API with replies and likes
 
-2. **Connect Frontend to Backend (Priority: HIGH)** - ⏳ **IN PROGRESS**
+2. **Connect Frontend to Backend (Priority: HIGH)** - ✅ **COMPLETED (Core APIs)**
    - ✅ Updated service layer to match backend API structure
-   - [ ] Test authentication flows with real API calls
+   - ✅ Fixed all Prisma schema mismatches in API routes
+   - ✅ Fixed middleware to exclude API routes from page authentication
+   - ✅ Tested all 7 core APIs successfully (auth, courses, enrollments, users, notifications, certificates, discussions)
+   - ✅ All APIs returning 200 OK with proper data structure
    - [ ] Implement real-time data fetching in pages
    - [ ] Add loading states and error handling throughout app
-   - [ ] Test all CRUD operations end-to-end
+   - [ ] Test all CRUD operations end-to-end (POST/PUT/DELETE)
 
 3. **Testing & Quality Assurance (Priority: HIGH)**
    - Test authentication flows

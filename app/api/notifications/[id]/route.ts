@@ -18,10 +18,12 @@ interface RouteParams {
  */
 export async function PUT(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteParams
 ) {
   return withAuth(async (req, user) => {
     try {
+      // Next.js 15+ requires awaiting params
+      const params = await Promise.resolve(context.params)
       const { id } = params
 
       const notification = await prisma.notification.findUnique({
@@ -54,8 +56,7 @@ export async function PUT(
       const updatedNotification = await prisma.notification.update({
         where: { id },
         data: {
-          read: true,
-          readAt: new Date(),
+          isRead: true,
         },
       })
 
@@ -75,7 +76,7 @@ export async function PUT(
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request)
 }
 
 /**
@@ -84,10 +85,12 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteParams
 ) {
   return withAuth(async (req, user) => {
     try {
+      // Next.js 15+ requires awaiting params
+      const params = await Promise.resolve(context.params)
       const { id } = params
 
       const notification = await prisma.notification.findUnique({
@@ -136,5 +139,5 @@ export async function DELETE(
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request)
 }

@@ -11,9 +11,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 const JWT_EXPIRES_IN = '7d'
 
 export interface TokenPayload {
-  userId: number
+  userId: number | string
   email: string
-  role: 'admin' | 'instructor' | 'learner'
+  role: 'admin' | 'instructor' | 'learner' | 'SUPER_ADMIN' | 'ADMIN' | 'INSTRUCTOR' | 'LEARNER'
   firstName: string
   lastName: string
 }
@@ -69,11 +69,15 @@ export async function requireAuth(): Promise<TokenPayload> {
  * Require specific role - throws redirect if user doesn't have required role
  */
 export async function requireRole(
-  allowedRoles: ('admin' | 'instructor' | 'learner')[]
+  allowedRoles: ('admin' | 'instructor' | 'learner' | 'SUPER_ADMIN' | 'ADMIN' | 'INSTRUCTOR' | 'LEARNER')[]
 ): Promise<TokenPayload> {
   const user = await requireAuth()
 
-  if (!allowedRoles.includes(user.role)) {
+  // Normalize role comparison
+  const userRole = user.role.toLowerCase()
+  const normalizedRoles = allowedRoles.map(r => r.toLowerCase())
+
+  if (!normalizedRoles.includes(userRole)) {
     redirect('/dashboard')
   }
 
@@ -99,15 +103,19 @@ export async function requireInstructor(): Promise<TokenPayload> {
  */
 export function hasPermission(
   user: TokenPayload,
-  requiredRole: 'admin' | 'instructor' | 'learner'
+  requiredRole: 'admin' | 'instructor' | 'learner' | 'SUPER_ADMIN' | 'ADMIN' | 'INSTRUCTOR' | 'LEARNER'
 ): boolean {
-  const roleHierarchy = {
-    admin: 3,
-    instructor: 2,
-    learner: 1,
+  const roleHierarchy: Record<string, number> = {
+    'super_admin': 4,
+    'admin': 3,
+    'instructor': 2,
+    'learner': 1,
   }
 
-  return roleHierarchy[user.role] >= roleHierarchy[requiredRole]
+  const userRole = user.role.toLowerCase()
+  const required = requiredRole.toLowerCase()
+
+  return (roleHierarchy[userRole] || 0) >= (roleHierarchy[required] || 0)
 }
 
 /**

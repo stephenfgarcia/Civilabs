@@ -57,11 +57,15 @@ export function requireApiAuth(request: NextRequest): TokenPayload {
  */
 export function requireApiRole(
   request: NextRequest,
-  allowedRoles: ('admin' | 'instructor' | 'learner')[]
+  allowedRoles: ('admin' | 'instructor' | 'learner' | 'SUPER_ADMIN' | 'ADMIN' | 'INSTRUCTOR' | 'LEARNER')[]
 ): TokenPayload {
   const user = requireApiAuth(request)
 
-  if (!allowedRoles.includes(user.role)) {
+  // Normalize role comparison (handle both lowercase and UPPERCASE enum values)
+  const userRole = user.role.toLowerCase()
+  const normalizedAllowedRoles = allowedRoles.map(r => r.toLowerCase())
+
+  if (!normalizedAllowedRoles.includes(userRole)) {
     throw new Error('Forbidden')
   }
 
@@ -117,7 +121,7 @@ export function withAuth(
  * Wrapper for API route handlers with role requirement
  */
 export function withRole(
-  allowedRoles: ('admin' | 'instructor' | 'learner')[],
+  allowedRoles: ('admin' | 'instructor' | 'learner' | 'SUPER_ADMIN' | 'ADMIN' | 'INSTRUCTOR' | 'LEARNER')[],
   handler: (request: NextRequest, user: TokenPayload) => Promise<NextResponse>
 ) {
   return async (request: NextRequest): Promise<NextResponse> => {
@@ -151,7 +155,7 @@ export function withRole(
 export function withAdmin(
   handler: (request: NextRequest, user: TokenPayload) => Promise<NextResponse>
 ) {
-  return withRole(['admin'], handler)
+  return withRole(['admin', 'SUPER_ADMIN', 'ADMIN'], handler)
 }
 
 /**
@@ -160,5 +164,5 @@ export function withAdmin(
 export function withInstructor(
   handler: (request: NextRequest, user: TokenPayload) => Promise<NextResponse>
 ) {
-  return withRole(['admin', 'instructor'], handler)
+  return withRole(['admin', 'instructor', 'SUPER_ADMIN', 'ADMIN', 'INSTRUCTOR'], handler)
 }
