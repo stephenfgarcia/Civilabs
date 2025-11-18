@@ -5,445 +5,340 @@ import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import {
+  BookOpen,
+  CheckCircle,
   ArrowLeft,
   ArrowRight,
-  CheckCircle,
+  Clock,
+  Loader2,
+  AlertCircle,
+  Award,
   PlayCircle,
   FileText,
-  Award,
-  BookOpen,
-  Clock,
-  ChevronDown,
-  ChevronUp,
-  Menu
 } from 'lucide-react'
 import Link from 'next/link'
-
-// Mock lesson data
-const MOCK_LESSONS = {
-  1: {
-    id: 1,
-    courseId: 1,
-    courseTitle: 'Construction Safety Fundamentals',
-    moduleId: 1,
-    moduleTitle: 'Introduction to Construction Safety',
-    title: 'Welcome and Course Overview',
-    type: 'video',
-    duration: '5 min',
-    completed: true,
-    videoUrl: 'https://example.com/video.mp4',
-    transcript: `Welcome to Construction Safety Fundamentals! In this course, you'll learn essential safety protocols and procedures that are critical for every construction site.
-
-This course is designed for workers at all levels, from newcomers to experienced professionals looking to refresh their knowledge. We'll cover OSHA regulations, personal protective equipment, hazard identification, and emergency response procedures.
-
-By the end of this course, you'll be equipped with the knowledge and skills to maintain a safe working environment and protect yourself and your coworkers from common construction hazards.
-
-Let's get started!`,
-    description: 'An introduction to the course structure, learning objectives, and what you can expect to learn throughout this safety training program.',
-    nextLesson: 2,
-    prevLesson: null
-  },
-  2: {
-    id: 2,
-    courseId: 1,
-    courseTitle: 'Construction Safety Fundamentals',
-    moduleId: 1,
-    moduleTitle: 'Introduction to Construction Safety',
-    title: 'OSHA Regulations Overview',
-    type: 'video',
-    duration: '12 min',
-    completed: false,
-    videoUrl: 'https://example.com/video2.mp4',
-    transcript: `The Occupational Safety and Health Administration (OSHA) sets and enforces protective workplace safety and health standards. Understanding these regulations is fundamental to maintaining a safe construction site.
-
-OSHA's mission is to ensure safe and healthful working conditions by setting and enforcing standards and by providing training, outreach, education, and assistance.
-
-Key OSHA standards for construction include:
-- Fall Protection (1926.501)
-- Scaffolding (1926.451)
-- Ladders (1926.1053)
-- Personal Protective Equipment (1926.95)
-- Excavations (1926.650)
-
-Employers are required to provide a workplace free from serious recognized hazards and comply with OSHA standards. Workers have the right to receive information and training about hazards, methods to prevent harm, and OSHA standards that apply to their workplace.`,
-    description: 'Learn about OSHA standards and regulations that govern construction site safety, including employer responsibilities and worker rights.',
-    nextLesson: 3,
-    prevLesson: 1
-  },
-  3: {
-    id: 3,
-    courseId: 1,
-    courseTitle: 'Construction Safety Fundamentals',
-    moduleId: 1,
-    moduleTitle: 'Introduction to Construction Safety',
-    title: 'Safety Culture in Construction',
-    type: 'reading',
-    duration: '8 min',
-    completed: false,
-    content: `# Safety Culture in Construction
-
-A strong safety culture is the foundation of a safe construction site. It goes beyond compliance with regulations—it's about creating an environment where safety is valued, promoted, and practiced by everyone.
-
-## What is Safety Culture?
-
-Safety culture refers to the shared values, beliefs, and practices regarding safety within an organization. In construction, a positive safety culture means that workers at all levels prioritize safety in their daily activities and decisions.
-
-## Key Components of a Strong Safety Culture
-
-### 1. Leadership Commitment
-Management must demonstrate genuine commitment to safety through:
-- Visible participation in safety programs
-- Allocating resources for safety initiatives
-- Holding everyone accountable for safety performance
-- Leading by example
-
-### 2. Worker Involvement
-Engage workers in safety processes:
-- Encourage reporting of hazards and near-misses
-- Involve workers in safety planning and decision-making
-- Recognize and reward safe behaviors
-- Provide channels for safety feedback
-
-### 3. Open Communication
-Foster an environment where:
-- Safety concerns can be raised without fear of retaliation
-- Information flows freely between all levels
-- Regular safety meetings are held
-- Lessons learned are shared
-
-### 4. Continuous Learning
-Commit to ongoing improvement:
-- Regular safety training and refreshers
-- Analysis of incidents and near-misses
-- Updating procedures based on new information
-- Staying current with industry best practices
-
-## Building a Safety-First Mindset
-
-Creating a safety culture requires:
-- **Consistency**: Safety practices must be applied uniformly
-- **Accountability**: Everyone is responsible for safety
-- **Training**: Continuous education and skill development
-- **Recognition**: Acknowledging safe behaviors and practices
-- **Improvement**: Learning from mistakes and successes
-
-## Practical Steps
-
-1. Start each day with a safety briefing
-2. Conduct regular safety audits and inspections
-3. Empower workers to stop unsafe work
-4. Investigate all incidents, no matter how minor
-5. Celebrate safety milestones and achievements
-
-Remember: Safety is everyone's responsibility, and a strong safety culture protects lives, reduces injuries, and improves overall project outcomes.`,
-    description: 'Understand the importance of safety culture in construction and how to foster a safety-first mindset on job sites.',
-    nextLesson: 4,
-    prevLesson: 2
-  },
-  4: {
-    id: 4,
-    courseId: 1,
-    courseTitle: 'Construction Safety Fundamentals',
-    moduleId: 1,
-    moduleTitle: 'Introduction to Construction Safety',
-    title: 'Module 1 Quiz',
-    type: 'quiz',
-    duration: '5 min',
-    completed: false,
-    description: 'Test your knowledge of the introduction to construction safety concepts covered in this module.',
-    nextLesson: 5,
-    prevLesson: 3,
-    quizId: 1
-  }
-}
 
 export default function LessonViewerPage() {
   const params = useParams()
   const router = useRouter()
-  const lessonId = parseInt(params.lessonId as string)
-  const courseId = parseInt(params.id as string)
+  const courseId = params.id as string
+  const lessonId = params.lessonId as string
 
-  const [lesson, setLesson] = useState(MOCK_LESSONS[lessonId as keyof typeof MOCK_LESSONS])
-  const [showTranscript, setShowTranscript] = useState(false)
-  const [showNotes, setShowNotes] = useState(false)
-  const [notes, setNotes] = useState('')
+  const [lesson, setLesson] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [completing, setCompleting] = useState(false)
 
   useEffect(() => {
-    if (!lesson) return
+    fetchLesson()
+  }, [lessonId])
 
-    // Simple CSS-only entrance animations
-    const elements = document.querySelectorAll('.lesson-item')
-    elements.forEach((el, index) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
-    })
-  }, [lesson])
+  const fetchLesson = async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-  if (!lesson) {
+      const response = await fetch(`/api/courses/${courseId}/lessons/${lessonId}`)
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to load lesson')
+      }
+
+      setLesson(data.data)
+    } catch (err) {
+      console.error('Error fetching lesson:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load lesson')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCompleteLesson = async () => {
+    try {
+      setCompleting(true)
+
+      const response = await fetch(`/api/courses/${courseId}/lessons/${lessonId}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          timeSpentSeconds: lesson.lesson.durationMinutes ? lesson.lesson.durationMinutes * 60 : 0,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to complete lesson')
+      }
+
+      // Refresh lesson data to update completion status
+      await fetchLesson()
+
+      // If there's a next lesson, navigate to it
+      if (lesson.navigation.next) {
+        router.push(`/courses/${courseId}/lessons/${lesson.navigation.next.id}`)
+      }
+    } catch (err) {
+      console.error('Error completing lesson:', err)
+      setError(err instanceof Error ? err.message : 'Failed to complete lesson')
+    } finally {
+      setCompleting(false)
+    }
+  }
+
+  // Loading state
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="glass-effect concrete-texture border-4 border-danger/40 p-12 text-center">
-          <h2 className="text-2xl font-black text-neutral-800 mb-4">LESSON NOT FOUND</h2>
-          <p className="text-neutral-600 font-semibold mb-6">The lesson you're looking for doesn't exist.</p>
-          <Link href={`/courses/${courseId}`}>
-            <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
-              BACK TO COURSE
-            </MagneticButton>
-          </Link>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
+          <p className="text-lg font-bold text-neutral-700">Loading lesson...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error || !lesson) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="glass-effect concrete-texture border-4 border-red-500/40 max-w-md">
+          <CardHeader>
+            <CardTitle className="text-xl font-black flex items-center gap-2 text-red-600">
+              <AlertCircle />
+              ERROR LOADING LESSON
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-neutral-700 mb-4">{error || 'Lesson not found'}</p>
+            <div className="flex gap-2">
+              <Link href={`/courses/${courseId}`}>
+                <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
+                  BACK TO COURSE
+                </MagneticButton>
+              </Link>
+              {error && (
+                <MagneticButton
+                  onClick={fetchLesson}
+                  className="glass-effect border-2 border-primary/40 text-neutral-700 font-black"
+                >
+                  Try Again
+                </MagneticButton>
+              )}
+            </div>
+          </CardContent>
         </Card>
       </div>
     )
   }
 
-  const handleMarkComplete = () => {
-    setLesson(prev => prev ? { ...prev, completed: true } : prev)
-    // In real app, would call API to save completion
+  const { lesson: lessonData, isCompleted, navigation, progress } = lesson
+  const contentTypeMap: Record<string, { icon: any; label: string }> = {
+    VIDEO: { icon: PlayCircle, label: 'Video Lesson' },
+    TEXT: { icon: FileText, label: 'Reading Material' },
+    QUIZ: { icon: Award, label: 'Quiz' },
+    AUDIO: { icon: PlayCircle, label: 'Audio Lesson' },
+    DOCUMENT: { icon: FileText, label: 'Document' },
   }
 
-  const handleNext = () => {
-    if (lesson.nextLesson) {
-      router.push(`/courses/${courseId}/lessons/${lesson.nextLesson}`)
-    }
-  }
-
-  const handlePrevious = () => {
-    if (lesson.prevLesson) {
-      router.push(`/courses/${courseId}/lessons/${lesson.prevLesson}`)
-    }
-  }
-
-  const renderLessonContent = () => {
-    switch (lesson.type) {
-      case 'video':
-        return (
-          <div className="space-y-6">
-            {/* Video Player Placeholder */}
-            <div className="relative aspect-video bg-gradient-to-br from-neutral-800 to-neutral-900 rounded-xl overflow-hidden border-4 border-primary/40">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-                    <PlayCircle className="text-white" size={48} />
-                  </div>
-                  <p className="text-white font-bold text-lg">Video Player</p>
-                  <p className="text-white/70 text-sm">Mock video content for: {lesson.title}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Transcript Toggle */}
-            <button
-              onClick={() => setShowTranscript(!showTranscript)}
-              className="w-full glass-effect border-2 border-secondary/30 rounded-lg p-4 flex items-center justify-between hover:border-secondary/60 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <FileText className="text-secondary" size={24} />
-                <span className="font-bold text-neutral-800">Video Transcript</span>
-              </div>
-              {showTranscript ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
-            </button>
-
-            {showTranscript && lesson.transcript && (
-              <Card className="glass-effect concrete-texture border-2 border-secondary/30">
-                <CardContent className="p-6">
-                  <p className="text-neutral-700 whitespace-pre-line leading-relaxed">{lesson.transcript}</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )
-
-      case 'reading':
-        return (
-          <Card className="glass-effect concrete-texture border-4 border-primary/40">
-            <CardContent className="p-8">
-              <div
-                className="prose prose-lg max-w-none text-neutral-700"
-                dangerouslySetInnerHTML={{
-                  __html: lesson.content?.replace(/\n/g, '<br />').replace(/### /g, '<h3 class="text-xl font-black mt-6 mb-3 text-neutral-800">').replace(/## /g, '<h2 class="text-2xl font-black mt-8 mb-4 text-neutral-800">').replace(/# /g, '<h1 class="text-3xl font-black mb-6 text-neutral-900">') || ''
-                }}
-              />
-            </CardContent>
-          </Card>
-        )
-
-      case 'quiz':
-        return (
-          <Card className="glass-effect concrete-texture border-4 border-warning/40">
-            <CardContent className="p-12 text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-warning to-orange-600 rounded-xl flex items-center justify-center mx-auto mb-6">
-                <Award className="text-white" size={40} />
-              </div>
-              <h2 className="text-3xl font-black text-neutral-800 mb-4">READY FOR THE QUIZ?</h2>
-              <p className="text-neutral-600 font-semibold mb-8 max-w-lg mx-auto">
-                Test your knowledge of the concepts covered in this module. You need 80% to pass.
-              </p>
-              <Link href={`/courses/${courseId}/quiz/${lesson.quizId}`}>
-                <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
-                  <Award className="mr-2" size={20} />
-                  START QUIZ
-                </MagneticButton>
-              </Link>
-            </CardContent>
-          </Card>
-        )
-
-      default:
-        return null
-    }
-  }
+  const contentInfo = contentTypeMap[lessonData.contentType] || contentTypeMap.TEXT
+  const ContentIcon = contentInfo.icon
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="lesson-item opacity-0">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <button
-            onClick={() => router.push(`/courses/${courseId}`)}
-            className="flex items-center gap-2 text-neutral-700 hover:text-primary font-bold transition-colors"
-          >
-            <ArrowLeft size={20} />
-            BACK TO COURSE
-          </button>
+      {/* Back Button & Navigation */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => router.push(`/courses/${courseId}`)}
+          className="flex items-center gap-2 text-neutral-700 hover:text-primary font-bold transition-colors"
+        >
+          <ArrowLeft size={20} />
+          BACK TO COURSE
+        </button>
 
-          {lesson.completed && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-success to-green-600 rounded-lg text-white font-bold">
-              <CheckCircle size={20} />
-              COMPLETED
-            </div>
-          )}
+        <div className="flex items-center gap-2 text-sm font-bold text-neutral-600">
+          <BookOpen size={16} />
+          Lesson {navigation.current} of {navigation.total}
         </div>
       </div>
 
-      {/* Course Context */}
-      <Card className="lesson-item opacity-0 glass-effect concrete-texture border-2 border-neutral-300">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3 text-sm">
-            <Link href={`/courses/${courseId}`} className="font-bold text-primary hover:text-primary/80">
-              {lesson.courseTitle}
-            </Link>
-            <span className="text-neutral-400">/</span>
-            <span className="font-semibold text-neutral-600">{lesson.moduleTitle}</span>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Lesson Header */}
-      <div className="lesson-item opacity-0">
-        <div className="glass-effect concrete-texture rounded-xl p-8 relative overflow-hidden border-4 border-primary/40">
-          {/* Blueprint corner markers */}
-          <div className="absolute top-2 left-2 w-12 h-12 border-t-4 border-l-4 border-primary/60"></div>
-          <div className="absolute top-2 right-2 w-12 h-12 border-t-4 border-r-4 border-primary/60"></div>
-          <div className="absolute bottom-2 left-2 w-12 h-12 border-b-4 border-l-4 border-primary/60"></div>
-          <div className="absolute bottom-2 right-2 w-12 h-12 border-b-4 border-r-4 border-primary/60"></div>
+      <div className="glass-effect concrete-texture rounded-xl p-6 md:p-8 relative overflow-hidden border-4 border-primary/40">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary to-blue-600 opacity-10"></div>
+        <div className="absolute inset-0 blueprint-grid opacity-20"></div>
 
-          <div className="absolute inset-0 bg-gradient-to-r from-primary via-blue-500 to-secondary opacity-10"></div>
-          <div className="absolute inset-0 blueprint-grid opacity-20"></div>
-
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-4 flex-wrap">
-              {lesson.type === 'video' && (
-                <div className="w-12 h-12 bg-gradient-to-br from-danger to-red-600 rounded-lg flex items-center justify-center">
-                  <PlayCircle className="text-white" size={24} />
-                </div>
-              )}
-              {lesson.type === 'reading' && (
-                <div className="w-12 h-12 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center">
-                  <FileText className="text-white" size={24} />
-                </div>
-              )}
-              {lesson.type === 'quiz' && (
-                <div className="w-12 h-12 bg-gradient-to-br from-warning to-orange-600 rounded-lg flex items-center justify-center">
-                  <Award className="text-white" size={24} />
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Clock className="text-neutral-600" size={18} />
-                <span className="text-sm font-bold text-neutral-600">{lesson.duration}</span>
-              </div>
+        <div className="relative z-10">
+          <div className="flex items-start gap-4 mb-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <ContentIcon className="text-white" size={32} />
             </div>
-
-            <h1 className="text-3xl md:text-4xl font-black text-neutral-800 mb-3">{lesson.title}</h1>
-            <p className="text-lg text-neutral-700 font-medium">{lesson.description}</p>
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
+                <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-primary to-blue-600 text-white">
+                  {contentInfo.label}
+                </span>
+                {isCompleted && (
+                  <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-success to-green-600 text-white flex items-center gap-1">
+                    <CheckCircle size={14} />
+                    COMPLETED
+                  </span>
+                )}
+                {lessonData.durationMinutes && (
+                  <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-neutral-600 to-neutral-800 text-white flex items-center gap-1">
+                    <Clock size={14} />
+                    {lessonData.durationMinutes} min
+                  </span>
+                )}
+              </div>
+              <h1 className="text-3xl md:text-4xl font-black text-neutral-800 mb-2">
+                {lessonData.title}
+              </h1>
+              {lessonData.description && (
+                <p className="text-lg text-neutral-700 font-medium">{lessonData.description}</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Lesson Content */}
-      <div className="lesson-item opacity-0">
-        {renderLessonContent()}
-      </div>
+      <Card className="glass-effect concrete-texture border-4 border-primary/40">
+        <CardContent className="p-6 md:p-8">
+          {lessonData.contentType === 'VIDEO' && lessonData.contentUrl && (
+            <div className="aspect-video bg-neutral-900 rounded-lg mb-6">
+              <video
+                controls
+                className="w-full h-full rounded-lg"
+                src={lessonData.contentUrl}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          )}
 
-      {/* Notes Section */}
-      <Card className="lesson-item opacity-0 glass-effect concrete-texture border-4 border-secondary/40">
-        <CardHeader>
-          <button
-            onClick={() => setShowNotes(!showNotes)}
-            className="flex items-center justify-between w-full text-left"
-          >
-            <CardTitle className="text-xl font-black flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-secondary to-purple-600 rounded-lg flex items-center justify-center">
-                <BookOpen className="text-white" size={20} />
-              </div>
-              MY NOTES
-            </CardTitle>
-            {showNotes ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
-          </button>
-        </CardHeader>
-        {showNotes && (
-          <CardContent>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Take notes about this lesson..."
-              className="w-full h-32 glass-effect border-2 border-secondary/30 rounded-lg p-4 font-medium resize-none focus:border-secondary focus:outline-none"
+          {lessonData.contentType === 'AUDIO' && lessonData.contentUrl && (
+            <div className="bg-gradient-to-r from-primary/10 to-blue-600/10 rounded-lg p-6 mb-6">
+              <audio controls className="w-full">
+                <source src={lessonData.contentUrl} />
+                Your browser does not support the audio element.
+              </audio>
+            </div>
+          )}
+
+          {lessonData.contentData?.html && (
+            <div
+              className="prose prose-lg max-w-none"
+              dangerouslySetInnerHTML={{ __html: lessonData.contentData.html }}
             />
-            <MagneticButton className="mt-4 bg-gradient-to-r from-secondary to-purple-600 text-white font-black">
-              SAVE NOTES
-            </MagneticButton>
-          </CardContent>
-        )}
-      </Card>
+          )}
 
-      {/* Navigation Footer */}
-      <Card className="lesson-item opacity-0 glass-effect concrete-texture border-4 border-primary/40">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              {lesson.prevLesson && (
-                <button
-                  onClick={handlePrevious}
-                  className="flex items-center gap-2 text-neutral-700 hover:text-primary font-bold transition-colors"
-                >
-                  <ArrowLeft size={20} />
-                  PREVIOUS LESSON
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3">
-              {!lesson.completed && lesson.type !== 'quiz' && (
-                <MagneticButton
-                  onClick={handleMarkComplete}
-                  className="bg-gradient-to-r from-success to-green-600 text-white font-black"
-                >
-                  <CheckCircle className="mr-2" size={20} />
-                  MARK AS COMPLETE
+          {lessonData.contentType === 'TEXT' && lessonData.contentUrl && (
+            <div className="text-center py-8">
+              <FileText className="mx-auto h-16 w-16 text-primary mb-4" />
+              <p className="text-neutral-700 font-semibold mb-4">Download lesson materials</p>
+              <a
+                href={lessonData.contentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block"
+              >
+                <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
+                  DOWNLOAD MATERIALS
                 </MagneticButton>
-              )}
-
-              {lesson.nextLesson && (
-                <MagneticButton
-                  onClick={handleNext}
-                  className="bg-gradient-to-r from-primary to-blue-600 text-white font-black"
-                >
-                  NEXT LESSON
-                  <ArrowRight className="ml-2" size={20} />
-                </MagneticButton>
-              )}
+              </a>
             </div>
-          </div>
+          )}
+
+          {!lessonData.contentData?.html && !lessonData.contentUrl && (
+            <div className="text-center py-12">
+              <BookOpen className="mx-auto h-16 w-16 text-neutral-400 mb-4" />
+              <p className="text-neutral-600 font-semibold">No content available for this lesson</p>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Quiz Section */}
+      {lessonData.quiz && (
+        <Card className="glass-effect concrete-texture border-4 border-warning/40">
+          <CardHeader>
+            <CardTitle className="text-2xl font-black flex items-center gap-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-warning to-orange-600 rounded-lg flex items-center justify-center">
+                <Award className="text-white" size={20} />
+              </div>
+              {lessonData.quiz.title}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-neutral-700 mb-4">{lessonData.quiz.description}</p>
+            <div className="flex items-center gap-4 text-sm font-bold text-neutral-600 mb-4">
+              <span>{lessonData.quiz._count?.questions || 0} questions</span>
+              {lessonData.quiz.timeLimitMinutes && (
+                <span>• {lessonData.quiz.timeLimitMinutes} minutes</span>
+              )}
+              <span>• Passing score: {lessonData.quiz.passingScore}%</span>
+            </div>
+            <Link href={`/courses/${courseId}/lessons/${lessonId}/quiz`}>
+              <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
+                START QUIZ
+              </MagneticButton>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Navigation & Completion */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        {navigation.previous ? (
+          <Link href={`/courses/${courseId}/lessons/${navigation.previous.id}`}>
+            <MagneticButton className="glass-effect border-2 border-primary/40 text-neutral-700 font-black">
+              <ArrowLeft className="mr-2" size={20} />
+              PREVIOUS LESSON
+            </MagneticButton>
+          </Link>
+        ) : (
+          <div></div>
+        )}
+
+        <div className="flex items-center gap-4">
+          {!isCompleted && (
+            <MagneticButton
+              onClick={handleCompleteLesson}
+              disabled={completing}
+              className="bg-gradient-to-r from-success to-green-600 text-white font-black disabled:opacity-50"
+            >
+              {completing ? (
+                <>
+                  <Loader2 className="mr-2 animate-spin" size={20} />
+                  COMPLETING...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2" size={20} />
+                  MARK AS COMPLETE
+                </>
+              )}
+            </MagneticButton>
+          )}
+
+          {navigation.next ? (
+            <Link href={`/courses/${courseId}/lessons/${navigation.next.id}`}>
+              <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
+                NEXT LESSON
+                <ArrowRight className="ml-2" size={20} />
+              </MagneticButton>
+            </Link>
+          ) : (
+            <Link href={`/courses/${courseId}`}>
+              <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
+                BACK TO COURSE
+                <CheckCircle className="ml-2" size={20} />
+              </MagneticButton>
+            </Link>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

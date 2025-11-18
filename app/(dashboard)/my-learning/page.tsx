@@ -3,54 +3,31 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
-import { BookOpen, Award, Clock, TrendingUp, HardHat, Shield, Wrench, Play, CheckCircle, AlertCircle, Filter } from 'lucide-react'
+import { BookOpen, Award, Clock, TrendingUp, HardHat, Shield, Wrench, Play, CheckCircle, AlertCircle, Filter, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { coursesService } from '@/lib/services'
 
-// Mock enrolled courses data - matches dashboard stats (3 enrolled, 2 in progress)
-const MOCK_ENROLLED_COURSES = [
-  {
-    id: 1,
-    title: 'Construction Safety Fundamentals',
-    description: 'Essential safety protocols and procedures for construction sites',
-    category: 'Safety',
-    level: 'Beginner',
-    duration: '4 hours',
-    progress: 65,
-    status: 'in_progress',
-    icon: Shield,
-    color: 'from-danger to-red-600',
-    lastAccessed: '2 hours ago',
-    nextLesson: 'Module 3: Personal Protective Equipment'
-  },
-  {
-    id: 2,
-    title: 'Heavy Equipment Operation',
-    description: 'Learn to operate excavators, bulldozers, and cranes safely',
-    category: 'Equipment',
-    level: 'Intermediate',
-    duration: '12 hours',
-    progress: 30,
-    status: 'in_progress',
-    icon: Wrench,
-    color: 'from-warning to-orange-600',
-    lastAccessed: '1 day ago',
-    nextLesson: 'Module 2: Excavator Controls'
-  },
-  {
-    id: 3,
-    title: 'Blueprint Reading & Interpretation',
-    description: 'Master the art of reading construction blueprints and technical drawings',
-    category: 'Technical',
-    level: 'Beginner',
-    duration: '6 hours',
-    progress: 0,
-    status: 'not_started',
-    icon: BookOpen,
-    color: 'from-primary to-blue-600',
-    lastAccessed: 'Not started',
-    nextLesson: 'Module 1: Introduction to Blueprints'
-  }
-]
+// Icon mapping for categories
+const CATEGORY_ICONS: Record<string, any> = {
+  Safety: Shield,
+  Equipment: Wrench,
+  Technical: BookOpen,
+  Management: HardHat,
+  Quality: Award,
+  Construction: HardHat,
+  Engineering: BookOpen,
+}
+
+// Color mapping for categories
+const CATEGORY_COLORS: Record<string, string> = {
+  Safety: 'from-danger to-red-600',
+  Equipment: 'from-warning to-orange-600',
+  Technical: 'from-primary to-blue-600',
+  Management: 'from-success to-green-600',
+  Quality: 'from-secondary to-purple-600',
+  Construction: 'from-warning to-orange-600',
+  Engineering: 'from-primary to-blue-600',
+}
 
 const STATUS_FILTERS = [
   { id: 'all', label: 'ALL COURSES', icon: Filter },
@@ -61,9 +38,15 @@ const STATUS_FILTERS = [
 
 export default function MyLearningPage() {
   const [selectedStatus, setSelectedStatus] = useState('all')
-  const [filteredCourses, setFilteredCourses] = useState(MOCK_ENROLLED_COURSES)
+  const [enrollments, setEnrollments] = useState<any[]>([])
+  const [filteredCourses, setFilteredCourses] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Fetch enrollments on mount
+    fetchEnrollments()
+
     // Simple CSS-only entrance animations
     const elements = document.querySelectorAll('.learning-item')
     elements.forEach((el, index) => {
@@ -75,11 +58,43 @@ export default function MyLearningPage() {
   useEffect(() => {
     // Filter courses by status
     if (selectedStatus === 'all') {
-      setFilteredCourses(MOCK_ENROLLED_COURSES)
+      setFilteredCourses(enrollments)
     } else {
-      setFilteredCourses(MOCK_ENROLLED_COURSES.filter(course => course.status === selectedStatus))
+      setFilteredCourses(enrollments.filter(enrollment => {
+        const status = getEnrollmentStatus(enrollment)
+        return status === selectedStatus
+      }))
     }
-  }, [selectedStatus])
+  }, [selectedStatus, enrollments])
+
+  const fetchEnrollments = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await coursesService.getEnrollments()
+
+      if (response.error) {
+        throw new Error(response.error)
+      }
+
+      const enrollmentsData = response.data?.data || []
+      setEnrollments(enrollmentsData)
+      setFilteredCourses(enrollmentsData)
+    } catch (err) {
+      console.error('Error fetching enrollments:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load your courses')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getEnrollmentStatus = (enrollment: any) => {
+    const progress = enrollment.progressPercentage || 0
+    if (progress === 0) return 'not_started'
+    if (progress === 100 || enrollment.status === 'COMPLETED') return 'completed'
+    return 'in_progress'
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -93,6 +108,45 @@ export default function MyLearningPage() {
         return null
     }
   }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
+          <p className="text-lg font-bold text-neutral-700">Loading your courses...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="glass-effect concrete-texture border-4 border-red-500/40 max-w-md">
+          <CardHeader>
+            <CardTitle className="text-xl font-black flex items-center gap-2 text-red-600">
+              <AlertCircle />
+              Error Loading Courses
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-neutral-700 mb-4">{error}</p>
+            <MagneticButton onClick={fetchEnrollments} className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
+              Try Again
+            </MagneticButton>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Calculate stats from enrollments
+  const totalEnrolled = enrollments.length
+  const inProgress = enrollments.filter(e => getEnrollmentStatus(e) === 'in_progress').length
+  const completed = enrollments.filter(e => getEnrollmentStatus(e) === 'completed').length
 
   return (
     <div className="space-y-6">
@@ -124,7 +178,7 @@ export default function MyLearningPage() {
               <div>
                 <p className="text-sm font-bold text-neutral-600 uppercase">Total Enrolled</p>
                 <p className="text-4xl font-black bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent mt-1">
-                  {MOCK_ENROLLED_COURSES.length}
+                  {totalEnrolled}
                 </p>
               </div>
               <div className="w-14 h-14 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center">
@@ -141,7 +195,7 @@ export default function MyLearningPage() {
               <div>
                 <p className="text-sm font-bold text-neutral-600 uppercase">In Progress</p>
                 <p className="text-4xl font-black bg-gradient-to-r from-warning to-orange-600 bg-clip-text text-transparent mt-1">
-                  {MOCK_ENROLLED_COURSES.filter(c => c.status === 'in_progress').length}
+                  {inProgress}
                 </p>
               </div>
               <div className="w-14 h-14 bg-gradient-to-br from-warning to-orange-600 rounded-xl flex items-center justify-center">
@@ -158,7 +212,7 @@ export default function MyLearningPage() {
               <div>
                 <p className="text-sm font-bold text-neutral-600 uppercase">Completed</p>
                 <p className="text-4xl font-black bg-gradient-to-r from-success to-green-600 bg-clip-text text-transparent mt-1">
-                  0
+                  {completed}
                 </p>
               </div>
               <div className="w-14 h-14 bg-gradient-to-br from-success to-green-600 rounded-xl flex items-center justify-center">
@@ -198,52 +252,59 @@ export default function MyLearningPage() {
       {/* Course List */}
       {filteredCourses.length > 0 ? (
         <div className="space-y-4">
-          {filteredCourses.map((course, index) => {
-            const IconComponent = course.icon
+          {filteredCourses.map((enrollment, index) => {
+            const course = enrollment.course
+            const status = getEnrollmentStatus(enrollment)
+            const progress = enrollment.progressPercentage || 0
+            const categoryName = course?.category?.name || 'General'
+            const IconComponent = CATEGORY_ICONS[categoryName] || BookOpen
+            const color = CATEGORY_COLORS[categoryName] || 'from-primary to-blue-600'
+            const lastAccessedDate = enrollment.updatedAt ? new Date(enrollment.updatedAt).toLocaleDateString() : 'Never'
+
             return (
               <Card
-                key={course.id}
+                key={enrollment.id}
                 className="learning-item opacity-0 glass-effect concrete-texture border-4 border-primary/20 hover:border-primary/40 transition-all group relative overflow-hidden"
               >
                 {/* Accent Bar */}
-                <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${course.color}`}></div>
+                <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${color}`}></div>
 
                 <CardContent className="p-6">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Course Info */}
                     <div className="lg:col-span-7">
                       <div className="flex items-start gap-4">
-                        <div className={`w-16 h-16 bg-gradient-to-br ${course.color} rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
+                        <div className={`w-16 h-16 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
                           <IconComponent className="text-white" size={32} />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-start justify-between mb-2">
                             <div>
                               <h3 className="text-xl font-black text-neutral-800 group-hover:text-primary transition-colors">
-                                {course.title}
+                                {course?.title || 'Untitled Course'}
                               </h3>
-                              <p className="text-sm text-neutral-600 mt-1">{course.description}</p>
+                              <p className="text-sm text-neutral-600 mt-1">{course?.description || 'No description available'}</p>
                             </div>
-                            {getStatusBadge(course.status)}
+                            {getStatusBadge(status)}
                           </div>
                           <div className="flex flex-wrap items-center gap-4 mt-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 bg-warning/10 rounded-lg flex items-center justify-center">
                                 <Award className="text-warning" size={16} />
                               </div>
-                              <span className="text-sm font-semibold text-neutral-700">{course.level}</span>
+                              <span className="text-sm font-semibold text-neutral-700">{course?.difficultyLevel || 'Beginner'}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
                                 <Clock className="text-primary" size={16} />
                               </div>
-                              <span className="text-sm font-semibold text-neutral-700">{course.duration}</span>
+                              <span className="text-sm font-semibold text-neutral-700">{course?.duration || 'N/A'}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 bg-neutral-100 rounded-lg flex items-center justify-center">
                                 <BookOpen className="text-neutral-600" size={16} />
                               </div>
-                              <span className="text-sm font-semibold text-neutral-700">{course.category}</span>
+                              <span className="text-sm font-semibold text-neutral-700">{categoryName}</span>
                             </div>
                           </div>
                         </div>
@@ -257,50 +318,46 @@ export default function MyLearningPage() {
                         <div>
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-bold text-neutral-600">PROGRESS</span>
-                            <span className={`text-lg font-black ${course.progress === 100 ? 'text-success' : 'text-primary'}`}>
-                              {course.progress}%
+                            <span className={`text-lg font-black ${progress === 100 ? 'text-success' : 'text-primary'}`}>
+                              {progress}%
                             </span>
                           </div>
                           <div className="w-full bg-neutral-200 rounded-full h-3 mb-3">
                             <div
-                              className={`bg-gradient-to-r ${course.color} h-3 rounded-full transition-all`}
-                              style={{ width: `${course.progress}%` }}
+                              className={`bg-gradient-to-r ${color} h-3 rounded-full transition-all`}
+                              style={{ width: `${progress}%` }}
                             ></div>
                           </div>
-                          {course.nextLesson && (
-                            <div className="glass-effect border-2 border-primary/20 rounded-lg p-3 mb-3">
-                              <p className="text-xs font-bold text-neutral-600 mb-1">NEXT LESSON</p>
-                              <p className="text-sm font-semibold text-neutral-800">{course.nextLesson}</p>
-                            </div>
-                          )}
-                          <p className="text-xs text-neutral-500">Last accessed: {course.lastAccessed}</p>
+                          <p className="text-xs text-neutral-500">Last accessed: {lastAccessedDate}</p>
                         </div>
 
                         {/* Action Button */}
-                        <MagneticButton
-                          className={`w-full mt-4 ${
-                            course.status === 'not_started'
-                              ? 'bg-gradient-to-r from-success to-green-600'
-                              : 'bg-gradient-to-r from-primary to-blue-600'
-                          } text-white font-black flex items-center justify-center gap-2`}
-                        >
-                          {course.status === 'not_started' ? (
-                            <>
-                              <Play size={18} />
-                              START COURSE
-                            </>
-                          ) : course.status === 'completed' ? (
-                            <>
-                              <BookOpen size={18} />
-                              REVIEW COURSE
-                            </>
-                          ) : (
-                            <>
-                              <Play size={18} />
-                              CONTINUE LEARNING
-                            </>
-                          )}
-                        </MagneticButton>
+                        <Link href={`/courses/${course?.id}`}>
+                          <MagneticButton
+                            className={`w-full mt-4 ${
+                              status === 'not_started'
+                                ? 'bg-gradient-to-r from-success to-green-600'
+                                : 'bg-gradient-to-r from-primary to-blue-600'
+                            } text-white font-black flex items-center justify-center gap-2`}
+                          >
+                            {status === 'not_started' ? (
+                              <>
+                                <Play size={18} />
+                                START COURSE
+                              </>
+                            ) : status === 'completed' ? (
+                              <>
+                                <BookOpen size={18} />
+                                REVIEW COURSE
+                              </>
+                            ) : (
+                              <>
+                                <Play size={18} />
+                                CONTINUE LEARNING
+                              </>
+                            )}
+                          </MagneticButton>
+                        </Link>
                       </div>
                     </div>
                   </div>

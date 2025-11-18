@@ -76,7 +76,9 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'Access Denied to Construction Site')
+        // Make sure we have an error message
+        const errorMessage = data.error || data.message || 'Access Denied to Construction Site'
+        throw new Error(errorMessage)
       }
 
       localStorage.setItem('token', data.token)
@@ -96,7 +98,9 @@ export default function LoginPage() {
         }
       }, 300)
     } catch (err: any) {
-      setError(err.message)
+      console.error('Login error:', err)
+      setError(err.message || 'Access Denied to Construction Site')
+      setLoading(false) // Ensure loading is set to false immediately
       // Simple CSS shake animation
       if (cardRef.current) {
         cardRef.current.style.animation = 'shake 0.4s ease-in-out'

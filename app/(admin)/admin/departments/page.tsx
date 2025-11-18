@@ -19,107 +19,115 @@ import {
 } from 'lucide-react'
 
 interface Department {
-  id: number
+  id: string
   name: string
   parentDepartment: string | null
   userCount: number
-  description: string
-  head: string
-  status: 'active' | 'inactive'
+  description: string | null
   createdDate: string
+  children?: Array<{ id: string; name: string }>
 }
 
-// Mock departments data
-const MOCK_DEPARTMENTS: Department[] = [
-  {
-    id: 1,
-    name: 'Engineering',
-    parentDepartment: null,
-    userCount: 45,
-    description: 'Core engineering and technical operations',
-    head: 'John Martinez',
-    status: 'active',
-    createdDate: '2023-01-15',
-  },
-  {
-    id: 2,
-    name: 'Safety',
-    parentDepartment: null,
-    userCount: 32,
-    description: 'Safety compliance and training',
-    head: 'Sarah Johnson',
-    status: 'active',
-    createdDate: '2023-01-15',
-  },
-  {
-    id: 3,
-    name: 'Operations',
-    parentDepartment: null,
-    userCount: 28,
-    description: 'Daily operations and logistics',
-    head: 'Mike Chen',
-    status: 'active',
-    createdDate: '2023-02-01',
-  },
-  {
-    id: 4,
-    name: 'Administration',
-    parentDepartment: null,
-    userCount: 15,
-    description: 'Administrative and support functions',
-    head: 'Emily Davis',
-    status: 'active',
-    createdDate: '2023-01-20',
-  },
-  {
-    id: 5,
-    name: 'Structural Engineering',
-    parentDepartment: 'Engineering',
-    userCount: 18,
-    description: 'Structural design and analysis',
-    head: 'Tom Wilson',
-    status: 'active',
-    createdDate: '2023-03-10',
-  },
-  {
-    id: 6,
-    name: 'Quality Control',
-    parentDepartment: 'Operations',
-    userCount: 12,
-    description: 'Quality assurance and control',
-    head: 'Lisa Anderson',
-    status: 'active',
-    createdDate: '2023-04-05',
-  },
-]
-
-const STATUSES = ['All', 'Active', 'Inactive']
-
 export default function DepartmentsPage() {
-  const [departments, setDepartments] = useState(MOCK_DEPARTMENTS)
+  const [departments, setDepartments] = useState<Department[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('All')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch departments from API
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const token = localStorage.getItem('token')
+        const response = await fetch('/api/departments', {
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` })
+          }
+        })
+
+        const data = await response.json()
+
+        if (data.success) {
+          // Transform API data to match UI interface
+          const transformedDepts: Department[] = data.data.map((dept: any) => ({
+            id: dept.id,
+            name: dept.name,
+            parentDepartment: dept.parent?.name || null,
+            userCount: dept._count?.users || 0,
+            description: dept.description,
+            createdDate: new Date(dept.createdAt).toISOString().split('T')[0],
+            children: dept.children,
+          }))
+          setDepartments(transformedDepts)
+        } else {
+          setError(data.message || 'Failed to fetch departments')
+        }
+      } catch (err) {
+        console.error('Error fetching departments:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch departments')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDepartments()
+  }, [])
 
   useEffect(() => {
-    const elements = document.querySelectorAll('.admin-item')
-    elements.forEach((el, index) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
-    })
-  }, [])
+    if (!loading) {
+      const elements = document.querySelectorAll('.admin-item')
+      elements.forEach((el, index) => {
+        const htmlEl = el as HTMLElement
+        htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
+      })
+    }
+  }, [loading])
 
   const filteredDepartments = departments.filter(dept => {
     const matchesSearch = !searchQuery ||
       dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      dept.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      dept.head.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = selectedStatus === 'All' || dept.status === selectedStatus.toLowerCase()
-    return matchesSearch && matchesStatus
+      (dept.description && dept.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    return matchesSearch
   })
 
   const totalUsers = departments.reduce((sum, dept) => sum + dept.userCount, 0)
-  const activeDepartments = departments.filter(d => d.status === 'active').length
-  const avgUsersPerDept = Math.round(totalUsers / departments.length)
+  const avgUsersPerDept = departments.length > 0 ? Math.round(totalUsers / departments.length) : 0
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-warning mb-4"></div>
+          <p className="text-xl font-bold text-neutral-700">Loading departments...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="glass-effect concrete-texture border-4 border-danger/40 max-w-md">
+          <CardContent className="p-8 text-center">
+            <AlertTriangle className="mx-auto mb-4 text-danger" size={48} />
+            <h2 className="text-2xl font-black text-danger mb-2">ERROR</h2>
+            <p className="text-neutral-700 mb-4">{error}</p>
+            <MagneticButton
+              onClick={() => window.location.reload()}
+              className="bg-gradient-to-r from-danger to-red-600 text-white font-black"
+            >
+              RETRY
+            </MagneticButton>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -155,22 +163,13 @@ export default function DepartmentsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="admin-item opacity-0 glass-effect concrete-texture border-4 border-warning/40">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-black bg-gradient-to-r from-warning to-orange-600 bg-clip-text text-transparent mb-2">
               {departments.length}
             </div>
             <p className="text-sm font-bold text-neutral-600">TOTAL DEPARTMENTS</p>
-          </CardContent>
-        </Card>
-
-        <Card className="admin-item opacity-0 glass-effect concrete-texture border-4 border-success/40">
-          <CardContent className="p-6 text-center">
-            <div className="text-3xl font-black bg-gradient-to-r from-success to-green-600 bg-clip-text text-transparent mb-2">
-              {activeDepartments}
-            </div>
-            <p className="text-sm font-bold text-neutral-600">ACTIVE</p>
           </CardContent>
         </Card>
 
@@ -209,32 +208,16 @@ export default function DepartmentsPage() {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400" size={20} />
             <Input
               type="text"
-              placeholder="Search departments..."
+              placeholder="Search departments by name or description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-12 h-12 glass-effect border-2 border-warning/30 focus:border-warning font-medium"
             />
           </div>
 
-          {/* Status Filter */}
-          <div>
-            <p className="text-sm font-bold text-neutral-700 mb-2">STATUS</p>
-            <div className="flex gap-2 flex-wrap">
-              {STATUSES.map((status) => (
-                <button
-                  key={status}
-                  onClick={() => setSelectedStatus(status)}
-                  className={`px-4 py-2 rounded-lg font-bold transition-all ${
-                    selectedStatus === status
-                      ? 'bg-gradient-to-r from-warning to-orange-600 text-white shadow-lg scale-105'
-                      : 'glass-effect border-2 border-warning/30 text-neutral-700 hover:border-warning/60'
-                  }`}
-                >
-                  {status}
-                </button>
-              ))}
-            </div>
-          </div>
+          <p className="text-sm text-neutral-600">
+            Showing {filteredDepartments.length} of {departments.length} departments
+          </p>
         </CardContent>
       </Card>
 

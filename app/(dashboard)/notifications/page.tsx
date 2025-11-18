@@ -12,8 +12,10 @@ import {
   CheckCircle,
   Trash2,
   Filter,
-  X
+  X,
+  Loader2
 } from 'lucide-react'
+import { notificationsService } from '@/lib/services'
 
 type NotificationType = 'course' | 'certificate' | 'achievement' | 'system' | 'reminder'
 type NotificationStatus = 'unread' | 'read'
@@ -103,20 +105,48 @@ const MOCK_NOTIFICATIONS: Notification[] = [
 ]
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS)
-  const [filter, setFilter] = useState<NotificationStatus | 'all'>('all')
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'all' | 'READ' | 'UNREAD'>('all')
 
   useEffect(() => {
+    fetchNotifications()
+  }, [])
+
+  useEffect(() => {
+    if (notifications.length === 0) return
+
     // Simple CSS-only entrance animations
     const elements = document.querySelectorAll('.notification-item')
     elements.forEach((el, index) => {
       const htmlEl = el as HTMLElement
       htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
     })
-  }, [filter])
+  }, [filter, notifications])
 
-  const getNotificationIcon = (type: NotificationType) => {
-    switch (type) {
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await notificationsService.getNotifications()
+      if (response.error) {
+        throw new Error(response.error)
+      }
+
+      const notificationsData = response.data?.data || []
+      setNotifications(notificationsData)
+    } catch (err) {
+      console.error('Error fetching notifications:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load notifications')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getNotificationIcon = (type: string) => {
+    switch (type?.toLowerCase()) {
       case 'course':
         return { icon: BookOpen, color: 'from-primary to-blue-600' }
       case 'certificate':
@@ -125,26 +155,41 @@ export default function NotificationsPage() {
         return { icon: TrendingUp, color: 'from-success to-green-600' }
       case 'system':
         return { icon: AlertCircle, color: 'from-secondary to-purple-600' }
-      case 'reminder':
+      default:
         return { icon: Bell, color: 'from-pink-500 to-rose-600' }
     }
   }
 
-  const markAsRead = (id: number) => {
-    setNotifications(prev =>
-      prev.map(notif =>
-        notif.id === id ? { ...notif, status: 'read' as NotificationStatus } : notif
+  const markAsRead = async (id: string) => {
+    try {
+      await notificationsService.markAsRead(id)
+      // Update local state
+      setNotifications(prev =>
+        prev.map(notif =>
+          notif.id === id ? { ...notif, status: 'READ' } : notif
+        )
       )
-    )
+    } catch (err) {
+      console.error('Error marking notification as read:', err)
+    }
   }
 
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notif => ({ ...notif, status: 'read' as NotificationStatus }))
-    )
+  const markAllAsRead = async () => {
+    try {
+      // Mark all unread notifications as read
+      const unreadNotifications = notifications.filter(n => n.status === 'UNREAD')
+      await Promise.all(unreadNotifications.map(n => notificationsService.markAsRead(n.id)))
+
+      // Update local state
+      setNotifications(prev =>
+        prev.map(notif => ({ ...notif, status: 'READ' }))
+      )
+    } catch (err) {
+      console.error('Error marking all as read:', err)
+    }
   }
 
-  const deleteNotification = (id: number) => {
+  const deleteNotification = async (id: string) => {
     setNotifications(prev => prev.filter(notif => notif.id !== id))
   }
 
@@ -157,7 +202,41 @@ export default function NotificationsPage() {
     return notif.status === filter
   })
 
-  const unreadCount = notifications.filter(n => n.status === 'unread').length
+  const unreadCount = notifications.filter(n => n.status === 'UNREAD').length
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
+          <p className="text-lg font-bold text-neutral-700">Loading notifications...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="glass-effect concrete-texture border-4 border-red-500/40 max-w-md">
+          <CardHeader>
+            <CardTitle className="text-xl font-black flex items-center gap-2 text-red-600">
+              <AlertCircle />
+              Error Loading Notifications
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-neutral-700 mb-4">{error}</p>
+            <MagneticButton onClick={fetchNotifications} className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
+              Try Again
+            </MagneticButton>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -236,9 +315,9 @@ export default function NotificationsPage() {
               ALL ({notifications.length})
             </button>
             <button
-              onClick={() => setFilter('unread')}
+              onClick={() => setFilter('UNREAD')}
               className={`px-6 py-3 rounded-lg font-bold transition-all ${
-                filter === 'unread'
+                filter === 'UNREAD'
                   ? 'bg-gradient-to-r from-warning to-orange-600 text-white shadow-lg scale-105'
                   : 'glass-effect border-2 border-warning/30 text-neutral-700 hover:border-warning/60'
               }`}
@@ -246,14 +325,14 @@ export default function NotificationsPage() {
               UNREAD ({unreadCount})
             </button>
             <button
-              onClick={() => setFilter('read')}
+              onClick={() => setFilter('READ')}
               className={`px-6 py-3 rounded-lg font-bold transition-all ${
-                filter === 'read'
+                filter === 'READ'
                   ? 'bg-gradient-to-r from-success to-green-600 text-white shadow-lg scale-105'
                   : 'glass-effect border-2 border-success/30 text-neutral-700 hover:border-success/60'
               }`}
             >
-              READ ({notifications.filter(n => n.status === 'read').length})
+              READ ({notifications.filter(n => n.status === 'READ').length})
             </button>
           </div>
         </CardContent>

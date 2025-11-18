@@ -24,6 +24,7 @@ import {
   Calendar,
   Eye,
   Trash2,
+  TrendingUp,
 } from 'lucide-react'
 
 interface Notification {

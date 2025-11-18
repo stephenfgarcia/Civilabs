@@ -42,13 +42,13 @@ export function middleware(request: NextRequest) {
 
     // Check admin routes
     const isAdminRoute = adminRoutes.some(route => pathname.startsWith(route))
-    if (isAdminRoute && userRole !== 'admin') {
+    if (isAdminRoute && !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
     // Check instructor routes
     const isInstructorRoute = instructorRoutes.some(route => pathname.startsWith(route))
-    if (isInstructorRoute && !['instructor', 'admin'].includes(userRole)) {
+    if (isInstructorRoute && !['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 

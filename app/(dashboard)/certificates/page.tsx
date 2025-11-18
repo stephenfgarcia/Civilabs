@@ -4,10 +4,33 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
-import { Award, Download, Share2, Calendar, CheckCircle, Shield, HardHat, Zap, Eye, ExternalLink } from 'lucide-react'
+import { Award, Download, Share2, Calendar, CheckCircle, Shield, HardHat, Zap, Eye, ExternalLink, Loader2, AlertCircle, BookOpen, Wrench } from 'lucide-react'
+import { certificatesService } from '@/lib/services'
 
-// Mock certificates data - matches dashboard stats (3 certificates earned from 5 completed courses)
-const MOCK_CERTIFICATES = [
+// Icon mapping for certificate categories
+const CATEGORY_ICONS: Record<string, any> = {
+  Safety: Shield,
+  Equipment: Wrench,
+  Technical: BookOpen,
+  Management: HardHat,
+  Quality: Award,
+  Construction: HardHat,
+  Engineering: BookOpen,
+}
+
+// Color mapping for certificate categories
+const CATEGORY_COLORS: Record<string, string> = {
+  Safety: 'from-danger to-red-600',
+  Equipment: 'from-warning to-orange-600',
+  Technical: 'from-primary to-blue-600',
+  Management: 'from-success to-green-600',
+  Quality: 'from-secondary to-purple-600',
+  Construction: 'from-warning to-orange-600',
+  Engineering: 'from-primary to-blue-600',
+}
+
+// Mock certificates data for reference
+const MOCK_CERTIFICATES_OLD = [
   {
     id: 1,
     title: 'Construction Safety Fundamentals',
@@ -50,25 +73,80 @@ const MOCK_CERTIFICATES = [
 ]
 
 export default function CertificatesPage() {
+  const [certificates, setCertificates] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedCertificate, setSelectedCertificate] = useState<any>(null)
 
   useEffect(() => {
+    fetchCertificates()
+  }, [])
+
+  useEffect(() => {
+    if (certificates.length === 0) return
+
     // Simple CSS-only entrance animations
     const elements = document.querySelectorAll('.certificates-item')
     elements.forEach((el, index) => {
       const htmlEl = el as HTMLElement
       htmlEl.style.animation = `fadeInUp 0.4s ease-out forwards ${index * 0.05}s`
     })
-  }, [])
+  }, [certificates])
 
-  const handleDownload = (certificate: any) => {
-    // Mock download functionality
-    alert(`Downloading certificate: ${certificate.title}\nCredential ID: ${certificate.credentialId}`)
+  const fetchCertificates = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await certificatesService.getCertificates()
+      if (response.error) {
+        throw new Error(response.error)
+      }
+
+      const certificatesData = response.data?.data || []
+      setCertificates(certificatesData)
+    } catch (err) {
+      console.error('Error fetching certificates:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load certificates')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleShare = (certificate: any) => {
-    // Mock share functionality
-    alert(`Sharing certificate: ${certificate.title}\nCredential ID: ${certificate.credentialId}`)
+  const handleDownload = async (certificate: any) => {
+    try {
+      // Open the certificate download URL in a new window
+      window.open(`/api/certificates/${certificate.id}/download`, '_blank')
+    } catch (error) {
+      console.error('Error downloading certificate:', error)
+      alert('Failed to download certificate. Please try again.')
+    }
+  }
+
+  const handleShare = async (certificate: any) => {
+    try {
+      const shareUrl = `${window.location.origin}/certificates/${certificate.id}`
+      const shareText = `I earned a certificate for "${certificate.certificate?.course?.title || certificate.course?.title || 'this course'}" from Civilabs LMS!`
+
+      // Try to use native Web Share API (mobile/modern browsers)
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Certificate Achievement',
+          text: shareText,
+          url: shareUrl,
+        })
+      } else {
+        // Fallback: copy link to clipboard
+        await navigator.clipboard.writeText(shareUrl)
+        alert('Certificate link copied to clipboard! You can now share it.')
+      }
+    } catch (error) {
+      console.error('Error sharing certificate:', error)
+      // Only show error if it's not a user cancellation
+      if (error instanceof Error && error.name !== 'AbortError') {
+        alert('Failed to share certificate. Please try again.')
+      }
+    }
   }
 
   const handleView = (certificate: any) => {
@@ -86,6 +164,40 @@ export default function CertificatesPage() {
       default:
         return null
     }
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
+          <p className="text-lg font-bold text-neutral-700">Loading your certificates...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="glass-effect concrete-texture border-4 border-red-500/40 max-w-md">
+          <CardHeader>
+            <CardTitle className="text-xl font-black flex items-center gap-2 text-red-600">
+              <AlertCircle />
+              Error Loading Certificates
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-neutral-700 mb-4">{error}</p>
+            <MagneticButton onClick={fetchCertificates} className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
+              Try Again
+            </MagneticButton>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -118,7 +230,7 @@ export default function CertificatesPage() {
               <div>
                 <p className="text-sm font-bold text-neutral-600 uppercase">Total Earned</p>
                 <p className="text-4xl font-black bg-gradient-to-r from-success to-green-600 bg-clip-text text-transparent mt-1">
-                  {MOCK_CERTIFICATES.length}
+                  {certificates.length}
                 </p>
               </div>
               <div className="w-14 h-14 bg-gradient-to-br from-success to-green-600 rounded-xl flex items-center justify-center">
@@ -135,7 +247,7 @@ export default function CertificatesPage() {
               <div>
                 <p className="text-sm font-bold text-neutral-600 uppercase">Active</p>
                 <p className="text-4xl font-black bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent mt-1">
-                  {MOCK_CERTIFICATES.filter(c => c.status === 'active').length}
+                  {certificates.filter(c => !c.expiryDate || new Date(c.expiryDate) > new Date()).length}
                 </p>
               </div>
               <div className="w-14 h-14 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center">
@@ -150,9 +262,14 @@ export default function CertificatesPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-neutral-600 uppercase">Expiring Soon</p>
+                <p className="text-sm font-bold text-neutral-600 uppercase">Recent</p>
                 <p className="text-4xl font-black bg-gradient-to-r from-warning to-orange-600 bg-clip-text text-transparent mt-1">
-                  {MOCK_CERTIFICATES.filter(c => c.status === 'expiring_soon').length}
+                  {certificates.filter(c => {
+                    const issuedDate = new Date(c.issuedAt)
+                    const thirtyDaysAgo = new Date()
+                    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+                    return issuedDate > thirtyDaysAgo
+                  }).length}
                 </p>
               </div>
               <div className="w-14 h-14 bg-gradient-to-br from-warning to-orange-600 rounded-xl flex items-center justify-center">
@@ -164,35 +281,38 @@ export default function CertificatesPage() {
       </div>
 
       {/* Certificates List */}
-      {MOCK_CERTIFICATES.length > 0 ? (
+      {certificates.length > 0 ? (
         <div className="space-y-4">
-          {MOCK_CERTIFICATES.map((certificate, index) => {
-            const IconComponent = certificate.icon
+          {certificates.map((certificate, index) => {
+            const categoryName = certificate.course?.category?.name || 'General'
+            const IconComponent = CATEGORY_ICONS[categoryName] || Award
+            const color = CATEGORY_COLORS[categoryName] || 'from-success to-green-600'
+
             return (
               <Card
                 key={certificate.id}
                 className="certificates-item opacity-0 glass-effect concrete-texture border-4 border-success/20 hover:border-success/40 transition-all group relative overflow-hidden"
               >
                 {/* Accent Bar */}
-                <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${certificate.color}`}></div>
+                <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${color}`}></div>
 
                 <CardContent className="p-6">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Certificate Info */}
                     <div className="lg:col-span-7">
                       <div className="flex items-start gap-4">
-                        <div className={`w-20 h-20 bg-gradient-to-br ${certificate.color} rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
+                        <div className={`w-20 h-20 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
                           <IconComponent className="text-white" size={40} />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-start justify-between mb-2">
                             <div>
                               <h3 className="text-xl font-black text-neutral-800 group-hover:text-success transition-colors">
-                                {certificate.title}
+                                {certificate.course?.title || 'Certificate'}
                               </h3>
-                              <p className="text-sm text-neutral-600 mt-1">{certificate.courseName}</p>
+                              <p className="text-sm text-neutral-600 mt-1">{categoryName} Certification</p>
                             </div>
-                            {getStatusBadge(certificate.status)}
+                            {getStatusBadge(!certificate.expiryDate || new Date(certificate.expiryDate) > new Date() ? 'active' : 'expired')}
                           </div>
 
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
@@ -200,21 +320,23 @@ export default function CertificatesPage() {
                               <p className="text-xs font-bold text-neutral-500 uppercase">Issue Date</p>
                               <p className="text-sm font-semibold text-neutral-800 mt-1 flex items-center gap-1">
                                 <Calendar size={14} className="text-success" />
-                                {new Date(certificate.issueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                {new Date(certificate.issuedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                               </p>
                             </div>
+                            {certificate.expiryDate && (
+                              <div>
+                                <p className="text-xs font-bold text-neutral-500 uppercase">Expiry Date</p>
+                                <p className="text-sm font-semibold text-neutral-800 mt-1 flex items-center gap-1">
+                                  <Calendar size={14} className="text-primary" />
+                                  {new Date(certificate.expiryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </p>
+                              </div>
+                            )}
                             <div>
-                              <p className="text-xs font-bold text-neutral-500 uppercase">Expiry Date</p>
-                              <p className="text-sm font-semibold text-neutral-800 mt-1 flex items-center gap-1">
-                                <Calendar size={14} className={certificate.status === 'expiring_soon' ? 'text-warning' : 'text-primary'} />
-                                {new Date(certificate.expiryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-bold text-neutral-500 uppercase">Score</p>
+                              <p className="text-xs font-bold text-neutral-500 uppercase">Status</p>
                               <p className="text-sm font-semibold text-neutral-800 mt-1 flex items-center gap-1">
                                 <CheckCircle size={14} className="text-success" />
-                                {certificate.score}%
+                                Verified
                               </p>
                             </div>
                           </div>
@@ -222,12 +344,12 @@ export default function CertificatesPage() {
                           <div className="mt-4 glass-effect border-2 border-neutral-200 rounded-lg p-3">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
                               <div>
-                                <span className="font-bold text-neutral-600">Credential ID: </span>
-                                <span className="font-mono text-neutral-800">{certificate.credentialId}</span>
+                                <span className="font-bold text-neutral-600">Certificate ID: </span>
+                                <span className="font-mono text-neutral-800">{certificate.id}</span>
                               </div>
                               <div>
-                                <span className="font-bold text-neutral-600">Instructor: </span>
-                                <span className="text-neutral-800">{certificate.instructor}</span>
+                                <span className="font-bold text-neutral-600">Course: </span>
+                                <span className="text-neutral-800">{certificate.course?.title || 'N/A'}</span>
                               </div>
                             </div>
                           </div>

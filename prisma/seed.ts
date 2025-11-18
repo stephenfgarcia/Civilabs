@@ -176,11 +176,145 @@ async function main() {
     },
   })
 
+  // Create second course
+  const course2 = await prisma.course.create({
+    data: {
+      title: 'Construction Safety Fundamentals',
+      slug: 'construction-safety-fundamentals',
+      description: 'Essential safety practices for construction sites',
+      instructorId: instructor.id,
+      categoryId: businessCategory.id,
+      status: 'PUBLISHED',
+      visibility: 'PUBLIC',
+      difficultyLevel: 'BEGINNER',
+      durationMinutes: 240,
+      tags: ['safety', 'construction', 'fundamentals'],
+      publishedAt: new Date(),
+    },
+  })
+
+  // Create lesson for second course
+  await prisma.lesson.create({
+    data: {
+      courseId: course2.id,
+      title: 'PPE Requirements',
+      description: 'Personal Protective Equipment guidelines',
+      contentType: 'TEXT',
+      order: 1,
+      durationMinutes: 45,
+      contentData: {
+        html: '<h1>PPE Requirements</h1><p>Learn about essential safety equipment...</p>',
+      },
+    },
+  })
+
+  await prisma.lesson.create({
+    data: {
+      courseId: course2.id,
+      title: 'Hazard Identification',
+      description: 'Identifying workplace hazards',
+      contentType: 'TEXT',
+      order: 2,
+      durationMinutes: 60,
+      contentData: {
+        html: '<h1>Hazard Identification</h1><p>Learn to identify common construction hazards...</p>',
+      },
+    },
+  })
+
+  // Create third course
+  const course3 = await prisma.course.create({
+    data: {
+      title: 'Heavy Equipment Operation',
+      slug: 'heavy-equipment-operation',
+      description: 'Learn to operate heavy construction equipment safely and efficiently',
+      instructorId: instructor.id,
+      categoryId: techCategory.id,
+      status: 'PUBLISHED',
+      visibility: 'PUBLIC',
+      difficultyLevel: 'INTERMEDIATE',
+      durationMinutes: 480,
+      tags: ['equipment', 'operation', 'heavy machinery'],
+      publishedAt: new Date(),
+    },
+  })
+
+  // Create lesson for third course
+  await prisma.lesson.create({
+    data: {
+      courseId: course3.id,
+      title: 'Equipment Safety Checks',
+      description: 'Pre-operation safety inspections',
+      contentType: 'TEXT',
+      order: 1,
+      durationMinutes: 30,
+      contentData: {
+        html: '<h1>Safety Checks</h1><p>Daily equipment inspection procedures...</p>',
+      },
+    },
+  })
+
+  // Enroll learner in courses
+  const enrollment1 = await prisma.enrollment.create({
+    data: {
+      userId: learner.id,
+      courseId: course.id,
+      status: 'ENROLLED',
+      progressPercentage: 35,
+      enrolledAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+    },
+  })
+
+  const enrollment2 = await prisma.enrollment.create({
+    data: {
+      userId: learner.id,
+      courseId: course2.id,
+      status: 'ENROLLED',
+      progressPercentage: 60,
+      enrolledAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000), // 14 days ago
+    },
+  })
+
+  // Create some lesson progress for enrollment 1
+  const lessons = await prisma.lesson.findMany({
+    where: { courseId: course.id },
+    take: 1,
+  })
+
+  if (lessons.length > 0) {
+    await prisma.lessonProgress.create({
+      data: {
+        enrollmentId: enrollment1.id,
+        lessonId: lessons[0].id,
+        userId: learner.id,
+        status: 'COMPLETED',
+        timeSpentSeconds: 1800, // 30 minutes in seconds
+        completedAt: new Date(),
+      },
+    })
+  }
+
+  // Create a certificate for completed course
+  await prisma.certificate.create({
+    data: {
+      userId: learner.id,
+      courseId: course2.id,
+      templateHtml: '<div>Certificate of Completion</div>',
+      issuedAt: new Date(),
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+    },
+  })
+
   console.log('✅ Database seeded successfully!')
   console.log('\n📧 Test Accounts:')
   console.log('Admin: admin@civilabs.com / admin123')
   console.log('Instructor: instructor@civilabs.com / instructor123')
   console.log('Learner: learner@civilabs.com / learner123')
+  console.log('\n📚 Courses Created:')
+  console.log(`- ${course.title}`)
+  console.log(`- ${course2.title}`)
+  console.log(`- ${course3.title}`)
+  console.log('\n✅ Learner has 2 enrollments and 1 certificate')
 }
 
 main()
