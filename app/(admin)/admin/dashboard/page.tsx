@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import {
@@ -110,13 +110,68 @@ const SYSTEM_ALERTS = [
 ]
 
 export default function AdminDashboardPage() {
+  const [stats, setStats] = useState(ADMIN_STATS)
+  const [recentActivity, setRecentActivity] = useState(RECENT_ACTIVITIES)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/admin/stats')
+        const data = await response.json()
+
+        if (data.success) {
+          // Map API data to component structure
+          setStats({
+            totalUsers: data.data.overview.totalUsers,
+            usersChange: 0, // API doesn't provide change percentage yet
+            activeCourses: data.data.overview.publishedCourses,
+            coursesChange: 0,
+            totalEnrollments: data.data.overview.totalEnrollments,
+            enrollmentsChange: 0,
+            certificatesIssued: data.data.overview.totalCertificates,
+            certificatesChange: 0,
+            revenue: 0, // Not implemented in API
+            revenueChange: 0,
+            activeUsers: data.data.overview.activeEnrollments,
+            activeUsersChange: 0,
+            completionRate: data.data.overview.completionRate,
+            completionRateChange: 0,
+            avgCourseRating: 0, // Not in current API response
+            ratingChange: 0,
+          })
+
+          // Map recent activity
+          setRecentActivity(
+            data.data.recentActivity.map((activity: any, index: number) => ({
+              id: activity.id,
+              type: 'enrollment',
+              action: `${activity.userName} enrolled in`,
+              details: activity.courseName,
+              time: new Date(activity.createdAt).toLocaleString(),
+              icon: GraduationCap,
+              color: 'from-primary to-blue-600',
+            }))
+          )
+        }
+      } catch (error) {
+        console.error('Error fetching admin stats:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStats()
+  }, [])
+
   useEffect(() => {
     const elements = document.querySelectorAll('.admin-dash-item')
     elements.forEach((el, index) => {
       const htmlEl = el as HTMLElement
       htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
     })
-  }, [])
+  }, [loading])
 
   return (
     <div className="space-y-6">

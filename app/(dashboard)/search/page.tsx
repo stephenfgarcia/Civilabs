@@ -21,7 +21,7 @@ import Link from 'next/link'
 type SearchResultType = 'course' | 'lesson' | 'instructor' | 'certificate'
 
 interface SearchResult {
-  id: number
+  id: string
   type: SearchResultType
   title: string
   description: string
@@ -33,66 +33,6 @@ interface SearchResult {
   color: string
   metadata?: string
 }
-
-// Mock search results
-const MOCK_RESULTS: SearchResult[] = [
-  {
-    id: 1,
-    type: 'course',
-    title: 'Construction Safety Fundamentals',
-    description: 'Essential safety protocols and procedures for construction sites',
-    category: 'Safety',
-    duration: '4 hours',
-    students: 245,
-    url: '/courses/1',
-    icon: BookOpen,
-    color: 'from-danger to-red-600'
-  },
-  {
-    id: 2,
-    type: 'lesson',
-    title: 'OSHA Regulations Overview',
-    description: 'Learn about OSHA standards and regulations that govern construction site safety',
-    metadata: 'Construction Safety Fundamentals > Module 1',
-    duration: '12 min',
-    url: '/courses/1/lessons/2',
-    icon: FileText,
-    color: 'from-primary to-blue-600'
-  },
-  {
-    id: 3,
-    type: 'lesson',
-    title: 'Safety Culture in Construction',
-    description: 'Understand the importance of safety culture and how to foster a safety-first mindset',
-    metadata: 'Construction Safety Fundamentals > Module 1',
-    duration: '8 min',
-    url: '/courses/1/lessons/3',
-    icon: FileText,
-    color: 'from-primary to-blue-600'
-  },
-  {
-    id: 4,
-    type: 'course',
-    title: 'Heavy Equipment Operation',
-    description: 'Learn to operate excavators, bulldozers, and cranes safely',
-    category: 'Equipment',
-    duration: '12 hours',
-    students: 189,
-    url: '/courses/2',
-    icon: BookOpen,
-    color: 'from-warning to-orange-600'
-  },
-  {
-    id: 5,
-    type: 'certificate',
-    title: 'Construction Safety Fundamentals Certificate',
-    description: 'Awarded for completing the Construction Safety Fundamentals course',
-    metadata: 'Issued: January 15, 2024',
-    url: '/certificates',
-    icon: Award,
-    color: 'from-success to-green-600'
-  }
-]
 
 const RESULT_TYPES = [
   { value: 'all', label: 'All Results' },
@@ -110,6 +50,14 @@ export default function SearchPage() {
   const [activeQuery, setActiveQuery] = useState(initialQuery)
   const [selectedType, setSelectedType] = useState<string>('all')
   const [results, setResults] = useState<SearchResult[]>([])
+  const [loading, setLoading] = useState(false)
+  const [allResults, setAllResults] = useState<any>({
+    courses: [],
+    lessons: [],
+    instructors: [],
+    certificates: [],
+    total: 0,
+  })
 
   useEffect(() => {
     // Simple CSS-only entrance animations
@@ -121,21 +69,103 @@ export default function SearchPage() {
   }, [results])
 
   useEffect(() => {
-    // Simulate search
-    if (activeQuery) {
-      const filtered = MOCK_RESULTS.filter(result =>
-        result.title.toLowerCase().includes(activeQuery.toLowerCase()) ||
-        result.description.toLowerCase().includes(activeQuery.toLowerCase())
-      )
-
-      if (selectedType !== 'all') {
-        setResults(filtered.filter(r => r.type === selectedType))
-      } else {
-        setResults(filtered)
+    // Fetch search results from API
+    const fetchResults = async () => {
+      if (!activeQuery) {
+        setResults([])
+        setAllResults({
+          courses: [],
+          lessons: [],
+          instructors: [],
+          certificates: [],
+          total: 0,
+        })
+        return
       }
-    } else {
-      setResults([])
+
+      setLoading(true)
+      try {
+        const response = await fetch(
+          `/api/search?q=${encodeURIComponent(activeQuery)}&type=${selectedType}`
+        )
+        const data = await response.json()
+
+        if (data.success) {
+          setAllResults(data.data)
+
+          // Map results to UI format
+          const mappedResults: SearchResult[] = []
+
+          // Map courses
+          data.data.courses?.forEach((course: any) => {
+            mappedResults.push({
+              id: course.id,
+              type: 'course',
+              title: course.title,
+              description: course.description,
+              category: course.category,
+              duration: course.duration,
+              students: course.students,
+              url: course.url,
+              icon: BookOpen,
+              color: 'from-primary to-blue-600',
+              metadata: course.metadata,
+            })
+          })
+
+          // Map lessons
+          data.data.lessons?.forEach((lesson: any) => {
+            mappedResults.push({
+              id: lesson.id,
+              type: 'lesson',
+              title: lesson.title,
+              description: lesson.description,
+              duration: lesson.duration,
+              url: lesson.url,
+              icon: FileText,
+              color: 'from-secondary to-purple-600',
+              metadata: lesson.metadata,
+            })
+          })
+
+          // Map instructors
+          data.data.instructors?.forEach((instructor: any) => {
+            mappedResults.push({
+              id: instructor.id,
+              type: 'instructor',
+              title: instructor.title,
+              description: instructor.description,
+              url: instructor.url,
+              icon: Users,
+              color: 'from-warning to-orange-600',
+              metadata: instructor.metadata,
+            })
+          })
+
+          // Map certificates
+          data.data.certificates?.forEach((certificate: any) => {
+            mappedResults.push({
+              id: certificate.id,
+              type: 'certificate',
+              title: certificate.title,
+              description: certificate.description,
+              url: certificate.url,
+              icon: Award,
+              color: 'from-success to-green-600',
+              metadata: certificate.metadata,
+            })
+          })
+
+          setResults(mappedResults)
+        }
+      } catch (error) {
+        console.error('Search error:', error)
+      } finally {
+        setLoading(false)
+      }
     }
+
+    fetchResults()
   }, [activeQuery, selectedType])
 
   const handleSearch = (e: React.FormEvent) => {
@@ -151,8 +181,8 @@ export default function SearchPage() {
 
   const resultCount = results.length
   const typeCount = (type: string) => {
-    if (type === 'all') return MOCK_RESULTS.length
-    return MOCK_RESULTS.filter(r => r.type === type).length
+    if (type === 'all') return allResults.total || 0
+    return allResults[`${type}s`]?.length || 0
   }
 
   return (
@@ -241,7 +271,19 @@ export default function SearchPage() {
 
       {/* Results */}
       {activeQuery ? (
-        resultCount > 0 ? (
+        loading ? (
+          <Card className="glass-effect concrete-texture border-4 border-neutral-300">
+            <CardContent className="py-16 text-center">
+              <div className="w-24 h-24 bg-gradient-to-br from-primary to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Search className="text-white animate-pulse" size={48} />
+              </div>
+              <h3 className="text-2xl font-black text-neutral-700 mb-2">SEARCHING...</h3>
+              <p className="text-neutral-600 font-semibold">
+                Finding results for "{activeQuery}"
+              </p>
+            </CardContent>
+          </Card>
+        ) : resultCount > 0 ? (
           <div className="space-y-4">
             <div className="search-item opacity-0">
               <p className="text-lg font-bold text-neutral-700">

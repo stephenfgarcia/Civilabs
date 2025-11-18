@@ -87,6 +87,13 @@ class CoursesService {
   }
 
   /**
+   * Unenroll from a course
+   */
+  async unenrollCourse(enrollmentId: string) {
+    return apiClient.delete(`/enrollments/${enrollmentId}`)
+  }
+
+  /**
    * Get user enrollments
    */
   async getEnrollments() {
