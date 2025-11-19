@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
 
     const courses = await prisma.course.findMany({
       where: {
-        ...(category && { category }),
-        ...(difficulty && { difficulty }),
+        ...(category && { categoryId: category }),
+        ...(difficulty && { difficultyLevel: difficulty }),
         ...(published !== null && published === 'true' && {
           publishedAt: { not: null }
         }),
@@ -44,6 +44,13 @@ export async function GET(request: NextRequest) {
             firstName: true,
             lastName: true,
             email: true,
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
           },
         },
         _count: {
@@ -96,20 +103,29 @@ export const POST = withInstructor(async (request, user) => {
       )
     }
 
+    // Generate slug from title
+    const slug = body.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+
     const course = await prisma.course.create({
       data: {
         title: body.title,
+        slug,
         description: body.description,
-        category: body.category || 'General',
-        difficulty: body.difficulty || 'beginner',
-        duration: body.duration || 0,
-        price: body.price || 0,
+        categoryId: body.categoryId || null,
+        difficultyLevel: body.difficulty || body.difficultyLevel || 'BEGINNER',
+        durationMinutes: body.duration || body.durationMinutes || 0,
         thumbnail: body.thumbnail || null,
-        published: body.published !== undefined ? body.published : false,
+        publishedAt: body.published ? (body.publishedAt ? new Date(body.publishedAt) : new Date()) : null,
         instructorId: user.userId,
-        objectives: body.objectives || [],
-        prerequisites: body.prerequisites || [],
         tags: body.tags || [],
+        metadata: {
+          objectives: body.objectives || [],
+          prerequisites: body.prerequisites || [],
+          price: body.price || 0,
+        },
       },
       include: {
         instructor: {
@@ -118,6 +134,19 @@ export const POST = withInstructor(async (request, user) => {
             firstName: true,
             lastName: true,
             email: true,
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        _count: {
+          select: {
+            enrollments: true,
+            lessons: true,
           },
         },
       },

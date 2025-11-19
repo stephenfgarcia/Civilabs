@@ -180,21 +180,27 @@ export async function PUT(
         )
       }
 
+      const updateData: any = {}
+
+      if (body.title) updateData.title = body.title
+      if (body.description !== undefined) updateData.description = body.description
+      if (body.category) updateData.category = body.category
+      if (body.difficulty) updateData.difficultyLevel = body.difficulty
+      if (body.duration !== undefined) updateData.durationMinutes = body.duration
+      if (body.thumbnail !== undefined) updateData.thumbnail = body.thumbnail
+      if (body.tags) updateData.tags = body.tags
+
+      // Handle publishing status
+      if (body.published !== undefined) {
+        updateData.publishedAt = body.published ? (body.publishedAt || new Date()) : null
+      }
+      if (body.publishedAt !== undefined) {
+        updateData.publishedAt = body.publishedAt ? new Date(body.publishedAt) : null
+      }
+
       const course = await prisma.course.update({
         where: { id },
-        data: {
-          ...(body.title && { title: body.title }),
-          ...(body.description && { description: body.description }),
-          ...(body.category && { category: body.category }),
-          ...(body.difficulty && { difficulty: body.difficulty }),
-          ...(body.duration !== undefined && { duration: body.duration }),
-          ...(body.price !== undefined && { price: body.price }),
-          ...(body.thumbnail && { thumbnail: body.thumbnail }),
-          ...(body.published !== undefined && { published: body.published }),
-          ...(body.objectives && { objectives: body.objectives }),
-          ...(body.prerequisites && { prerequisites: body.prerequisites }),
-          ...(body.tags && { tags: body.tags }),
-        },
+        data: updateData,
         include: {
           instructor: {
             select: {
@@ -202,6 +208,12 @@ export async function PUT(
               firstName: true,
               lastName: true,
               email: true,
+            },
+          },
+          _count: {
+            select: {
+              enrollments: true,
+              lessons: true,
             },
           },
         },
