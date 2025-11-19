@@ -17,6 +17,8 @@ export interface AdminEnrollment {
   dueDate?: string | null
   enrollmentType: 'SELF_ENROLLED' | 'ASSIGNED' | 'INVITED'
   assignedBy?: string | null
+  createdAt: string
+  updatedAt: string
   user: {
     id: string
     firstName: string

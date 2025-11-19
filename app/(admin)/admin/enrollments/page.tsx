@@ -20,26 +20,12 @@ import {
   Trash2,
   Calendar,
   Award,
+  Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
+import adminEnrollmentsService, { AdminEnrollment } from '@/lib/services/admin-enrollments.service'
 
-interface Enrollment {
-  id: number
-  userId: number
-  userName: string
-  userEmail: string
-  courseId: number
-  courseTitle: string
-  status: 'active' | 'completed' | 'dropped'
-  progress: number
-  enrolledDate: string
-  completedDate?: string
-  lastActivity: string
-  certificateIssued: boolean
-  grade?: number
-}
-
-const MOCK_ENROLLMENTS: Enrollment[] = [
+const MOCK_ENROLLMENTS_OLD: any[] = [
   {
     id: 1,
     userId: 1,
@@ -111,41 +97,113 @@ const MOCK_ENROLLMENTS: Enrollment[] = [
   },
 ]
 
-const STATUSES = ['All', 'Active', 'Completed', 'Dropped']
-const COURSES = ['All', 'Construction Safety Fundamentals', 'Heavy Equipment Operation', 'Advanced Welding Techniques']
+const STATUSES = ['All', 'ENROLLED', 'IN_PROGRESS', 'COMPLETED', 'DROPPED', 'SUSPENDED']
 
 export default function EnrollmentsPage() {
-  const [enrollments, setEnrollments] = useState(MOCK_ENROLLMENTS)
+  const [enrollments, setEnrollments] = useState<AdminEnrollment[]>([])
+  const [filteredEnrollments, setFilteredEnrollments] = useState<AdminEnrollment[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('All')
   const [selectedCourse, setSelectedCourse] = useState('All')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [courses, setCourses] = useState<string[]>(['All'])
 
+  // Fetch enrollments
+  useEffect(() => {
+    async function fetchEnrollments() {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await adminEnrollmentsService.getEnrollments()
+
+        if (response.success) {
+          setEnrollments(response.data)
+          setFilteredEnrollments(response.data)
+
+          // Extract unique courses
+          const uniqueCourses = Array.from(
+            new Set(response.data.map(e => e.course.title))
+          )
+          setCourses(['All', ...uniqueCourses])
+        } else {
+          setError('Failed to load enrollments')
+        }
+      } catch (err) {
+        setError('An error occurred while loading enrollments')
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchEnrollments()
+  }, [])
+
+  // Apply filters
+  useEffect(() => {
+    let filtered = enrollments
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(enrollment =>
+        `${enrollment.user.firstName} ${enrollment.user.lastName}`.toLowerCase().includes(query) ||
+        enrollment.user.email.toLowerCase().includes(query) ||
+        enrollment.course.title.toLowerCase().includes(query)
+      )
+    }
+
+    // Status filter
+    if (selectedStatus !== 'All') {
+      filtered = filtered.filter(e => e.status === selectedStatus)
+    }
+
+    // Course filter
+    if (selectedCourse !== 'All') {
+      filtered = filtered.filter(e => e.course.title === selectedCourse)
+    }
+
+    setFilteredEnrollments(filtered)
+  }, [enrollments, searchQuery, selectedStatus, selectedCourse])
+
+  // Animations
   useEffect(() => {
     const elements = document.querySelectorAll('.enrollments-item')
     elements.forEach((el, index) => {
       const htmlEl = el as HTMLElement
       htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
     })
-  }, [])
+  }, [loading])
 
-  const filteredEnrollments = enrollments.filter(enrollment => {
-    const matchesSearch = !searchQuery ||
-      enrollment.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      enrollment.userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      enrollment.courseTitle.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = selectedStatus === 'All' || enrollment.status === selectedStatus.toLowerCase()
-    const matchesCourse = selectedCourse === 'All' || enrollment.courseTitle === selectedCourse
-    return matchesSearch && matchesStatus && matchesCourse
-  })
+  // Handle delete
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to unenroll this user?')) return
+
+    try {
+      const response = await adminEnrollmentsService.deleteEnrollment(id)
+      if (response.success) {
+        setEnrollments(prev => prev.filter(e => e.id !== id))
+      } else {
+        alert(response.error || 'Failed to delete enrollment')
+      }
+    } catch (error) {
+      alert('An error occurred while deleting the enrollment')
+      console.error(error)
+    }
+  }
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
+    switch (status.toUpperCase()) {
+      case 'COMPLETED':
         return 'from-success to-green-600'
-      case 'active':
+      case 'ENROLLED':
+      case 'IN_PROGRESS':
         return 'from-primary to-blue-600'
-      case 'dropped':
+      case 'DROPPED':
         return 'from-danger to-red-600'
+      case 'SUSPENDED':
+        return 'from-warning to-orange-600'
       default:
         return 'from-neutral-400 to-neutral-600'
     }
@@ -195,7 +253,7 @@ export default function EnrollmentsPage() {
         <Card className="enrollments-item opacity-0 glass-effect concrete-texture border-4 border-primary/40">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-black bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent mb-2">
-              {enrollments.length}
+              {loading ? '...' : enrollments.length}
             </div>
             <p className="text-sm font-bold text-neutral-600">TOTAL ENROLLMENTS</p>
           </CardContent>
@@ -204,7 +262,7 @@ export default function EnrollmentsPage() {
         <Card className="enrollments-item opacity-0 glass-effect concrete-texture border-4 border-cyan-500/40">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-black bg-gradient-to-r from-cyan-500 to-blue-600 bg-clip-text text-transparent mb-2">
-              {enrollments.filter(e => e.status === 'active').length}
+              {loading ? '...' : enrollments.filter(e => e.status === 'ENROLLED' || e.status === 'IN_PROGRESS').length}
             </div>
             <p className="text-sm font-bold text-neutral-600">ACTIVE</p>
           </CardContent>
@@ -213,7 +271,7 @@ export default function EnrollmentsPage() {
         <Card className="enrollments-item opacity-0 glass-effect concrete-texture border-4 border-success/40">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-black bg-gradient-to-r from-success to-green-600 bg-clip-text text-transparent mb-2">
-              {enrollments.filter(e => e.status === 'completed').length}
+              {loading ? '...' : enrollments.filter(e => e.status === 'COMPLETED').length}
             </div>
             <p className="text-sm font-bold text-neutral-600">COMPLETED</p>
           </CardContent>
@@ -222,7 +280,7 @@ export default function EnrollmentsPage() {
         <Card className="enrollments-item opacity-0 glass-effect concrete-texture border-4 border-danger/40">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-black bg-gradient-to-r from-danger to-red-600 bg-clip-text text-transparent mb-2">
-              {enrollments.filter(e => e.status === 'dropped').length}
+              {loading ? '...' : enrollments.filter(e => e.status === 'DROPPED').length}
             </div>
             <p className="text-sm font-bold text-neutral-600">DROPPED</p>
           </CardContent>
@@ -274,17 +332,17 @@ export default function EnrollmentsPage() {
             <div>
               <p className="text-sm font-bold text-neutral-700 mb-2">COURSE</p>
               <div className="flex gap-2 flex-wrap">
-                {COURSES.map((course) => (
+                {courses.map((course) => (
                   <button
                     key={course}
                     onClick={() => setSelectedCourse(course)}
-                    className={`px-4 py-2 rounded-lg font-bold transition-all ${
+                    className={`px-4 py-2 rounded-lg font-bold transition-all text-xs ${
                       selectedCourse === course
                         ? 'bg-gradient-to-r from-primary to-blue-600 text-white shadow-lg scale-105'
                         : 'glass-effect border-2 border-primary/30 text-neutral-700 hover:border-primary/60'
                     }`}
                   >
-                    {course === 'All' ? course : course.split(' ').slice(0, 2).join(' ')}
+                    {course === 'All' ? course : (course.length > 25 ? course.substring(0, 25) + '...' : course)}
                   </button>
                 ))}
               </div>
@@ -301,8 +359,26 @@ export default function EnrollmentsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredEnrollments.map((enrollment) => (
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="animate-spin text-primary" size={48} />
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-danger font-bold">{error}</p>
+            </div>
+          ) : filteredEnrollments.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-neutral-600 font-bold">No enrollments found</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredEnrollments.map((enrollment) => {
+                const userName = `${enrollment.user.firstName} ${enrollment.user.lastName}`
+                const hasCertificate = enrollment._count.userCertificates > 0
+                const progress = enrollment.calculatedProgress || enrollment.progressPercentage
+
+                return (
               <div
                 key={enrollment.id}
                 className="glass-effect rounded-lg p-6 hover:bg-white/50 transition-all border-2 border-transparent hover:border-cyan-500/30"
@@ -313,9 +389,9 @@ export default function EnrollmentsPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <span className={`px-3 py-1 rounded-full bg-gradient-to-r ${getStatusColor(enrollment.status)} text-white font-black text-xs uppercase`}>
-                          {enrollment.status}
+                          {enrollment.status.replace('_', ' ')}
                         </span>
-                        {enrollment.certificateIssued && (
+                        {hasCertificate && (
                           <span className="px-3 py-1 rounded-full bg-gradient-to-r from-warning to-orange-600 text-white font-black text-xs flex items-center gap-1">
                             <Award size={12} />
                             CERTIFIED
@@ -323,36 +399,36 @@ export default function EnrollmentsPage() {
                         )}
                       </div>
                       <h3 className="text-xl font-black text-neutral-800 mb-1">
-                        {enrollment.courseTitle}
+                        {enrollment.course.title}
                       </h3>
                       <div className="flex items-center gap-2 text-sm text-neutral-600">
                         <Users size={14} />
-                        <span className="font-bold">{enrollment.userName}</span>
+                        <span className="font-bold">{userName}</span>
                         <span>•</span>
-                        <span>{enrollment.userEmail}</span>
+                        <span>{enrollment.user.email}</span>
                       </div>
                     </div>
 
-                    {enrollment.grade && (
-                      <div className="text-center">
-                        <div className="text-3xl font-black bg-gradient-to-r from-success to-green-600 bg-clip-text text-transparent">
-                          {enrollment.grade}%
-                        </div>
-                        <p className="text-xs text-neutral-600 font-bold">GRADE</p>
+                    <div className="text-center">
+                      <div className="text-3xl font-black bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+                        {progress}%
                       </div>
-                    )}
+                      <p className="text-xs text-neutral-600 font-bold">PROGRESS</p>
+                    </div>
                   </div>
 
                   {/* Progress Bar */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-bold text-neutral-700">Progress</span>
-                      <span className="text-sm font-black text-neutral-800">{enrollment.progress}%</span>
+                      <span className="text-sm font-black text-neutral-800">
+                        {enrollment.completedLessonsCount || 0} / {enrollment.totalLessons || 0} lessons
+                      </span>
                     </div>
                     <div className="w-full h-3 bg-neutral-200 rounded-full overflow-hidden">
                       <div
-                        className={`h-full ${getProgressColor(enrollment.progress)} transition-all duration-500`}
-                        style={{ width: `${enrollment.progress}%` }}
+                        className={`h-full ${getProgressColor(progress)} transition-all duration-500`}
+                        style={{ width: `${progress}%` }}
                       ></div>
                     </div>
                   </div>
@@ -365,18 +441,18 @@ export default function EnrollmentsPage() {
                         <span>ENROLLED</span>
                       </div>
                       <p className="font-bold text-neutral-800 text-sm">
-                        {new Date(enrollment.enrolledDate).toLocaleDateString()}
+                        {new Date(enrollment.enrolledAt).toLocaleDateString()}
                       </p>
                     </div>
 
-                    {enrollment.completedDate && (
+                    {enrollment.completedAt && (
                       <div>
                         <div className="flex items-center gap-1 text-xs text-neutral-600 mb-1">
                           <CheckCircle size={12} />
                           <span>COMPLETED</span>
                         </div>
                         <p className="font-bold text-neutral-800 text-sm">
-                          {new Date(enrollment.completedDate).toLocaleDateString()}
+                          {new Date(enrollment.completedAt).toLocaleDateString()}
                         </p>
                       </div>
                     )}
@@ -384,10 +460,10 @@ export default function EnrollmentsPage() {
                     <div>
                       <div className="flex items-center gap-1 text-xs text-neutral-600 mb-1">
                         <Clock size={12} />
-                        <span>LAST ACTIVITY</span>
+                        <span>UPDATED</span>
                       </div>
                       <p className="font-bold text-neutral-800 text-sm">
-                        {enrollment.lastActivity}
+                        {new Date(enrollment.updatedAt || enrollment.enrolledAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -398,20 +474,25 @@ export default function EnrollmentsPage() {
                       <Eye className="mr-2" size={16} />
                       VIEW DETAILS
                     </MagneticButton>
-                    {enrollment.certificateIssued && (
+                    {hasCertificate && (
                       <MagneticButton className="flex-1 glass-effect border-2 border-warning/30 text-neutral-700 font-black hover:border-warning/60">
                         <Download className="mr-2" size={16} />
                         CERTIFICATE
                       </MagneticButton>
                     )}
-                    <button className="w-12 h-12 glass-effect border-2 border-danger/30 rounded-lg flex items-center justify-center hover:border-danger/60 hover:bg-danger/10 transition-all">
+                    <button
+                      onClick={() => handleDelete(enrollment.id)}
+                      className="w-12 h-12 glass-effect border-2 border-danger/30 rounded-lg flex items-center justify-center hover:border-danger/60 hover:bg-danger/10 transition-all"
+                    >
                       <Trash2 size={16} className="text-danger" />
                     </button>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
