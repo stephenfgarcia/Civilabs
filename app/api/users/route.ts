@@ -24,8 +24,8 @@ export const GET = withAdmin(async (request, user) => {
 
     const users = await prisma.user.findMany({
       where: {
-        ...(role && { role: role as 'admin' | 'instructor' | 'learner' }),
-        ...(department && { department }),
+        ...(role && { role: role as any }),
+        ...(department && { departmentId: department }),
         ...(search && {
           OR: [
             { firstName: { contains: search, mode: 'insensitive' } },
@@ -34,17 +34,13 @@ export const GET = withAdmin(async (request, user) => {
           ],
         }),
       },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        status: true,
-        departmentId: true,
-        avatarUrl: true,
-        createdAt: true,
-        lastLogin: true,
+      include: {
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         _count: {
           select: {
             enrollments: true,
@@ -62,8 +58,8 @@ export const GET = withAdmin(async (request, user) => {
 
     const totalCount = await prisma.user.count({
       where: {
-        ...(role && { role: role as 'admin' | 'instructor' | 'learner' }),
-        ...(department && { department }),
+        ...(role && { role: role as any }),
+        ...(department && { departmentId: department }),
         ...(search && {
           OR: [
             { firstName: { contains: search, mode: 'insensitive' } },
@@ -161,32 +157,28 @@ export const POST = withAdmin(async (request, user) => {
     const newUser = await prisma.user.create({
       data: {
         email: body.email,
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         firstName: body.firstName,
         lastName: body.lastName,
-        role: body.role || 'learner',
-        department: body.department || null,
-        avatar: body.avatar || null,
-        bio: body.bio || null,
-        phone: body.phone || null,
-        location: body.location || null,
-        timezone: body.timezone || 'UTC',
-        language: body.language || 'en',
+        role: body.role || 'LEARNER',
+        status: 'ACTIVE',
+        departmentId: body.departmentId || null,
+        avatarUrl: body.avatarUrl || null,
       },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        department: true,
-        avatar: true,
-        bio: true,
-        phone: true,
-        location: true,
-        timezone: true,
-        language: true,
-        createdAt: true,
+      include: {
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            enrollments: true,
+            certificates: true,
+            coursesCreated: true,
+          },
+        },
       },
     })
 

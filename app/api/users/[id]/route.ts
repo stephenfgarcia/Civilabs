@@ -29,30 +29,26 @@ export async function GET(
 
       const userData = await prisma.user.findUnique({
         where: { id },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          role: true,
-          department: true,
-          avatar: true,
-          bio: true,
-          phone: true,
-          location: true,
-          timezone: true,
-          language: true,
-          points: true,
-          createdAt: true,
-          lastLogin: true,
+        include: {
+          department: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          points: {
+            select: {
+              totalPoints: true,
+              level: true,
+              rank: true,
+            },
+          },
           _count: {
             select: {
               enrollments: true,
               certificates: true,
               badges: true,
-              coursesInstructed: true,
-              discussionThreads: true,
-              discussionReplies: true,
+              coursesCreated: true,
             },
           },
         },
@@ -142,13 +138,9 @@ export async function PUT(
       if (body.firstName) updateData.firstName = body.firstName
       if (body.lastName) updateData.lastName = body.lastName
       if (body.role) updateData.role = body.role
-      if (body.department !== undefined) updateData.department = body.department
-      if (body.avatar !== undefined) updateData.avatar = body.avatar
-      if (body.bio !== undefined) updateData.bio = body.bio
-      if (body.phone !== undefined) updateData.phone = body.phone
-      if (body.location !== undefined) updateData.location = body.location
-      if (body.timezone) updateData.timezone = body.timezone
-      if (body.language) updateData.language = body.language
+      if (body.status) updateData.status = body.status
+      if (body.departmentId !== undefined) updateData.departmentId = body.departmentId
+      if (body.avatarUrl !== undefined) updateData.avatarUrl = body.avatarUrl
 
       // Handle password update
       if (body.password) {
@@ -162,28 +154,26 @@ export async function PUT(
             { status: 400 }
           )
         }
-        updateData.password = await hashPassword(body.password)
+        updateData.passwordHash = await hashPassword(body.password)
       }
 
       const updatedUser = await prisma.user.update({
         where: { id },
         data: updateData,
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          role: true,
-          department: true,
-          avatar: true,
-          bio: true,
-          phone: true,
-          location: true,
-          timezone: true,
-          language: true,
-          points: true,
-          createdAt: true,
-          lastLogin: true,
+        include: {
+          department: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          _count: {
+            select: {
+              enrollments: true,
+              certificates: true,
+              coursesCreated: true,
+            },
+          },
         },
       })
 
@@ -237,7 +227,7 @@ export async function DELETE(
         include: {
           _count: {
             select: {
-              coursesInstructed: true,
+              coursesCreated: true,
               enrollments: true,
             },
           },
@@ -256,7 +246,7 @@ export async function DELETE(
       }
 
       // Prevent deletion if user is an instructor with active courses
-      if (existingUser._count.coursesInstructed > 0) {
+      if (existingUser._count.coursesCreated > 0) {
         return NextResponse.json(
           {
             success: false,
