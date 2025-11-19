@@ -10,28 +10,78 @@ import { withAuth, withAdmin } from '@/lib/auth/api-auth'
 
 /**
  * GET /api/certificates
- * Get all certificates for the authenticated user
+ * Get all certificates (all for admin, user's own for regular users)
  */
 export const GET = withAuth(async (request, user) => {
   try {
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    const courseId = searchParams.get('courseId')
+    const status = searchParams.get('status')
+
+    // Admins can see all certificates, regular users only their own
+    const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN'
+
+    // Build where clause
+    const where: any = {
+      ...(courseId && { certificate: { courseId } }),
+    }
+
+    // If not admin OR admin specifically filtered by userId, add userId filter
+    if (!isAdmin || userId) {
+      where.userId = userId || user.userId
+    }
+
+    // Handle status filter (active/expired/revoked)
+    if (status && status !== 'ALL') {
+      const now = new Date()
+      if (status === 'ACTIVE') {
+        where.AND = [
+          { revokedAt: null },
+          {
+            OR: [
+              { expiresAt: null },
+              { expiresAt: { gte: now } }
+            ]
+          }
+        ]
+      } else if (status === 'EXPIRED') {
+        where.expiresAt = { lt: now }
+        where.revokedAt = null
+      } else if (status === 'REVOKED') {
+        where.revokedAt = { not: null }
+      }
+    }
+
     const certificates = await prisma.userCertificate.findMany({
-      where: {
-        userId: user.userId,
-      },
+      where,
       include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
         certificate: {
           include: {
             course: {
               select: {
                 id: true,
                 title: true,
+                slug: true,
+                thumbnail: true,
                 category: {
                   select: {
+                    id: true,
                     name: true,
                   },
                 },
                 instructor: {
                   select: {
+                    id: true,
                     firstName: true,
                     lastName: true,
                   },
@@ -42,8 +92,10 @@ export const GET = withAuth(async (request, user) => {
         },
         enrollment: {
           select: {
+            id: true,
             enrolledAt: true,
             completedAt: true,
+            progressPercentage: true,
           },
         },
       },
