@@ -64,13 +64,19 @@ export async function POST(request: NextRequest) {
     })
 
     const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: '7d' }
     )
 
-    return NextResponse.json({
-      token,
+    // Create response with user data (no token in body for security)
+    const response = NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
@@ -79,7 +85,20 @@ export async function POST(request: NextRequest) {
         role: user.role,
         avatarUrl: user.avatarUrl,
       },
+      message: 'Registration successful',
     })
+
+    // Set HTTP-only cookie for secure authentication
+    // This prevents XSS attacks as JavaScript cannot access httpOnly cookies
+    response.cookies.set('authToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    })
+
+    return response
   } catch (error) {
     console.error('Registration error:', error)
     return NextResponse.json(

@@ -59,14 +59,19 @@ export async function POST(request: NextRequest) {
     })
 
     const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: '7d' }
     )
 
-    // Create response with user data
+    // Create response with user data (no token in body for security)
     const response = NextResponse.json({
-      token,
       user: {
         id: user.id,
         email: user.email,
@@ -76,9 +81,11 @@ export async function POST(request: NextRequest) {
         avatarUrl: user.avatarUrl,
         department: user.department,
       },
+      message: 'Login successful',
     })
 
-    // Set HTTP-only cookie for middleware authentication
+    // Set HTTP-only cookie for secure authentication
+    // This prevents XSS attacks as JavaScript cannot access httpOnly cookies
     response.cookies.set('authToken', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

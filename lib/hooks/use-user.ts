@@ -177,11 +177,17 @@ export function useLeaderboard(filters?: {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Stringify filters for stable dependency
+  const filtersJson = JSON.stringify(filters)
+
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true)
     setError(null)
 
-    const response = await usersService.getLeaderboard(filters)
+    // Parse back the filters
+    const parsedFilters = filters ? JSON.parse(filtersJson) : undefined
+
+    const response = await usersService.getLeaderboard(parsedFilters)
 
     if (response.error) {
       setError(response.error)
@@ -191,7 +197,7 @@ export function useLeaderboard(filters?: {
     }
 
     setLoading(false)
-  }, [filters?.period, filters?.department])
+  }, [filtersJson, filters])
 
   useEffect(() => {
     fetchLeaderboard()

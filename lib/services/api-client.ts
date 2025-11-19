@@ -33,23 +33,29 @@ class ApiClient {
   }
 
   /**
-   * Get authentication token from localStorage or cookies
+   * Get authentication token from cookies
+   * Note: Token is stored in httpOnly cookies for security.
+   * This method is for client-side compatibility only.
+   * The actual authentication happens via httpOnly cookies automatically sent with requests.
    */
   private getAuthToken(): string | null {
-    if (typeof window === 'undefined') return null
-    return localStorage.getItem('authToken')
+    // For client-side requests, cookies are automatically sent by the browser
+    // We don't need to manually extract the token
+    // This is more secure as it prevents XSS attacks
+    return null
   }
 
   /**
    * Build headers with authentication
+   * Note: Authentication is handled via httpOnly cookies automatically
+   * No need to manually add Authorization header for same-origin requests
    */
   private buildHeaders(customHeaders?: Record<string, string>): Record<string, string> {
     const headers = { ...this.defaultHeaders, ...customHeaders }
-    const token = this.getAuthToken()
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
+    // httpOnly cookies are automatically included in same-origin requests
+    // No need to manually add Authorization header
+    // This is more secure and prevents XSS token theft
 
     return headers
   }
