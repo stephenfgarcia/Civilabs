@@ -20,27 +20,12 @@ import {
   Trash2,
   Eye,
   AlertCircle,
+  Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
+import adminCertificatesService, { AdminCertificate } from '@/lib/services/admin-certificates.service'
 
-interface Certificate {
-  id: number
-  certificateNumber: string
-  userId: number
-  userName: string
-  userEmail: string
-  courseId: number
-  courseTitle: string
-  issueDate: string
-  expiryDate?: string
-  status: 'active' | 'expired' | 'revoked'
-  grade: number
-  verificationCode: string
-  downloadCount: number
-  lastDownloaded?: string
-}
-
-const MOCK_CERTIFICATES: Certificate[] = [
+const MOCK_CERTIFICATES_OLD: any[] = [
   {
     id: 1,
     certificateNumber: 'CERT-2024-001',
@@ -106,63 +91,139 @@ const MOCK_CERTIFICATES: Certificate[] = [
   },
 ]
 
-const STATUSES = ['All', 'Active', 'Expired', 'Revoked']
+const STATUSES = ['ALL', 'ACTIVE', 'EXPIRED', 'REVOKED']
 
 export default function AdminCertificatesPage() {
-  const [certificates, setCertificates] = useState(MOCK_CERTIFICATES)
+  const [certificates, setCertificates] = useState<AdminCertificate[]>([])
+  const [filteredCertificates, setFilteredCertificates] = useState<AdminCertificate[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('All')
+  const [selectedStatus, setSelectedStatus] = useState<'ALL' | 'ACTIVE' | 'EXPIRED' | 'REVOKED'>('ALL')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
+  // Fetch certificates
+  useEffect(() => {
+    async function fetchCertificates() {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await adminCertificatesService.getCertificates({ status: 'ALL' })
+
+        if (response.success) {
+          setCertificates(response.data)
+          setFilteredCertificates(response.data)
+        } else {
+          setError('Failed to load certificates')
+        }
+      } catch (err) {
+        setError('An error occurred while loading certificates')
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCertificates()
+  }, [])
+
+  // Apply filters
+  useEffect(() => {
+    let filtered = certificates
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(cert =>
+        `${cert.user.firstName} ${cert.user.lastName}`.toLowerCase().includes(query) ||
+        cert.user.email.toLowerCase().includes(query) ||
+        cert.certificate.course.title.toLowerCase().includes(query) ||
+        cert.verificationCode.toLowerCase().includes(query) ||
+        adminCertificatesService.getCertificateNumber(cert).toLowerCase().includes(query)
+      )
+    }
+
+    // Status filter
+    if (selectedStatus !== 'ALL') {
+      filtered = filtered.filter(cert =>
+        adminCertificatesService.getCertificateStatus(cert) === selectedStatus
+      )
+    }
+
+    setFilteredCertificates(filtered)
+  }, [certificates, searchQuery, selectedStatus])
+
+  // Animations
   useEffect(() => {
     const elements = document.querySelectorAll('.admin-certs-item')
     elements.forEach((el, index) => {
       const htmlEl = el as HTMLElement
       htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
     })
-  }, [])
+  }, [loading])
 
-  const filteredCertificates = certificates.filter(cert => {
-    const matchesSearch = !searchQuery ||
-      cert.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cert.userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cert.courseTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cert.certificateNumber.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = selectedStatus === 'All' || cert.status === selectedStatus.toLowerCase()
-    return matchesSearch && matchesStatus
-  })
+  // Handle delete
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this certificate?')) return
 
-  const getStatusColor = (status: string) => {
+    try {
+      const response = await adminCertificatesService.deleteCertificate(id)
+      if (response.success) {
+        setCertificates(prev => prev.filter(c => c.id !== id))
+      } else {
+        alert(response.error || 'Failed to delete certificate')
+      }
+    } catch (error) {
+      alert('An error occurred while deleting the certificate')
+      console.error(error)
+    }
+  }
+
+  const getStatusColor = (status: 'ACTIVE' | 'EXPIRED' | 'REVOKED') => {
     switch (status) {
-      case 'active':
+      case 'ACTIVE':
         return 'from-success to-green-600'
-      case 'expired':
+      case 'EXPIRED':
         return 'from-warning to-orange-600'
-      case 'revoked':
+      case 'REVOKED':
         return 'from-danger to-red-600'
       default:
         return 'from-neutral-400 to-neutral-600'
     }
   }
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: 'ACTIVE' | 'EXPIRED' | 'REVOKED') => {
     switch (status) {
-      case 'active':
+      case 'ACTIVE':
         return CheckCircle
-      case 'expired':
+      case 'EXPIRED':
         return Clock
-      case 'revoked':
+      case 'REVOKED':
         return XCircle
       default:
         return AlertCircle
     }
   }
 
-  const isExpiringSoon = (expiryDate?: string) => {
-    if (!expiryDate) return false
-    const expiry = new Date(expiryDate)
+  const isExpiringSoon = (expiresAt?: string | null) => {
+    if (!expiresAt) return false
+    const expiry = new Date(expiresAt)
     const today = new Date()
     const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
     return daysUntilExpiry <= 30 && daysUntilExpiry > 0
+  }
+
+  const formatRelativeTime = (date?: string | null) => {
+    if (!date) return 'Never'
+    const now = new Date()
+    const then = new Date(date)
+    const diffMs = now.getTime() - then.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+    if (diffDays === 0) return 'Today'
+    if (diffDays === 1) return '1 day ago'
+    if (diffDays < 7) return `${diffDays} days ago'
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
+    return `${Math.floor(diffDays / 30)} months ago`
   }
 
   return (
@@ -203,7 +264,7 @@ export default function AdminCertificatesPage() {
         <Card className="admin-certs-item opacity-0 glass-effect concrete-texture border-4 border-warning/40">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-black bg-gradient-to-r from-warning to-orange-600 bg-clip-text text-transparent mb-2">
-              {certificates.length}
+              {loading ? '...' : certificates.length}
             </div>
             <p className="text-sm font-bold text-neutral-600">TOTAL CERTIFICATES</p>
           </CardContent>
@@ -212,7 +273,7 @@ export default function AdminCertificatesPage() {
         <Card className="admin-certs-item opacity-0 glass-effect concrete-texture border-4 border-success/40">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-black bg-gradient-to-r from-success to-green-600 bg-clip-text text-transparent mb-2">
-              {certificates.filter(c => c.status === 'active').length}
+              {loading ? '...' : certificates.filter(c => adminCertificatesService.getCertificateStatus(c) === 'ACTIVE').length}
             </div>
             <p className="text-sm font-bold text-neutral-600">ACTIVE</p>
           </CardContent>
@@ -221,7 +282,7 @@ export default function AdminCertificatesPage() {
         <Card className="admin-certs-item opacity-0 glass-effect concrete-texture border-4 border-warning/40">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-black bg-gradient-to-r from-warning to-orange-600 bg-clip-text text-transparent mb-2">
-              {certificates.filter(c => c.status === 'expired').length}
+              {loading ? '...' : certificates.filter(c => adminCertificatesService.getCertificateStatus(c) === 'EXPIRED').length}
             </div>
             <p className="text-sm font-bold text-neutral-600">EXPIRED</p>
           </CardContent>
@@ -230,7 +291,7 @@ export default function AdminCertificatesPage() {
         <Card className="admin-certs-item opacity-0 glass-effect concrete-texture border-4 border-danger/40">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-black bg-gradient-to-r from-danger to-red-600 bg-clip-text text-transparent mb-2">
-              {certificates.filter(c => c.status === 'revoked').length}
+              {loading ? '...' : certificates.filter(c => adminCertificatesService.getCertificateStatus(c) === 'REVOKED').length}
             </div>
             <p className="text-sm font-bold text-neutral-600">REVOKED</p>
           </CardContent>
@@ -288,12 +349,30 @@ export default function AdminCertificatesPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredCertificates.map((cert) => {
-              const StatusIcon = getStatusIcon(cert.status)
-              const expiringSoon = isExpiringSoon(cert.expiryDate)
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="animate-spin text-warning" size={48} />
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-danger font-bold">{error}</p>
+            </div>
+          ) : filteredCertificates.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-neutral-600 font-bold">No certificates found</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredCertificates.map((cert) => {
+                const status = adminCertificatesService.getCertificateStatus(cert)
+                const StatusIcon = getStatusIcon(status)
+                const expiringSoon = isExpiringSoon(cert.expiresAt)
+                const certificateNumber = adminCertificatesService.getCertificateNumber(cert)
+                const userName = `${cert.user.firstName} ${cert.user.lastName}`
+                const courseTitle = cert.certificate.course.title
+                const grade = cert.enrollment.progressPercentage
 
-              return (
+                return (
                 <div
                   key={cert.id}
                   className="glass-effect rounded-lg p-6 hover:bg-white/50 transition-all border-2 border-transparent hover:border-warning/30"
@@ -303,9 +382,9 @@ export default function AdminCertificatesPage() {
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <span className={`px-3 py-1 rounded-full bg-gradient-to-r ${getStatusColor(cert.status)} text-white font-black text-xs uppercase flex items-center gap-1`}>
+                          <span className={`px-3 py-1 rounded-full bg-gradient-to-r ${getStatusColor(status)} text-white font-black text-xs uppercase flex items-center gap-1`}>
                             <StatusIcon size={12} />
-                            {cert.status}
+                            {status}
                           </span>
                           {expiringSoon && (
                             <span className="px-3 py-1 rounded-full bg-gradient-to-r from-warning to-orange-600 text-white font-black text-xs flex items-center gap-1">
@@ -315,25 +394,25 @@ export default function AdminCertificatesPage() {
                           )}
                         </div>
                         <h3 className="text-xl font-black text-neutral-800 mb-1">
-                          {cert.certificateNumber}
+                          {certificateNumber}
                         </h3>
                         <div className="flex items-center gap-2 text-sm text-neutral-600 mb-2">
                           <BookOpen size={14} />
-                          <span className="font-bold">{cert.courseTitle}</span>
+                          <span className="font-bold">{courseTitle}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-neutral-600">
                           <User size={14} />
-                          <span className="font-bold">{cert.userName}</span>
+                          <span className="font-bold">{userName}</span>
                           <span>•</span>
-                          <span>{cert.userEmail}</span>
+                          <span>{cert.user.email}</span>
                         </div>
                       </div>
 
                       <div className="text-center">
                         <div className="text-3xl font-black bg-gradient-to-r from-success to-green-600 bg-clip-text text-transparent">
-                          {cert.grade}%
+                          {grade}%
                         </div>
-                        <p className="text-xs text-neutral-600 font-bold">GRADE</p>
+                        <p className="text-xs text-neutral-600 font-bold">PROGRESS</p>
                       </div>
                     </div>
 
@@ -345,18 +424,18 @@ export default function AdminCertificatesPage() {
                           <span>ISSUED</span>
                         </div>
                         <p className="font-bold text-neutral-800 text-sm">
-                          {new Date(cert.issueDate).toLocaleDateString()}
+                          {new Date(cert.issuedAt).toLocaleDateString()}
                         </p>
                       </div>
 
-                      {cert.expiryDate && (
+                      {cert.expiresAt && (
                         <div>
                           <div className="flex items-center gap-1 text-xs text-neutral-600 mb-1">
                             <Clock size={12} />
                             <span>EXPIRES</span>
                           </div>
                           <p className={`font-bold text-sm ${expiringSoon ? 'text-warning' : 'text-neutral-800'}`}>
-                            {new Date(cert.expiryDate).toLocaleDateString()}
+                            {new Date(cert.expiresAt).toLocaleDateString()}
                           </p>
                         </div>
                       )}
@@ -371,14 +450,14 @@ export default function AdminCertificatesPage() {
                         </p>
                       </div>
 
-                      {cert.lastDownloaded && (
+                      {cert.lastDownloadedAt && (
                         <div>
                           <div className="flex items-center gap-1 text-xs text-neutral-600 mb-1">
                             <Clock size={12} />
                             <span>LAST DOWNLOAD</span>
                           </div>
                           <p className="font-bold text-neutral-800 text-sm">
-                            {cert.lastDownloaded}
+                            {formatRelativeTime(cert.lastDownloadedAt)}
                           </p>
                         </div>
                       )}
@@ -411,15 +490,19 @@ export default function AdminCertificatesPage() {
                         <Send className="mr-2" size={16} />
                         RESEND
                       </MagneticButton>
-                      <button className="w-12 h-12 glass-effect border-2 border-danger/30 rounded-lg flex items-center justify-center hover:border-danger/60 hover:bg-danger/10 transition-all">
+                      <button
+                        onClick={() => handleDelete(cert.id)}
+                        className="w-12 h-12 glass-effect border-2 border-danger/30 rounded-lg flex items-center justify-center hover:border-danger/60 hover:bg-danger/10 transition-all"
+                      >
                         <Trash2 size={16} className="text-danger" />
                       </button>
                     </div>
                   </div>
                 </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
