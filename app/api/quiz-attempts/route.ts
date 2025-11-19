@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAuth } from '@/lib/auth/api-auth'
+import NotificationTriggers from '@/lib/utils/notification-triggers'
 
 /**
  * Grade quiz attempt
@@ -158,6 +159,25 @@ export const POST = withAuth(async (request, user) => {
         timeSpentSeconds,
       },
     })
+
+    // Trigger notification based on quiz result
+    const attemptsLeft = quiz.attemptsAllowed ? quiz.attemptsAllowed - attemptNumber : 999
+    if (passed) {
+      await NotificationTriggers.onQuizPass(
+        user.userId,
+        quiz.title,
+        gradeResult.percentage,
+        quiz.lesson.courseId
+      )
+    } else {
+      await NotificationTriggers.onQuizFail(
+        user.userId,
+        quiz.title,
+        gradeResult.percentage,
+        attemptsLeft,
+        quiz.lesson.courseId
+      )
+    }
 
     return NextResponse.json({
       success: true,

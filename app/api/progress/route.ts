@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAuth } from '@/lib/auth/api-auth'
+import NotificationTriggers from '@/lib/utils/notification-triggers'
 
 /**
  * GET /api/progress
@@ -211,7 +212,7 @@ export const POST = withAuth(async (request, user) => {
       enrollmentStatus = 'IN_PROGRESS'
     }
 
-    await prisma.enrollment.update({
+    const updatedEnrollment = await prisma.enrollment.update({
       where: { id: enrollmentId },
       data: {
         progressPercentage,
@@ -219,7 +220,32 @@ export const POST = withAuth(async (request, user) => {
         startedAt: enrollment.startedAt || now,
         completedAt: enrollmentStatus === 'COMPLETED' ? now : null,
       },
+      include: {
+        course: {
+          select: {
+            title: true,
+          },
+        },
+      },
     })
+
+    // Trigger notifications for lesson completion
+    if (status === 'COMPLETED' && !existingProgress?.completedAt) {
+      await NotificationTriggers.onLessonCompletion(
+        user.userId,
+        progress.lesson.title,
+        progress.lesson.courseId
+      )
+    }
+
+    // Trigger notification for course completion
+    if (enrollmentStatus === 'COMPLETED' && enrollment.status !== 'COMPLETED') {
+      await NotificationTriggers.onCourseCompletion(
+        user.userId,
+        updatedEnrollment.course.title,
+        enrollment.courseId
+      )
+    }
 
     return NextResponse.json({
       success: true,
