@@ -21,16 +21,31 @@ export const GET = withAuth(async (request, user) => {
 
     // Learners can only see their own enrollments
     // Admins and instructors can see all enrollments (with filters)
-    const isAdmin = user.role === 'admin' || user.role === 'instructor'
-    const targetUserId = isAdmin && userId ? userId : user.userId
+    const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'INSTRUCTOR'
+
+    // Build where clause
+    const where: any = {
+      ...(courseId && { courseId }),
+      ...(status && { status: status as any }),
+    }
+
+    // If not admin OR admin specifically filtered by userId, add userId filter
+    if (!isAdmin || userId) {
+      where.userId = userId || user.userId
+    }
 
     const enrollments = await prisma.enrollment.findMany({
-      where: {
-        userId: targetUserId,
-        ...(courseId && { courseId }),
-        ...(status && { status }),
-      },
+      where,
       include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
         course: {
           include: {
             instructor: {
@@ -54,6 +69,12 @@ export const GET = withAuth(async (request, user) => {
           select: {
             id: true,
             lessonId: true,
+          },
+        },
+        _count: {
+          select: {
+            quizAttempts: true,
+            userCertificates: true,
           },
         },
       },
