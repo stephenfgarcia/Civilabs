@@ -9,8 +9,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withInstructor, withAdmin, authenticateRequest } from '@/lib/auth/api-auth'
 
-interface RouteParams {
-  params: { id: string }
+// Removed RouteParams interface - using inline type
+// interface RouteParams {
+//   params: { id: string }
 }
 
 /**
@@ -19,7 +20,7 @@ interface RouteParams {
  */
 export async function GET(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const params = await context.params
@@ -144,7 +145,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   return withInstructor(async (req, user) => {
     try {
@@ -244,7 +245,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   return withAdmin(async (req, user) => {
     try {
