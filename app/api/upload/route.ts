@@ -132,8 +132,5 @@ export const POST = withAuth(async (request, user) => {
   }
 })
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
+// Note: bodyParser: false is no longer needed in Next.js App Router
+// FormData is handled automatically
