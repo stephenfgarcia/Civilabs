@@ -7,17 +7,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAuth } from '@/lib/auth/api-auth'
 
-interface RouteParams {
-  params: { id: string }
-}
-
 /**
  * GET /api/certificates/[id]
  * Get certificate details
  */
 export async function GET(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   return withAuth(async (req, user) => {
     try {
