@@ -88,14 +88,15 @@ export function requireApiInstructor(request: NextRequest): TokenPayload {
 
 /**
  * Wrapper for API route handlers with authentication
+ * Supports both regular routes and dynamic routes with params
  */
-export function withAuth(
-  handler: (request: NextRequest, user: TokenPayload) => Promise<NextResponse>
+export function withAuth<T = any>(
+  handler: (request: NextRequest, user: TokenPayload, context?: T) => Promise<NextResponse>
 ) {
-  return async (request: NextRequest): Promise<NextResponse> => {
+  return async (request: NextRequest, context?: T): Promise<NextResponse> => {
     try {
       const user = requireApiAuth(request)
-      return await handler(request, user)
+      return await handler(request, user, context)
     } catch (error) {
       if (error instanceof Error && error.message === 'Unauthorized') {
         return NextResponse.json(
@@ -119,15 +120,16 @@ export function withAuth(
 
 /**
  * Wrapper for API route handlers with role requirement
+ * Supports both regular routes and dynamic routes with params
  */
-export function withRole(
+export function withRole<T = any>(
   allowedRoles: ('admin' | 'instructor' | 'learner' | 'SUPER_ADMIN' | 'ADMIN' | 'INSTRUCTOR' | 'LEARNER')[],
-  handler: (request: NextRequest, user: TokenPayload) => Promise<NextResponse>
+  handler: (request: NextRequest, user: TokenPayload, context?: T) => Promise<NextResponse>
 ) {
-  return async (request: NextRequest): Promise<NextResponse> => {
+  return async (request: NextRequest, context?: T): Promise<NextResponse> => {
     try {
       const user = requireApiRole(request, allowedRoles)
-      return await handler(request, user)
+      return await handler(request, user, context)
     } catch (error) {
       if (error instanceof Error && error.message === 'Unauthorized') {
         return NextResponse.json(
