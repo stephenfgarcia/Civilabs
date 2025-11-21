@@ -34,104 +34,47 @@ interface ContentFile {
   thumbnailUrl?: string
 }
 
-// Mock content files
-const MOCK_FILES: ContentFile[] = [
-  {
-    id: 1,
-    name: 'Safety Training Video.mp4',
-    type: 'video',
-    size: '245 MB',
-    uploadDate: '2024-03-15',
-    uploadedBy: 'John Martinez',
-    downloads: 89,
-    status: 'active',
-  },
-  {
-    id: 2,
-    name: 'Construction Guidelines.pdf',
-    type: 'document',
-    size: '12 MB',
-    uploadDate: '2024-03-14',
-    uploadedBy: 'Sarah Johnson',
-    downloads: 156,
-    status: 'active',
-  },
-  {
-    id: 3,
-    name: 'Equipment Manual.pdf',
-    type: 'document',
-    size: '8 MB',
-    uploadDate: '2024-03-12',
-    uploadedBy: 'Mike Chen',
-    downloads: 67,
-    status: 'active',
-  },
-  {
-    id: 4,
-    name: 'Site Photos Collection.zip',
-    type: 'image',
-    size: '180 MB',
-    uploadDate: '2024-03-10',
-    uploadedBy: 'Emily Davis',
-    downloads: 45,
-    status: 'active',
-  },
-  {
-    id: 5,
-    name: 'Welding Techniques.mp4',
-    type: 'video',
-    size: '320 MB',
-    uploadDate: '2024-03-08',
-    uploadedBy: 'Tom Wilson',
-    downloads: 134,
-    status: 'active',
-  },
-  {
-    id: 6,
-    name: 'Blueprint Template.dwg',
-    type: 'other',
-    size: '5 MB',
-    uploadDate: '2024-03-05',
-    uploadedBy: 'Lisa Anderson',
-    downloads: 23,
-    status: 'active',
-  },
-  {
-    id: 7,
-    name: 'Safety Checklist.xlsx',
-    type: 'document',
-    size: '2 MB',
-    uploadDate: '2024-03-01',
-    uploadedBy: 'John Martinez',
-    downloads: 201,
-    status: 'active',
-  },
-  {
-    id: 8,
-    name: 'Heavy Equipment Guide.pdf',
-    type: 'document',
-    size: '15 MB',
-    uploadDate: '2024-02-28',
-    uploadedBy: 'Mike Chen',
-    downloads: 178,
-    status: 'active',
-  },
-]
-
 const FILE_TYPES = ['All', 'Videos', 'Documents', 'Images', 'Other']
 
 export default function ContentPage() {
-  const [files, setFiles] = useState(MOCK_FILES)
+  const [files, setFiles] = useState<ContentFile[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState('All')
+  const [loading, setLoading] = useState(true)
+  const [mediaStats, setMediaStats] = useState<any>(null)
 
   useEffect(() => {
-    const elements = document.querySelectorAll('.admin-item')
-    elements.forEach((el, index) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
-    })
+    fetchMediaData()
   }, [])
+
+  useEffect(() => {
+    if (!loading) {
+      const elements = document.querySelectorAll('.admin-item')
+      elements.forEach((el, index) => {
+        const htmlEl = el as HTMLElement
+        htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
+      })
+    }
+  }, [loading])
+
+  const fetchMediaData = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/media')
+      const data = await response.json()
+
+      if (data.success && data.data) {
+        setMediaStats(data.data)
+        // Transform storage data to files list if needed
+        // For now, keep empty as we're showing stats
+        setFiles([])
+      }
+    } catch (error) {
+      console.error('Error fetching media:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredFiles = files.filter(file => {
     const matchesSearch = !searchQuery ||

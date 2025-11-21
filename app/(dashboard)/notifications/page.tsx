@@ -15,97 +15,26 @@ import {
   X,
   Loader2
 } from 'lucide-react'
-import { notificationsService } from '@/lib/services'
+import { notificationsService, type Notification } from '@/lib/services'
 
-type NotificationType = 'course' | 'certificate' | 'achievement' | 'system' | 'reminder'
-type NotificationStatus = 'unread' | 'read'
+// Helper function to format relative time
+const formatRelativeTime = (dateString: string): string => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
 
-interface Notification {
-  id: number
-  type: NotificationType
-  title: string
-  message: string
-  timestamp: string
-  status: NotificationStatus
-  actionUrl?: string
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`
+  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
+  if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
+  return date.toLocaleDateString()
 }
 
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: 1,
-    type: 'certificate',
-    title: 'New Certificate Earned!',
-    message: 'Congratulations! You have earned the "Construction Safety Fundamentals" certificate.',
-    timestamp: '2 hours ago',
-    status: 'unread',
-    actionUrl: '/certificates'
-  },
-  {
-    id: 2,
-    type: 'course',
-    title: 'Course Updated',
-    message: 'New content has been added to "Equipment Operation" course.',
-    timestamp: '5 hours ago',
-    status: 'unread',
-    actionUrl: '/courses'
-  },
-  {
-    id: 3,
-    type: 'achievement',
-    title: 'Streak Milestone!',
-    message: 'You have maintained a 7-day learning streak. Keep it up!',
-    timestamp: '1 day ago',
-    status: 'read',
-    actionUrl: '/dashboard'
-  },
-  {
-    id: 4,
-    type: 'reminder',
-    title: 'Course Reminder',
-    message: 'You have not completed "Safety Fundamentals". Continue your learning today.',
-    timestamp: '1 day ago',
-    status: 'read',
-    actionUrl: '/my-learning'
-  },
-  {
-    id: 5,
-    type: 'system',
-    title: 'Maintenance Notice',
-    message: 'Scheduled maintenance on Saturday, 2:00 AM - 4:00 AM. System will be unavailable.',
-    timestamp: '2 days ago',
-    status: 'read'
-  },
-  {
-    id: 6,
-    type: 'course',
-    title: 'New Course Available',
-    message: 'Check out the new "Advanced Scaffolding" course in the catalog.',
-    timestamp: '3 days ago',
-    status: 'read',
-    actionUrl: '/courses'
-  },
-  {
-    id: 7,
-    type: 'certificate',
-    title: 'Certificate Expiring Soon',
-    message: 'Your "First Aid Training" certificate expires in 30 days. Please renew.',
-    timestamp: '4 days ago',
-    status: 'read',
-    actionUrl: '/certificates'
-  },
-  {
-    id: 8,
-    type: 'achievement',
-    title: 'Course Completed',
-    message: 'You have successfully completed "Heavy Machinery Training".',
-    timestamp: '5 days ago',
-    status: 'read',
-    actionUrl: '/my-learning'
-  }
-]
-
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<any[]>([])
+  const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'READ' | 'UNREAD'>('all')
@@ -131,11 +60,11 @@ export default function NotificationsPage() {
       setError(null)
 
       const response = await notificationsService.getNotifications()
-      if (response.error) {
-        throw new Error(response.error)
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(response.error || 'Failed to fetch notifications')
       }
 
-      const notificationsData = response.data?.data || []
+      const notificationsData = response.data || []
       setNotifications(notificationsData)
     } catch (err) {
       console.error('Error fetching notifications:', err)
@@ -166,7 +95,7 @@ export default function NotificationsPage() {
       // Update local state
       setNotifications(prev =>
         prev.map(notif =>
-          notif.id === id ? { ...notif, status: 'READ' } : notif
+          notif.id === id ? { ...notif, isRead: true } : notif
         )
       )
     } catch (err) {
@@ -177,12 +106,12 @@ export default function NotificationsPage() {
   const markAllAsRead = async () => {
     try {
       // Mark all unread notifications as read
-      const unreadNotifications = notifications.filter(n => n.status === 'UNREAD')
+      const unreadNotifications = notifications.filter(n => !n.isRead)
       await Promise.all(unreadNotifications.map(n => notificationsService.markAsRead(n.id)))
 
       // Update local state
       setNotifications(prev =>
-        prev.map(notif => ({ ...notif, status: 'READ' }))
+        prev.map(notif => ({ ...notif, isRead: true }))
       )
     } catch (err) {
       console.error('Error marking all as read:', err)
@@ -190,7 +119,13 @@ export default function NotificationsPage() {
   }
 
   const deleteNotification = async (id: string) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id))
+    try {
+      await notificationsService.deleteNotification(id)
+      // Update local state
+      setNotifications(prev => prev.filter(notif => notif.id !== id))
+    } catch (err) {
+      console.error('Error deleting notification:', err)
+    }
   }
 
   const clearAll = () => {
@@ -199,10 +134,12 @@ export default function NotificationsPage() {
 
   const filteredNotifications = notifications.filter(notif => {
     if (filter === 'all') return true
-    return notif.status === filter
+    if (filter === 'UNREAD') return !notif.isRead
+    if (filter === 'READ') return notif.isRead
+    return true
   })
 
-  const unreadCount = notifications.filter(n => n.status === 'UNREAD').length
+  const unreadCount = notifications.filter(n => !n.isRead).length
 
   // Loading state
   if (loading) {
@@ -332,7 +269,7 @@ export default function NotificationsPage() {
                   : 'glass-effect border-2 border-success/30 text-neutral-700 hover:border-success/60'
               }`}
             >
-              READ ({notifications.filter(n => n.status === 'READ').length})
+              READ ({notifications.filter(n => n.isRead).length})
             </button>
           </div>
         </CardContent>
@@ -348,14 +285,14 @@ export default function NotificationsPage() {
               </div>
               <h3 className="text-2xl font-black text-neutral-700 mb-2">NO NOTIFICATIONS</h3>
               <p className="text-neutral-600 font-semibold">
-                {filter === 'unread' ? 'You have no unread notifications.' : 'Your notification inbox is empty.'}
+                {filter === 'UNREAD' ? 'You have no unread notifications.' : 'Your notification inbox is empty.'}
               </p>
             </CardContent>
           </Card>
         ) : (
           filteredNotifications.map((notification) => {
             const { icon: Icon, color } = getNotificationIcon(notification.type)
-            const isUnread = notification.status === 'unread'
+            const isUnread = !notification.isRead
 
             return (
               <Card
@@ -386,7 +323,7 @@ export default function NotificationsPage() {
                             )}
                           </h3>
                           <p className="text-xs font-bold text-neutral-500 uppercase mt-1">
-                            {notification.timestamp}
+                            {formatRelativeTime(notification.createdAt)}
                           </p>
                         </div>
 
@@ -415,9 +352,9 @@ export default function NotificationsPage() {
                         {notification.message}
                       </p>
 
-                      {notification.actionUrl && (
+                      {notification.linkUrl && (
                         <a
-                          href={notification.actionUrl}
+                          href={notification.linkUrl}
                           className={`inline-flex items-center gap-1 text-sm font-bold bg-gradient-to-r ${color} bg-clip-text text-transparent hover:opacity-70 transition-opacity`}
                         >
                           View Details →

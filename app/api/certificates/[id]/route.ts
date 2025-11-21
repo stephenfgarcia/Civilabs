@@ -15,12 +15,12 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params
   return withAuth(async (req, user) => {
     try {
-      const params = await context.params
       const { id } = params
 
-      const certificate = await prisma.certificate.findUnique({
+      const userCertificate = await prisma.userCertificate.findUnique({
         where: { id },
         include: {
           user: {
@@ -31,18 +31,27 @@ export async function GET(
               email: true,
             },
           },
-          course: {
-            select: {
-              id: true,
-              title: true,
-              description: true,
-              category: true,
-              duration: true,
-              instructor: {
+          certificate: {
+            include: {
+              course: {
                 select: {
-                  firstName: true,
-                  lastName: true,
-                  email: true,
+                  id: true,
+                  title: true,
+                  description: true,
+                  durationMinutes: true,
+                  category: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                  instructor: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                      email: true,
+                    },
+                  },
                 },
               },
             },
@@ -56,7 +65,7 @@ export async function GET(
         },
       })
 
-      if (!certificate) {
+      if (!userCertificate) {
         return NextResponse.json(
           {
             success: false,
@@ -68,7 +77,7 @@ export async function GET(
       }
 
       // Only allow user to view their own certificates (unless admin)
-      if (user.role !== 'admin' && certificate.userId !== user.userId) {
+      if (user.role !== 'admin' && userCertificate.userId !== user.userId) {
         return NextResponse.json(
           {
             success: false,
@@ -81,7 +90,7 @@ export async function GET(
 
       return NextResponse.json({
         success: true,
-        data: certificate,
+        data: userCertificate,
       })
     } catch (error) {
       console.error('Error fetching certificate:', error)
@@ -94,5 +103,5 @@ export async function GET(
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request)
 }

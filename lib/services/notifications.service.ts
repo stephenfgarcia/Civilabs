@@ -6,14 +6,13 @@
 import { apiClient } from './api-client'
 
 export interface Notification {
-  id: number
-  userId: number
+  id: string
+  userId: string
+  type: string
   title: string
   message: string
-  type: 'info' | 'success' | 'warning' | 'error'
-  category: 'course' | 'achievement' | 'discussion' | 'system' | 'certificate'
+  linkUrl: string | null
   isRead: boolean
-  link?: string
   createdAt: string
 }
 

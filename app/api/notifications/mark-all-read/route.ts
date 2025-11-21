@@ -16,12 +16,11 @@ export async function PUT(request: NextRequest) {
     try {
       const result = await prisma.notification.updateMany({
         where: {
-          userId: user.userId,
-          read: false,
+          userId: String(user.userId),
+          isRead: false,
         },
         data: {
-          read: true,
-          readAt: new Date(),
+          isRead: true,
         },
       })
 

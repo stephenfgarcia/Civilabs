@@ -8,23 +8,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAuth } from '@/lib/auth/api-auth'
 
-interface RouteParams {
-  params: { id: string; lessonId: string }
-}
-
 /**
  * GET /api/courses/[id]/lessons/[lessonId]/quiz
  * Get quiz details with questions for a lesson
  */
-export const GET = withAuth(async (request, user, context: RouteParams) => {
+export const GET = withAuth(async (request, user, context?: { params: Promise<{ id: string; lessonId: string }> }) => {
   try {
-    const params = await context.params
+    const params = await context!.params
     const { id: courseId, lessonId } = params
 
     // Check if user is enrolled in the course
     const enrollment = await prisma.enrollment.findFirst({
       where: {
-        userId: user.userId,
+        userId: String(user.userId),
         courseId,
       },
     })
@@ -91,10 +87,10 @@ export const GET = withAuth(async (request, user, context: RouteParams) => {
     const attempts = await prisma.quizAttempt.findMany({
       where: {
         quizId: lesson.quiz.id,
-        userId: user.userId,
+        userId: String(user.userId),
       },
       orderBy: {
-        attemptedAt: 'desc',
+        startedAt: 'desc',
       },
     })
 
@@ -106,7 +102,7 @@ export const GET = withAuth(async (request, user, context: RouteParams) => {
     // Get best attempt
     const bestAttempt = attempts.length > 0
       ? attempts.reduce((best, current) =>
-          current.score > best.score ? current : best
+          (current.scorePercentage ?? 0) > (best.scorePercentage ?? 0) ? current : best
         )
       : null
 
@@ -116,8 +112,8 @@ export const GET = withAuth(async (request, user, context: RouteParams) => {
         quiz: lesson.quiz,
         attempts: attempts.length,
         attemptsRemaining,
-        bestScore: bestAttempt?.score || null,
-        passed: bestAttempt ? bestAttempt.score >= lesson.quiz.passingScore : false,
+        bestScore: bestAttempt?.scorePercentage || null,
+        passed: bestAttempt ? (bestAttempt.scorePercentage ?? 0) >= lesson.quiz.passingScore : false,
       },
     })
   } catch (error) {
@@ -137,9 +133,9 @@ export const GET = withAuth(async (request, user, context: RouteParams) => {
  * POST /api/courses/[id]/lessons/[lessonId]/quiz/submit
  * Submit quiz answers and get score
  */
-export const POST = withAuth(async (request, user, context: RouteParams) => {
+export const POST = withAuth(async (request, user, context?: { params: Promise<{ id: string; lessonId: string }> }) => {
   try {
-    const params = await context.params
+    const params = await context!.params
     const { id: courseId, lessonId } = params
     const body = await request.json()
     const { answers, timeSpentSeconds } = body
@@ -159,7 +155,7 @@ export const POST = withAuth(async (request, user, context: RouteParams) => {
     // Check if user is enrolled
     const enrollment = await prisma.enrollment.findFirst({
       where: {
-        userId: user.userId,
+        userId: String(user.userId),
         courseId,
       },
     })
@@ -209,7 +205,7 @@ export const POST = withAuth(async (request, user, context: RouteParams) => {
     const previousAttempts = await prisma.quizAttempt.count({
       where: {
         quizId: lesson.quiz.id,
-        userId: user.userId,
+        userId: String(user.userId),
       },
     })
 
@@ -279,13 +275,14 @@ export const POST = withAuth(async (request, user, context: RouteParams) => {
     const attempt = await prisma.quizAttempt.create({
       data: {
         quizId: lesson.quiz.id,
-        userId: user.userId,
+        userId: String(user.userId),
         enrollmentId: enrollment.id,
-        score,
+        attemptNumber: previousAttempts + 1,
+        scorePercentage: score,
         passed,
         answers,
         timeSpentSeconds: timeSpentSeconds || 0,
-        attemptedAt: new Date(),
+        startedAt: new Date(),
       },
     })
 
@@ -301,7 +298,7 @@ export const POST = withAuth(async (request, user, context: RouteParams) => {
         create: {
           enrollmentId: enrollment.id,
           lessonId,
-          userId: user.userId,
+          userId: String(user.userId),
           status: 'COMPLETED',
           timeSpentSeconds: timeSpentSeconds || 0,
           completedAt: new Date(),

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     const courses = await prisma.course.findMany({
       where: {
         ...(category && { categoryId: category }),
-        ...(difficulty && { difficultyLevel: difficulty }),
+        ...(difficulty && { difficultyLevel: difficulty as any }),
         ...(published !== null && published === 'true' && {
           publishedAt: { not: null }
         }),
@@ -119,7 +119,7 @@ export const POST = withInstructor(async (request, user) => {
         durationMinutes: body.duration || body.durationMinutes || 0,
         thumbnail: body.thumbnail || null,
         publishedAt: body.published ? (body.publishedAt ? new Date(body.publishedAt) : new Date()) : null,
-        instructorId: user.userId,
+        instructorId: String(user.userId),
         tags: body.tags || [],
         metadata: {
           objectives: body.objectives || [],

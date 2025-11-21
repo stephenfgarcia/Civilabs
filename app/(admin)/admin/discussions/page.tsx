@@ -132,18 +132,57 @@ const CATEGORIES = ['All', 'Safety', 'Equipment', 'Questions', 'Tips & Tricks', 
 const STATUSES = ['All', 'Active', 'Solved', 'Locked', 'Flagged']
 
 export default function AdminDiscussionsPage() {
-  const [discussions, setDiscussions] = useState(MOCK_DISCUSSIONS)
+  const [discussions, setDiscussions] = useState<Discussion[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedStatus, setSelectedStatus] = useState('All')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const elements = document.querySelectorAll('.admin-discussions-item')
-    elements.forEach((el, index) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
-    })
+    fetchDiscussions()
   }, [])
+
+  useEffect(() => {
+    if (!loading) {
+      const elements = document.querySelectorAll('.admin-discussions-item')
+      elements.forEach((el, index) => {
+        const htmlEl = el as HTMLElement
+        htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
+      })
+    }
+  }, [loading])
+
+  const fetchDiscussions = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/discussions')
+      const data = await response.json()
+      if (data.success && data.data) {
+        // Transform API data to match UI interface
+        const transformed = data.data.map((d: any) => ({
+          id: parseInt(d.id),
+          title: d.title,
+          author: `${d.author?.firstName || ''} ${d.author?.lastName || ''}`.trim(),
+          authorEmail: d.author?.email || '',
+          category: d.category || 'General',
+          isPinned: d.isPinned || false,
+          isLocked: d.isLocked || false,
+          isSolved: d.isSolved || false,
+          isFlagged: false,
+          replies: d._count?.replies || 0,
+          likes: d._count?.likes || 0,
+          views: d.views || 0,
+          createdDate: new Date(d.createdAt).toISOString().split('T')[0],
+          lastActivity: new Date(d.updatedAt).toLocaleDateString(),
+        }))
+        setDiscussions(transformed)
+      }
+    } catch (error) {
+      console.error('Error fetching discussions:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredDiscussions = discussions.filter(discussion => {
     const matchesSearch = !searchQuery ||

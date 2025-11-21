@@ -13,64 +13,65 @@ import {
   User,
   CheckCircle,
   Star,
-  Shield
+  Shield,
+  Loader2,
+  AlertCircle
 } from 'lucide-react'
 import Link from 'next/link'
+import { apiClient } from '@/lib/services'
 
-// Mock certificate data
-const MOCK_CERTIFICATES = {
-  1: {
-    id: 1,
-    title: 'Construction Safety Fundamentals',
-    courseName: 'Safety Training Level 1',
-    issueDate: '2024-01-15',
-    expiryDate: '2026-01-15',
-    credentialId: 'CSF-2024-001234',
-    score: 98,
-    instructor: 'John Martinez',
-    instructorTitle: 'Safety Director',
-    institution: 'Civilabs Construction Academy',
-    description: 'This certifies that the learner has successfully completed the Construction Safety Fundamentals course, demonstrating proficiency in OSHA regulations, PPE usage, hazard identification, and emergency response procedures.',
-    skills: [
-      'OSHA Regulations Compliance',
-      'Personal Protective Equipment (PPE) Selection',
-      'Hazard Identification and Risk Assessment',
-      'Emergency Response Procedures',
-      'Safety Culture Development'
-    ],
-    hours: 4,
-    status: 'active'
-  },
-  2: {
-    id: 2,
-    title: 'Heavy Equipment Operation',
-    courseName: 'Equipment Operator Certification',
-    issueDate: '2024-02-10',
-    expiryDate: '2026-02-10',
-    credentialId: 'HEO-2024-005678',
-    score: 92,
-    instructor: 'Mike Johnson',
-    instructorTitle: 'Equipment Specialist',
-    institution: 'Civilabs Construction Academy',
-    description: 'This certificate verifies successful completion of the Heavy Equipment Operation course, including hands-on training and assessment in operating excavators, bulldozers, and other construction machinery.',
-    skills: [
-      'Excavator Operation',
-      'Bulldozer Control',
-      'Pre-Operation Inspection',
-      'Safety Protocols',
-      'Equipment Maintenance'
-    ],
-    hours: 12,
-    status: 'active'
+interface Certificate {
+  id: string
+  userId: string
+  certificateId: string
+  verificationCode: string
+  issuedAt: string
+  expiresAt: string | null
+  certificate: {
+    id: string
+    courseId: string
+    templateHtml: string
+    isActive: boolean
+    course: {
+      id: string
+      title: string
+      description: string | null
+      durationMinutes: number
+      category: {
+        id: string
+        name: string
+      } | null
+      instructor: {
+        firstName: string
+        lastName: string
+        email: string
+      }
+    }
   }
+  user: {
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+  }
+  enrollment: {
+    enrolledAt: string
+    completedAt: string | null
+  } | null
 }
 
 export default function CertificateDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const certId = parseInt(params.id as string)
+  const certId = params.id as string
 
-  const [certificate, setCertificate] = useState(MOCK_CERTIFICATES[certId as keyof typeof MOCK_CERTIFICATES])
+  const [certificate, setCertificate] = useState<Certificate | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchCertificate()
+  }, [certId])
 
   useEffect(() => {
     if (!certificate) return
@@ -82,12 +83,76 @@ export default function CertificateDetailPage() {
     })
   }, [certificate])
 
-  if (!certificate) {
+  const fetchCertificate = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await apiClient.get(`/certificates/${certId}`)
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        const apiData = response.data as any
+        setCertificate(apiData.data)
+      } else {
+        setError(response.error || 'Failed to fetch certificate')
+      }
+    } catch (err) {
+      console.error('Error fetching certificate:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load certificate')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDownload = () => {
+    window.open(`/api/certificates/${certId}/download`, '_blank')
+  }
+
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/certificates/${certId}`
+    const shareText = `I earned a certificate for "${certificate?.certificate.course.title}" from Civilabs LMS!`
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Certificate Achievement',
+          text: shareText,
+          url: shareUrl
+        })
+      } else {
+        await navigator.clipboard.writeText(shareUrl)
+        alert('Certificate link copied to clipboard! You can now share it.')
+      }
+    } catch (error) {
+      console.error('Error sharing certificate:', error)
+      if (error instanceof Error && error.name !== 'AbortError') {
+        alert('Failed to share certificate. Please try again.')
+      }
+    }
+  }
+
+  // Loading state
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="glass-effect concrete-texture border-4 border-danger/40 p-12 text-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
+          <p className="text-lg font-bold text-neutral-700">Loading certificate...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error || !certificate) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="glass-effect concrete-texture border-4 border-danger/40 p-12 text-center max-w-md">
+          <AlertCircle className="mx-auto mb-4 text-danger" size={48} />
           <h2 className="text-2xl font-black text-neutral-800 mb-4">CERTIFICATE NOT FOUND</h2>
-          <p className="text-neutral-600 font-semibold mb-6">The certificate you're looking for doesn't exist.</p>
+          <p className="text-neutral-600 font-semibold mb-6">
+            {error || "The certificate you're looking for doesn't exist."}
+          </p>
           <Link href="/certificates">
             <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
               BACK TO CERTIFICATES
@@ -98,23 +163,11 @@ export default function CertificateDetailPage() {
     )
   }
 
-  const handleDownload = () => {
-    // In real app, would generate and download PDF
-    alert('Certificate download will be implemented with PDF generation')
-  }
-
-  const handleShare = () => {
-    // In real app, would open share dialog
-    if (navigator.share) {
-      navigator.share({
-        title: certificate.title,
-        text: `I earned a certificate in ${certificate.title}!`,
-        url: window.location.href
-      })
-    } else {
-      alert('Certificate sharing functionality')
-    }
-  }
+  const courseTitle = certificate.certificate.course.title
+  const categoryName = certificate.certificate.course.category?.name || 'General'
+  const instructorName = `${certificate.certificate.course.instructor.firstName} ${certificate.certificate.course.instructor.lastName}`
+  const courseDurationHours = Math.ceil(certificate.certificate.course.durationMinutes / 60)
+  const isActive = !certificate.expiresAt || new Date(certificate.expiresAt) > new Date()
 
   return (
     <div className="space-y-6">
@@ -148,147 +201,184 @@ export default function CertificateDetailPage() {
       </div>
 
       {/* Certificate Preview */}
-      <Card className="cert-item opacity-0 glass-effect border-8 border-warning/60 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-warning/5 via-white to-orange-500/5"></div>
+      <div className="cert-item opacity-0">
+        <Card className="glass-effect concrete-texture border-4 border-success/40 relative overflow-hidden">
+          {/* Decorative Corner Markers */}
+          <div className="absolute top-0 left-0 w-24 h-24 border-t-4 border-l-4 border-success/60"></div>
+          <div className="absolute top-0 right-0 w-24 h-24 border-t-4 border-r-4 border-success/60"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 border-b-4 border-l-4 border-success/60"></div>
+          <div className="absolute bottom-0 right-0 w-24 h-24 border-b-4 border-r-4 border-success/60"></div>
 
-        {/* Decorative Corners */}
-        <div className="absolute top-0 left-0 w-32 h-32">
-          <div className="absolute top-4 left-4 w-24 h-24 border-t-8 border-l-8 border-warning/40"></div>
-        </div>
-        <div className="absolute top-0 right-0 w-32 h-32">
-          <div className="absolute top-4 right-4 w-24 h-24 border-t-8 border-r-8 border-warning/40"></div>
-        </div>
-        <div className="absolute bottom-0 left-0 w-32 h-32">
-          <div className="absolute bottom-4 left-4 w-24 h-24 border-b-8 border-l-8 border-warning/40"></div>
-        </div>
-        <div className="absolute bottom-0 right-0 w-32 h-32">
-          <div className="absolute bottom-4 right-4 w-24 h-24 border-b-8 border-r-8 border-warning/40"></div>
-        </div>
-
-        <CardContent className="p-12 md:p-16 relative z-10">
-          <div className="text-center space-y-8">
-            {/* Institution Logo/Badge */}
-            <div className="w-24 h-24 bg-gradient-to-br from-warning to-orange-600 rounded-full flex items-center justify-center mx-auto shadow-2xl">
-              <Shield className="text-white" size={48} />
-            </div>
+          {/* Certificate Content */}
+          <CardContent className="p-12 md:p-16 text-center relative z-10">
+            {/* Institution */}
+            <p className="text-sm font-bold text-neutral-600 uppercase tracking-wider mb-2">
+              Civilabs Construction Academy
+            </p>
 
             {/* Certificate Title */}
-            <div>
-              <p className="text-sm font-bold text-neutral-600 uppercase tracking-wider mb-2">
-                CERTIFICATE OF COMPLETION
-              </p>
-              <h1 className="text-5xl md:text-6xl font-black bg-gradient-to-r from-warning via-orange-500 to-yellow-600 bg-clip-text text-transparent mb-4">
-                {certificate.title}
-              </h1>
-              <p className="text-xl font-bold text-neutral-700">{certificate.courseName}</p>
+            <h1 className="text-2xl md:text-3xl font-black text-neutral-800 uppercase mb-4">
+              CERTIFICATE OF COMPLETION
+            </h1>
+
+            {/* Award Icon */}
+            <div className="w-24 h-24 bg-gradient-to-br from-success to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <Award className="text-white" size={48} />
             </div>
 
             {/* Recipient */}
-            <div>
-              <p className="text-sm font-bold text-neutral-600 uppercase mb-2">THIS CERTIFIES THAT</p>
-              <p className="text-4xl font-black text-neutral-800">[LEARNER NAME]</p>
-            </div>
+            <p className="text-sm font-bold text-neutral-600 uppercase mb-2">This certifies that</p>
+            <h2 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-success via-primary to-warning bg-clip-text text-transparent mb-6">
+              {certificate.user.firstName} {certificate.user.lastName}
+            </h2>
+
+            {/* Course Info */}
+            <p className="text-sm font-bold text-neutral-600 uppercase mb-2">Has successfully completed</p>
+            <h3 className="text-2xl md:text-3xl font-black text-neutral-800 mb-4">
+              {courseTitle}
+            </h3>
 
             {/* Description */}
-            <p className="text-neutral-700 max-w-2xl mx-auto leading-relaxed">
-              {certificate.description}
-            </p>
+            {certificate.certificate.course.description && (
+              <p className="text-neutral-600 font-medium max-w-2xl mx-auto mb-8">
+                {certificate.certificate.course.description}
+              </p>
+            )}
 
-            {/* Details Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
-              <div className="text-center">
-                <Calendar className="mx-auto mb-2 text-warning" size={24} />
-                <p className="text-xs font-bold text-neutral-600 uppercase">Issue Date</p>
-                <p className="font-black text-neutral-800">{new Date(certificate.issueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            {/* Metadata Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 max-w-3xl mx-auto">
+              <div>
+                <p className="text-xs font-bold text-neutral-500 uppercase mb-2">Issue Date</p>
+                <p className="text-sm font-semibold text-neutral-800 flex items-center justify-center gap-2">
+                  <Calendar size={16} className="text-success" />
+                  {new Date(certificate.issuedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </p>
               </div>
 
-              <div className="text-center">
-                <Star className="mx-auto mb-2 text-warning" size={24} />
-                <p className="text-xs font-bold text-neutral-600 uppercase">Score</p>
-                <p className="font-black text-neutral-800">{certificate.score}%</p>
-              </div>
-
-              <div className="text-center">
-                <CheckCircle className="mx-auto mb-2 text-success" size={24} />
-                <p className="text-xs font-bold text-neutral-600 uppercase">Status</p>
-                <p className="font-black text-success uppercase">{certificate.status}</p>
-              </div>
-            </div>
-
-            {/* Signatures */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl mx-auto pt-8">
-              <div className="text-center">
-                <div className="border-t-2 border-neutral-300 pt-4">
-                  <p className="font-black text-neutral-800">{certificate.instructor}</p>
-                  <p className="text-sm font-semibold text-neutral-600">{certificate.instructorTitle}</p>
+              {certificate.expiresAt && (
+                <div>
+                  <p className="text-xs font-bold text-neutral-500 uppercase mb-2">Expiry Date</p>
+                  <p className="text-sm font-semibold text-neutral-800 flex items-center justify-center gap-2">
+                    <Calendar size={16} className="text-primary" />
+                    {new Date(certificate.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </p>
                 </div>
-              </div>
-              <div className="text-center">
-                <div className="border-t-2 border-neutral-300 pt-4">
-                  <p className="font-black text-neutral-800">{certificate.institution}</p>
-                  <p className="text-sm font-semibold text-neutral-600">Issuing Authority</p>
-                </div>
+              )}
+
+              <div>
+                <p className="text-xs font-bold text-neutral-500 uppercase mb-2">Instructor</p>
+                <p className="text-sm font-semibold text-neutral-800 flex items-center justify-center gap-2">
+                  <User size={16} className="text-secondary" />
+                  {instructorName}
+                </p>
               </div>
             </div>
 
-            {/* Credential ID */}
-            <div className="pt-8">
-              <p className="text-xs font-bold text-neutral-500 uppercase">Credential ID: {certificate.credentialId}</p>
+            {/* Verification */}
+            <div className="mt-8 pt-8 border-t-2 border-neutral-200">
+              <p className="text-xs font-bold text-neutral-500 uppercase mb-2">Verification Code</p>
+              <p className="text-sm font-mono font-semibold text-neutral-800">
+                {certificate.verificationCode || certificate.id}
+              </p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Certificate Information */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Skills Covered */}
-        <Card className="cert-item opacity-0 glass-effect concrete-texture border-4 border-success/40">
+            {/* Status Badge */}
+            <div className="mt-6 flex items-center justify-center gap-2">
+              {isActive ? (
+                <>
+                  <CheckCircle className="text-success" size={20} />
+                  <span className="text-sm font-bold text-success uppercase">VERIFIED & ACTIVE</span>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="text-warning" size={20} />
+                  <span className="text-sm font-bold text-warning uppercase">EXPIRED</span>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Additional Details */}
+      <div className="cert-item opacity-0 grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Course Information */}
+        <Card className="glass-effect concrete-texture border-4 border-primary/40">
           <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-success to-green-600 rounded-lg flex items-center justify-center">
-                <CheckCircle className="text-white" size={24} />
+            <h3 className="text-xl font-black text-neutral-800 mb-4 flex items-center gap-2">
+              <Shield className="text-primary" size={24} />
+              Course Information
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-bold text-neutral-500 uppercase">Category</p>
+                <p className="text-sm font-semibold text-neutral-800">{categoryName}</p>
               </div>
-              <h3 className="text-xl font-black text-neutral-800">SKILLS COVERED</h3>
+
+              <div>
+                <p className="text-xs font-bold text-neutral-500 uppercase">Duration</p>
+                <p className="text-sm font-semibold text-neutral-800">{courseDurationHours} {courseDurationHours === 1 ? 'hour' : 'hours'}</p>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-neutral-500 uppercase">Completion Date</p>
+                <p className="text-sm font-semibold text-neutral-800">
+                  {certificate.enrollment?.completedAt
+                    ? new Date(certificate.enrollment.completedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                    : 'Not available'}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-neutral-500 uppercase">Status</p>
+                <div className="flex items-center gap-2">
+                  {isActive ? (
+                    <>
+                      <CheckCircle className="text-success" size={16} />
+                      <span className="text-sm font-bold text-success">Active</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="text-warning" size={16} />
+                      <span className="text-sm font-bold text-warning">Expired</span>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-            <ul className="space-y-3">
-              {certificate.skills.map((skill, index) => (
-                <li key={index} className="flex items-start gap-3">
-                  <CheckCircle className="text-success flex-shrink-0 mt-1" size={18} />
-                  <span className="font-medium text-neutral-700">{skill}</span>
-                </li>
-              ))}
-            </ul>
           </CardContent>
         </Card>
 
-        {/* Certificate Details */}
-        <Card className="cert-item opacity-0 glass-effect concrete-texture border-4 border-primary/40">
+        {/* Verification Info */}
+        <Card className="glass-effect concrete-texture border-4 border-secondary/40">
           <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center">
-                <Award className="text-white" size={24} />
-              </div>
-              <h3 className="text-xl font-black text-neutral-800">DETAILS</h3>
-            </div>
+            <h3 className="text-xl font-black text-neutral-800 mb-4 flex items-center gap-2">
+              <Star className="text-secondary" size={24} />
+              Verification Details
+            </h3>
+
             <div className="space-y-4">
               <div>
-                <p className="text-sm font-bold text-neutral-600 uppercase">Course Duration</p>
-                <p className="font-bold text-neutral-800">{certificate.hours} hours</p>
+                <p className="text-xs font-bold text-neutral-500 uppercase">Certificate ID</p>
+                <p className="text-sm font-mono font-semibold text-neutral-800 break-all">{certificate.id}</p>
               </div>
+
               <div>
-                <p className="text-sm font-bold text-neutral-600 uppercase">Instructor</p>
-                <p className="font-bold text-neutral-800">{certificate.instructor}</p>
-                <p className="text-sm text-neutral-600">{certificate.instructorTitle}</p>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-neutral-600 uppercase">Valid Until</p>
-                <p className="font-bold text-neutral-800">
-                  {new Date(certificate.expiryDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                <p className="text-xs font-bold text-neutral-500 uppercase">Verification Code</p>
+                <p className="text-sm font-mono font-semibold text-neutral-800 break-all">
+                  {certificate.verificationCode || certificate.id}
                 </p>
               </div>
+
               <div>
-                <p className="text-sm font-bold text-neutral-600 uppercase">Verification</p>
-                <p className="text-sm text-neutral-700 font-medium break-all">{certificate.credentialId}</p>
+                <p className="text-xs font-bold text-neutral-500 uppercase">Issued To</p>
+                <p className="text-sm font-semibold text-neutral-800">{certificate.user.email}</p>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-neutral-500 uppercase">Institution</p>
+                <p className="text-sm font-semibold text-neutral-800">Civilabs Construction Academy</p>
               </div>
             </div>
           </CardContent>

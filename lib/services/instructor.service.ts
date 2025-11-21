@@ -153,7 +153,7 @@ class InstructorService {
     const response = await apiClient.get<{ data: InstructorStatsResponse }>(
       '/api/instructor/stats'
     )
-    return response.data
+    return response.data!.data
   }
 
   /**
@@ -173,7 +173,7 @@ class InstructorService {
     const response = await apiClient.get<{
       data: { courses: InstructorCourse[]; total: number }
     }>(url)
-    return response.data
+    return response.data!.data
   }
 
   /**
@@ -211,7 +211,7 @@ class InstructorService {
         }
       }
     }>(url)
-    return response.data
+    return response.data!.data
   }
 
   /**
@@ -229,7 +229,7 @@ class InstructorService {
       queryParams.toString() ? `?${queryParams.toString()}` : ''
     }`
     const response = await apiClient.get<{ data: InstructorAnalytics }>(url)
-    return response.data
+    return response.data!.data
   }
 }
 

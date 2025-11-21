@@ -104,7 +104,28 @@ const RECIPIENTS = ['All', 'All Users', 'Instructors', 'Learners', 'Admins']
 const STATUSES = ['All', 'Sent', 'Scheduled', 'Draft']
 
 export default function AdminNotificationsPage() {
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/notifications')
+      const data = await response.json()
+      if (data.success && data.data) {
+        // For now, keep as empty - admin notification management can be implemented later
+        setNotifications([])
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState('All')
   const [selectedRecipients, setSelectedRecipients] = useState('All')

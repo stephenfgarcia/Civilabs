@@ -7,17 +7,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAuth } from '@/lib/auth/api-auth'
 
-interface RouteParams {
-  params: { id: string }
-}
-
 /**
  * DELETE /api/bookmarks/[id]
  * Remove a course from user's bookmarks
  */
-export const DELETE = withAuth(async (request, user, context: RouteParams) => {
+export const DELETE = withAuth(async (request, user, context?: { params: Promise<{ id: string }> }) => {
   try {
-    const params = await context.params
+    const params = await context!.params
     const { id } = params
 
     // Check if bookmark exists

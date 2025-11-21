@@ -82,7 +82,7 @@ export function useCourse(courseId: number): UseCourseReturn {
     setLoading(true)
     setError(null)
 
-    const response = await coursesService.getCourseById(courseId)
+    const response = await coursesService.getCourseById(String(courseId))
 
     if (response.error) {
       setError(response.error)
@@ -95,7 +95,7 @@ export function useCourse(courseId: number): UseCourseReturn {
   }, [courseId])
 
   const enroll = useCallback(async () => {
-    const response = await coursesService.enrollCourse(courseId)
+    const response = await coursesService.enrollCourse(String(courseId))
     if (response.error) {
       setError(response.error)
     } else {
@@ -104,7 +104,7 @@ export function useCourse(courseId: number): UseCourseReturn {
   }, [courseId, fetchCourse])
 
   const unenroll = useCallback(async () => {
-    const response = await coursesService.unenrollCourse(courseId)
+    const response = await coursesService.unenrollCourse(String(courseId))
     if (response.error) {
       setError(response.error)
     } else {
@@ -146,20 +146,20 @@ export function useCourseProgress(courseId: number): UseCourseProgressReturn {
     setLoading(true)
     setError(null)
 
-    const response = await coursesService.getCourseProgress(courseId)
+    const response = await coursesService.getCourseProgress(String(courseId))
 
     if (response.error) {
       setError(response.error)
       setProgress(null)
     } else if (response.data) {
-      setProgress(response.data)
+      setProgress(response.data as CourseProgress)
     }
 
     setLoading(false)
   }, [courseId])
 
   const markLessonComplete = useCallback(async (lessonId: number) => {
-    const response = await coursesService.markLessonComplete(courseId, lessonId)
+    const response = await coursesService.markLessonComplete(String(lessonId))
     if (response.error) {
       setError(response.error)
     } else {
@@ -199,13 +199,13 @@ export function useLesson(courseId: number, lessonId: number): UseLessonReturn {
     setLoading(true)
     setError(null)
 
-    const response = await coursesService.getLesson(courseId, lessonId)
+    const response = await coursesService.getLesson(String(lessonId))
 
     if (response.error) {
       setError(response.error)
       setLesson(null)
     } else if (response.data) {
-      setLesson(response.data)
+      setLesson(response.data as Lesson)
     }
 
     setLoading(false)

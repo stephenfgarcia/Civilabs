@@ -91,7 +91,8 @@ const MOCK_CERTIFICATES_OLD: any[] = [
   },
 ]
 
-const STATUSES = ['ALL', 'ACTIVE', 'EXPIRED', 'REVOKED']
+const STATUSES = ['ALL', 'ACTIVE', 'EXPIRED', 'REVOKED'] as const
+type StatusType = typeof STATUSES[number]
 
 export default function AdminCertificatesPage() {
   const [certificates, setCertificates] = useState<AdminCertificate[]>([])
@@ -109,11 +110,11 @@ export default function AdminCertificatesPage() {
         setError(null)
         const response = await adminCertificatesService.getCertificates({ status: 'ALL' })
 
-        if (response.success) {
+        if (response.success && response.data) {
           setCertificates(response.data)
           setFilteredCertificates(response.data)
         } else {
-          setError('Failed to load certificates')
+          setError(response.error || 'Failed to load certificates')
         }
       } catch (err) {
         setError('An error occurred while loading certificates')

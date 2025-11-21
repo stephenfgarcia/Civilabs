@@ -4,106 +4,21 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Trophy, Medal, Award, Target, Zap, TrendingUp, Crown, Star, User, Loader2 } from 'lucide-react'
 
-// Mock leaderboard data
-const MOCK_LEADERBOARD = [
-  {
-    id: 1,
-    rank: 1,
-    name: 'Sarah Chen',
-    department: 'Engineering',
-    points: 2850,
-    coursesCompleted: 12,
-    certificates: 8,
-    streak: 45,
-    avatar: null,
-    badge: 'Master Builder'
-  },
-  {
-    id: 2,
-    rank: 2,
-    name: 'Mike Johnson',
-    department: 'Operations',
-    points: 2640,
-    coursesCompleted: 10,
-    certificates: 7,
-    streak: 38,
-    avatar: null,
-    badge: 'Expert Learner'
-  },
-  {
-    id: 3,
-    rank: 3,
-    name: 'John Martinez',
-    department: 'Safety',
-    points: 2520,
-    coursesCompleted: 11,
-    certificates: 6,
-    streak: 32,
-    avatar: null,
-    badge: 'Safety Champion'
-  },
-  {
-    id: 4,
-    rank: 4,
-    name: 'Emily Rodriguez',
-    department: 'Engineering',
-    points: 2380,
-    coursesCompleted: 9,
-    certificates: 6,
-    streak: 28,
-    avatar: null,
-    badge: 'Rising Star'
-  },
-  {
-    id: 5,
-    rank: 5,
-    name: 'David Kim',
-    department: 'Quality',
-    points: 2210,
-    coursesCompleted: 8,
-    certificates: 5,
-    streak: 25,
-    avatar: null,
-    badge: 'Dedicated Learner'
-  },
-  {
-    id: 6,
-    rank: 6,
-    name: 'Lisa Thompson',
-    department: 'Operations',
-    points: 2050,
-    coursesCompleted: 7,
-    certificates: 5,
-    streak: 22,
-    avatar: null,
-    badge: 'Consistent'
-  },
-  {
-    id: 7,
-    rank: 7,
-    name: 'James Wilson',
-    department: 'Engineering',
-    points: 1890,
-    coursesCompleted: 6,
-    certificates: 4,
-    streak: 18,
-    avatar: null,
-    badge: 'On Track'
-  },
-  {
-    id: 8,
-    rank: 8,
-    name: 'You',
-    department: 'Engineering',
-    points: 1750,
-    coursesCompleted: 5,
-    certificates: 3,
-    streak: 7,
-    avatar: null,
-    badge: 'Getting Started',
-    isCurrentUser: true
-  }
-]
+// Leaderboard types
+interface LeaderboardEntry {
+  userId: string
+  rank: number
+  name: string
+  department?: string
+  points: number
+  level: number
+  coursesCompleted: number
+  certificates: number
+  streak: number
+  avatar: string | null
+  badge: string
+  isCurrentUser?: boolean
+}
 
 const FILTER_TABS = [
   { id: 'all', label: 'ALL TIME', icon: Trophy },
@@ -114,7 +29,7 @@ const FILTER_TABS = [
 
 export default function LeaderboardPage() {
   const [selectedFilter, setSelectedFilter] = useState('all')
-  const [leaderboard, setLeaderboard] = useState<any[]>([])
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
@@ -153,29 +68,16 @@ export default function LeaderboardPage() {
       const data = await response.json()
 
       if (data.success && data.data) {
-        // Add mock data for missing fields (coursesCompleted, certificates, streak, badge)
-        // In a real implementation, these would come from the API
-        const enrichedData = data.data.map((entry: any, index: number) => ({
+        // Mark current user's entry
+        const enrichedData = data.data.map((entry: any) => ({
           ...entry,
-          id: entry.userId,
-          coursesCompleted: Math.floor(entry.points / 200), // Mock calculation
-          certificates: Math.floor(entry.points / 300), // Mock calculation
-          streak: Math.floor(Math.random() * 50), // Mock data
-          badge: index === 0 ? 'Master Builder' :
-                 index === 1 ? 'Expert Learner' :
-                 index === 2 ? 'Safety Champion' :
-                 index < 5 ? 'Rising Star' : 'Dedicated Learner',
           isCurrentUser: entry.userId === currentUserId
         }))
         setLeaderboard(enrichedData)
-      } else {
-        // Fall back to mock data if API fails
-        setLeaderboard(MOCK_LEADERBOARD)
       }
     } catch (err) {
       console.error('Error fetching leaderboard:', err)
-      // Fall back to mock data on error
-      setLeaderboard(MOCK_LEADERBOARD)
+      setLeaderboard([])
     } finally {
       setLoading(false)
     }
@@ -358,7 +260,7 @@ export default function LeaderboardPage() {
           <div className="space-y-2">
             {leaderboard.map((user, index) => (
               <div
-                key={user.id}
+                key={user.userId}
                 className={`glass-effect border-2 rounded-lg p-4 transition-all ${
                   user.isCurrentUser
                     ? 'border-warning/60 bg-warning/5'
@@ -390,7 +292,7 @@ export default function LeaderboardPage() {
                             <span className="text-xs font-bold px-2 py-1 rounded-full bg-warning/20 text-warning">YOU</span>
                           )}
                         </h3>
-                        <p className="text-xs text-neutral-600">{typeof user.department === 'string' ? user.department : user.department?.name || 'N/A'}</p>
+                        <p className="text-xs text-neutral-600">{user.department || 'N/A'}</p>
                         <p className="text-xs font-semibold text-primary mt-1">{user.badge}</p>
                       </div>
                     </div>

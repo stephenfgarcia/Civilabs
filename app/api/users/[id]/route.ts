@@ -10,17 +10,13 @@ import { prisma } from '@/lib/utils/prisma'
 import { withAdmin } from '@/lib/auth/api-auth'
 import { hashPassword } from '@/lib/auth/auth-helpers'
 
-interface RouteParams {
-  params: { id: string }
-}
-
 /**
  * GET /api/users/[id]
  * Get user details (admin only)
  */
 export async function GET(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   return withAdmin(async (req, user) => {
     try {
@@ -38,9 +34,8 @@ export async function GET(
           },
           points: {
             select: {
-              totalPoints: true,
+              points: true,
               level: true,
-              rank: true,
             },
           },
           _count: {
@@ -80,7 +75,7 @@ export async function GET(
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request, context)
 }
 
 /**
@@ -89,7 +84,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   return withAdmin(async (req, user) => {
     try {
@@ -193,7 +188,7 @@ export async function PUT(
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request, context)
 }
 
 /**
@@ -202,7 +197,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   return withAdmin(async (req, user) => {
     try {
@@ -277,5 +272,5 @@ export async function DELETE(
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request, context)
 }

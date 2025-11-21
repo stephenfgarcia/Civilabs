@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
+import { DistributionChart } from '@/components/charts/DistributionChart'
+import { TrendChart } from '@/components/charts/TrendChart'
+import { ComparisonChart } from '@/components/charts/ComparisonChart'
+import { ActivityChart } from '@/components/charts/ActivityChart'
 import {
   BarChart3,
   FileText,
@@ -73,6 +77,41 @@ const MOCK_STATS = {
   activeReports: 8,
   exportedReports: 98,
 }
+
+// Sample chart data
+const DISTRIBUTION_DATA = [
+  { name: 'Engineering', value: 450 },
+  { name: 'Business', value: 320 },
+  { name: 'Design', value: 280 },
+  { name: 'Marketing', value: 210 },
+  { name: 'Other', value: 140 },
+]
+
+const TREND_DATA = [
+  { name: 'Jan', enrollments: 120, completions: 80 },
+  { name: 'Feb', enrollments: 150, completions: 95 },
+  { name: 'Mar', enrollments: 180, completions: 110 },
+  { name: 'Apr', enrollments: 220, completions: 140 },
+  { name: 'May', enrollments: 250, completions: 170 },
+  { name: 'Jun', enrollments: 280, completions: 200 },
+]
+
+const COMPARISON_DATA = [
+  { name: 'Course A', students: 400, completed: 240 },
+  { name: 'Course B', students: 300, completed: 180 },
+  { name: 'Course C', students: 280, completed: 210 },
+  { name: 'Course D', students: 350, completed: 250 },
+]
+
+const ACTIVITY_DATA = [
+  { name: 'Mon', value: 145 },
+  { name: 'Tue', value: 230 },
+  { name: 'Wed', value: 180 },
+  { name: 'Thu', value: 290 },
+  { name: 'Fri', value: 310 },
+  { name: 'Sat', value: 220 },
+  { name: 'Sun', value: 160 },
+]
 
 export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState<string | null>(null)
@@ -286,11 +325,8 @@ export default function ReportsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64 flex items-center justify-center border-2 border-dashed border-neutral-300 rounded-lg">
-                <div className="text-center">
-                  <PieChart className="mx-auto mb-2 text-neutral-400" size={48} />
-                  <p className="text-neutral-500 font-semibold">Chart visualization placeholder</p>
-                </div>
+              <div className="h-64">
+                <DistributionChart data={DISTRIBUTION_DATA} />
               </div>
             </CardContent>
           </Card>
@@ -303,11 +339,14 @@ export default function ReportsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64 flex items-center justify-center border-2 border-dashed border-neutral-300 rounded-lg">
-                <div className="text-center">
-                  <LineChart className="mx-auto mb-2 text-neutral-400" size={48} />
-                  <p className="text-neutral-500 font-semibold">Chart visualization placeholder</p>
-                </div>
+              <div className="h-64">
+                <TrendChart
+                  data={TREND_DATA}
+                  lines={[
+                    { dataKey: 'enrollments', name: 'Enrollments', color: '#3B82F6' },
+                    { dataKey: 'completions', name: 'Completions', color: '#10B981' },
+                  ]}
+                />
               </div>
             </CardContent>
           </Card>
@@ -320,11 +359,14 @@ export default function ReportsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64 flex items-center justify-center border-2 border-dashed border-neutral-300 rounded-lg">
-                <div className="text-center">
-                  <BarChart3 className="mx-auto mb-2 text-neutral-400" size={48} />
-                  <p className="text-neutral-500 font-semibold">Chart visualization placeholder</p>
-                </div>
+              <div className="h-64">
+                <ComparisonChart
+                  data={COMPARISON_DATA}
+                  bars={[
+                    { dataKey: 'students', name: 'Total Students', color: '#F59E0B' },
+                    { dataKey: 'completed', name: 'Completed', color: '#10B981' },
+                  ]}
+                />
               </div>
             </CardContent>
           </Card>
@@ -337,11 +379,8 @@ export default function ReportsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64 flex items-center justify-center border-2 border-dashed border-neutral-300 rounded-lg">
-                <div className="text-center">
-                  <Activity className="mx-auto mb-2 text-neutral-400" size={48} />
-                  <p className="text-neutral-500 font-semibold">Chart visualization placeholder</p>
-                </div>
+              <div className="h-64">
+                <ActivityChart data={ACTIVITY_DATA} color="#8B5CF6" />
               </div>
             </CardContent>
           </Card>

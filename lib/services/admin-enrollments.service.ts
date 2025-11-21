@@ -67,13 +67,11 @@ export interface UpdateEnrollmentData {
 }
 
 export interface EnrollmentsListResponse {
-  success: boolean
   data: AdminEnrollment[]
   count: number
 }
 
 export interface EnrollmentResponse {
-  success: boolean
   data: AdminEnrollment
   message?: string
 }
@@ -87,7 +85,7 @@ class AdminEnrollmentsService {
     courseId?: string
     status?: string
     search?: string
-  }) {
+  }): Promise<{ success: boolean; data: AdminEnrollment[]; count: number; error?: string }> {
     try {
       const queryParams = new URLSearchParams()
       if (params?.userId) queryParams.append('userId', params.userId)
@@ -98,19 +96,35 @@ class AdminEnrollmentsService {
         `/enrollments?${queryParams.toString()}`
       )
 
-      // Client-side search filtering if needed
-      if (response.success && params?.search) {
-        const searchLower = params.search.toLowerCase()
-        response.data = response.data.filter(enrollment =>
-          enrollment.user.firstName.toLowerCase().includes(searchLower) ||
-          enrollment.user.lastName.toLowerCase().includes(searchLower) ||
-          enrollment.user.email.toLowerCase().includes(searchLower) ||
-          enrollment.course.title.toLowerCase().includes(searchLower)
-        )
-        response.count = response.data.length
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        let items = response.data.data
+        let count = response.data.count
+
+        // Client-side search filtering if needed
+        if (params?.search) {
+          const searchLower = params.search.toLowerCase()
+          items = items.filter(enrollment =>
+            enrollment.user.firstName.toLowerCase().includes(searchLower) ||
+            enrollment.user.lastName.toLowerCase().includes(searchLower) ||
+            enrollment.user.email.toLowerCase().includes(searchLower) ||
+            enrollment.course.title.toLowerCase().includes(searchLower)
+          )
+          count = items.length
+        }
+
+        return {
+          success: true,
+          data: items,
+          count,
+        }
       }
 
-      return response
+      return {
+        success: false,
+        data: [],
+        count: 0,
+        error: response.error || 'Failed to fetch enrollments',
+      }
     } catch (error) {
       console.error('Error fetching enrollments:', error)
       return {
@@ -125,10 +139,22 @@ class AdminEnrollmentsService {
   /**
    * Get enrollment by ID
    */
-  async getEnrollment(id: string) {
+  async getEnrollment(id: string): Promise<{ success: boolean; data: AdminEnrollment | null; error?: string }> {
     try {
       const response = await apiClient.get<EnrollmentResponse>(`/enrollments/${id}`)
-      return response
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        return {
+          success: true,
+          data: response.data.data,
+        }
+      }
+
+      return {
+        success: false,
+        data: null,
+        error: response.error || 'Failed to fetch enrollment',
+      }
     } catch (error) {
       console.error('Error fetching enrollment:', error)
       return {
@@ -142,10 +168,23 @@ class AdminEnrollmentsService {
   /**
    * Enroll user in course (admin can enroll any user)
    */
-  async enrollUser(data: EnrollUserData) {
+  async enrollUser(data: EnrollUserData): Promise<{ success: boolean; data: AdminEnrollment | null; error?: string; message?: string }> {
     try {
       const response = await apiClient.post<EnrollmentResponse>('/enrollments', data)
-      return response
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        return {
+          success: true,
+          data: response.data.data,
+          message: response.data.message,
+        }
+      }
+
+      return {
+        success: false,
+        data: null,
+        error: response.error || 'Failed to enroll user',
+      }
     } catch (error) {
       console.error('Error enrolling user:', error)
       return {
@@ -159,10 +198,23 @@ class AdminEnrollmentsService {
   /**
    * Update enrollment (admin only)
    */
-  async updateEnrollment(id: string, data: UpdateEnrollmentData) {
+  async updateEnrollment(id: string, data: UpdateEnrollmentData): Promise<{ success: boolean; data: AdminEnrollment | null; error?: string; message?: string }> {
     try {
       const response = await apiClient.put<EnrollmentResponse>(`/enrollments/${id}`, data)
-      return response
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        return {
+          success: true,
+          data: response.data.data,
+          message: response.data.message,
+        }
+      }
+
+      return {
+        success: false,
+        data: null,
+        error: response.error || 'Failed to update enrollment',
+      }
     } catch (error) {
       console.error('Error updating enrollment:', error)
       return {
@@ -176,10 +228,18 @@ class AdminEnrollmentsService {
   /**
    * Delete enrollment (unenroll user)
    */
-  async deleteEnrollment(id: string) {
+  async deleteEnrollment(id: string): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await apiClient.delete(`/enrollments/${id}`)
-      return response
+
+      if (response.status >= 200 && response.status < 300) {
+        return { success: true }
+      }
+
+      return {
+        success: false,
+        error: response.error || 'Failed to delete enrollment',
+      }
     } catch (error) {
       console.error('Error deleting enrollment:', error)
       return {

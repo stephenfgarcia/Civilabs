@@ -8,8 +8,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withInstructor } from '@/lib/auth/api-auth'
 
-export const PUT = withInstructor(async (request, user, { params }: { params: { id: string } }) => {
+export const PUT = withInstructor(async (request, user, context?: { params: Promise<{ id: string }> }) => {
   try {
+    const params = await context!.params
     const { id } = params
     const body = await request.json()
 
@@ -44,8 +45,9 @@ export const PUT = withInstructor(async (request, user, { params }: { params: { 
   }
 })
 
-export const DELETE = withInstructor(async (request, user, { params }: { params: { id: string } }) => {
+export const DELETE = withInstructor(async (request, user, context?: { params: Promise<{ id: string }> }) => {
   try {
+    const params = await context!.params
     const { id } = params
 
     const existingQuestion = await prisma.question.findUnique({

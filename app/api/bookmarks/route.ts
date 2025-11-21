@@ -16,7 +16,7 @@ export const GET = withAuth(async (request, user) => {
   try {
     const bookmarks = await prisma.bookmark.findMany({
       where: {
-        userId: user.userId,
+        userId: String(user.userId),
       },
       include: {
         course: {
@@ -108,7 +108,7 @@ export const POST = withAuth(async (request, user) => {
     const existingBookmark = await prisma.bookmark.findUnique({
       where: {
         userId_courseId: {
-          userId: user.userId,
+          userId: String(user.userId),
           courseId: body.courseId,
         },
       },
@@ -128,7 +128,7 @@ export const POST = withAuth(async (request, user) => {
     // Create bookmark
     const bookmark = await prisma.bookmark.create({
       data: {
-        userId: user.userId,
+        userId: String(user.userId),
         courseId: body.courseId,
       },
       include: {

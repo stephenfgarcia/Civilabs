@@ -6,8 +6,12 @@ import { Users, BookOpen, Award, TrendingUp, Activity, Loader2, AlertCircle, Har
 import { adminService, type AdminStats } from '@/lib/services'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import Link from 'next/link'
+import { useAuth } from '@/lib/hooks/useAuth'
 
 export default function AdminDashboardPage() {
+  // Require admin or super admin role
+  useAuth(['ADMIN', 'SUPER_ADMIN'])
+
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -29,16 +33,16 @@ export default function AdminDashboardPage() {
       setError(null)
 
       const response = await adminService.getStats()
-      if (response.error) {
-        throw new Error(response.error)
-      }
 
-      const statsData = response.data?.data
-      if (!statsData) {
-        throw new Error('Stats data not found')
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        // Extract the nested data from the API response
+        // API returns: { success: true, data: { overview: {...}, ... } }
+        // We need to extract the inner 'data' property
+        const apiData = response.data as any
+        setStats(apiData.data || apiData)
+      } else {
+        throw new Error(response.error || 'Failed to load stats')
       }
-
-      setStats(statsData)
     } catch (err) {
       console.error('Error fetching admin stats:', err)
       setError(err instanceof Error ? err.message : 'Failed to load admin statistics')
@@ -305,7 +309,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="flex-1">
                     <p className="font-bold text-neutral-800">{course.title}</p>
-                    <p className="text-sm text-neutral-600">{course.category}</p>
+                    <p className="text-sm text-neutral-600">{course.category || 'Uncategorized'}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Users size={16} className="text-success" />

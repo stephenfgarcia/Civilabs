@@ -13,8 +13,9 @@ import { withAuth, withInstructor } from '@/lib/auth/api-auth'
  * GET /api/lessons/[id]
  * Get lesson by ID
  */
-export const GET = withAuth(async (request, user, { params }: { params: { id: string } }) => {
+export const GET = withAuth(async (request, user, context?: { params: Promise<{ id: string }> }) => {
   try {
+    const params = await context!.params
     const { id } = params
 
     const lesson = await prisma.lesson.findUnique({
@@ -100,8 +101,9 @@ export const GET = withAuth(async (request, user, { params }: { params: { id: st
  * PUT /api/lessons/[id]
  * Update lesson (instructor/admin only)
  */
-export const PUT = withInstructor(async (request, user, { params }: { params: { id: string } }) => {
+export const PUT = withInstructor(async (request, user, context?: { params: Promise<{ id: string }> }) => {
   try {
+    const params = await context!.params
     const { id } = params
     const body = await request.json()
     const {
@@ -220,8 +222,9 @@ export const PUT = withInstructor(async (request, user, { params }: { params: { 
  * DELETE /api/lessons/[id]
  * Delete lesson (instructor/admin only)
  */
-export const DELETE = withInstructor(async (request, user, { params }: { params: { id: string } }) => {
+export const DELETE = withInstructor(async (request, user, context?: { params: Promise<{ id: string }> }) => {
   try {
+    const params = await context!.params
     const { id } = params
 
     // Get existing lesson

@@ -12,97 +12,94 @@ import {
   Clock,
   AlertCircle,
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from 'lucide-react'
 import Link from 'next/link'
+import { apiClient } from '@/lib/services'
 
-// Mock quiz data
-const MOCK_QUIZZES = {
-  1: {
-    id: 1,
-    courseId: 1,
-    courseTitle: 'Construction Safety Fundamentals',
-    moduleTitle: 'Introduction to Construction Safety',
-    title: 'Module 1 Quiz',
-    description: 'Test your knowledge of introduction to construction safety concepts',
-    passingScore: 80,
-    timeLimit: 5,
-    questions: [
-      {
-        id: 1,
-        question: 'What does OSHA stand for?',
-        type: 'multiple-choice',
-        options: [
-          'Occupational Safety and Health Administration',
-          'Office of Safety and Hazard Analysis',
-          'Operational Safety and Health Association',
-          'Organization for Safety and Health Awareness'
-        ],
-        correctAnswer: 0
-      },
-      {
-        id: 2,
-        question: 'Which of the following is NOT a component of a strong safety culture?',
-        type: 'multiple-choice',
-        options: [
-          'Leadership commitment',
-          'Worker involvement',
-          'Minimizing incident reporting',
-          'Open communication'
-        ],
-        correctAnswer: 2
-      },
-      {
-        id: 3,
-        question: 'Personal Protective Equipment (PPE) is required on all construction sites.',
-        type: 'true-false',
-        options: ['True', 'False'],
-        correctAnswer: 0
-      },
-      {
-        id: 4,
-        question: 'What is the first step in building a safety-first mindset?',
-        type: 'multiple-choice',
-        options: [
-          'Purchasing new equipment',
-          'Starting each day with a safety briefing',
-          'Hiring more safety personnel',
-          'Creating more paperwork'
-        ],
-        correctAnswer: 1
-      },
-      {
-        id: 5,
-        question: 'Workers have the right to stop unsafe work without fear of retaliation.',
-        type: 'true-false',
-        options: ['True', 'False'],
-        correctAnswer: 0
-      }
-    ]
+interface Question {
+  id: string
+  questionText: string
+  questionType: string
+  points: number
+  order: number
+  options: string[]
+}
+
+interface Quiz {
+  id: string
+  title: string
+  description: string | null
+  passingScore: number
+  timeLimitMinutes: number | null
+  questions: Question[]
+  lesson: {
+    id: string
+    title: string
+    courseId: string
+    course: {
+      id: string
+      title: string
+    }
   }
 }
 
-type QuizState = 'not-started' | 'in-progress' | 'completed'
+interface QuizAttempt {
+  id: string
+  quizId: string
+  userId: string
+  startedAt: string
+  attemptNumber: number
+}
+
+interface QuizResults {
+  score: number
+  passed: boolean
+  correctCount: number
+  totalQuestions: number
+  passingScore: number
+  detailedResults: Array<{
+    questionId: string
+    questionText: string
+    selectedAnswer: string
+    correctAnswer: string
+    isCorrect: boolean
+    explanation: string | null
+  }>
+}
+
+type QuizState = 'loading' | 'not-started' | 'in-progress' | 'completed'
 
 export default function QuizPage() {
   const params = useParams()
   const router = useRouter()
-  const quizId = parseInt(params.quizId as string)
-  const courseId = parseInt(params.id as string)
+  const quizId = params.quizId as string
+  const courseId = params.id as string
 
-  const [quiz, setQuiz] = useState(MOCK_QUIZZES[quizId as keyof typeof MOCK_QUIZZES])
-  const [quizState, setQuizState] = useState<QuizState>('not-started')
+  const [quiz, setQuiz] = useState<Quiz | null>(null)
+  const [attempt, setAttempt] = useState<QuizAttempt | null>(null)
+  const [quizState, setQuizState] = useState<QuizState>('loading')
   const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [answers, setAnswers] = useState<(number | null)[]>([])
+  const [answers, setAnswers] = useState<Record<string, string>>({})
   const [timeRemaining, setTimeRemaining] = useState(0)
-  const [score, setScore] = useState(0)
-  const [showResults, setShowResults] = useState(false)
+  const [results, setResults] = useState<QuizResults | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (quiz && quizState === 'not-started') {
-      setAnswers(new Array(quiz.questions.length).fill(null))
-    }
-  }, [quiz, quizState])
+    fetchQuiz()
+  }, [quizId])
+
+  useEffect(() => {
+    if (!quiz) return
+
+    const elements = document.querySelectorAll('.quiz-item')
+    elements.forEach((el, index) => {
+      const htmlEl = el as HTMLElement
+      htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
+    })
+  }, [quiz, quizState, currentQuestion])
 
   useEffect(() => {
     if (quizState === 'in-progress' && timeRemaining > 0) {
@@ -119,47 +116,60 @@ export default function QuizPage() {
     }
   }, [quizState, timeRemaining])
 
-  useEffect(() => {
-    if (!quiz) return
+  const fetchQuiz = async () => {
+    try {
+      setError(null)
+      const response = await apiClient.get(`/quizzes/${quizId}`)
 
-    const elements = document.querySelectorAll('.quiz-item')
-    elements.forEach((el, index) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
-    })
-  }, [quiz, quizState, currentQuestion])
-
-  if (!quiz) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="glass-effect concrete-texture border-4 border-danger/40 p-12 text-center">
-          <h2 className="text-2xl font-black text-neutral-800 mb-4">QUIZ NOT FOUND</h2>
-          <p className="text-neutral-600 font-semibold mb-6">The quiz you're looking for doesn't exist.</p>
-          <Link href={`/courses/${courseId}`}>
-            <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
-              BACK TO COURSE
-            </MagneticButton>
-          </Link>
-        </Card>
-      </div>
-    )
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        const apiData = response.data as any
+        setQuiz(apiData.data)
+        setQuizState('not-started')
+      } else {
+        setError(response.error || 'Failed to load quiz')
+        setQuizState('not-started')
+      }
+    } catch (err) {
+      console.error('Error fetching quiz:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load quiz')
+      setQuizState('not-started')
+    }
   }
 
-  const handleStartQuiz = () => {
-    setQuizState('in-progress')
-    setTimeRemaining(quiz.timeLimit * 60)
-    setCurrentQuestion(0)
-    setAnswers(new Array(quiz.questions.length).fill(null))
+  const handleStartQuiz = async () => {
+    try {
+      setError(null)
+
+      // Start quiz attempt via API
+      const response = await apiClient.post(`/quizzes/${quizId}/attempts`, {})
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        const apiData = response.data as any
+        setAttempt(apiData.data)
+        setQuizState('in-progress')
+        setTimeRemaining((quiz?.timeLimitMinutes || 30) * 60)
+        setCurrentQuestion(0)
+        setAnswers({})
+      } else {
+        setError(response.error || 'Failed to start quiz')
+        alert(response.error || 'Failed to start quiz. Please try again.')
+      }
+    } catch (err) {
+      console.error('Error starting quiz:', err)
+      setError(err instanceof Error ? err.message : 'Failed to start quiz')
+      alert('Failed to start quiz. Please try again.')
+    }
   }
 
-  const handleSelectAnswer = (answerIndex: number) => {
-    const newAnswers = [...answers]
-    newAnswers[currentQuestion] = answerIndex
-    setAnswers(newAnswers)
+  const handleSelectAnswer = (questionId: string, optionIndex: number) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: String(optionIndex)
+    }))
   }
 
   const handleNextQuestion = () => {
-    if (currentQuestion < quiz.questions.length - 1) {
+    if (quiz && currentQuestion < quiz.questions.length - 1) {
       setCurrentQuestion(prev => prev + 1)
     }
   }
@@ -170,25 +180,47 @@ export default function QuizPage() {
     }
   }
 
-  const handleSubmitQuiz = () => {
-    let correctCount = 0
-    quiz.questions.forEach((question, index) => {
-      if (answers[index] === question.correctAnswer) {
-        correctCount++
+  const handleSubmitQuiz = async () => {
+    if (!quiz || !attempt) return
+
+    try {
+      setSubmitting(true)
+      setError(null)
+
+      // Convert answers to API format
+      const submissionAnswers = Object.entries(answers).map(([questionId, selectedAnswer]) => ({
+        questionId,
+        selectedAnswer
+      }))
+
+      const response = await apiClient.post(`/quizzes/${quizId}/submit`, {
+        attemptId: attempt.id,
+        answers: submissionAnswers
+      })
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        const apiData = response.data as any
+        setResults(apiData.data.results)
+        setQuizState('completed')
+      } else {
+        setError(response.error || 'Failed to submit quiz')
+        alert(response.error || 'Failed to submit quiz. Please try again.')
       }
-    })
-    const finalScore = Math.round((correctCount / quiz.questions.length) * 100)
-    setScore(finalScore)
-    setQuizState('completed')
-    setShowResults(true)
+    } catch (err) {
+      console.error('Error submitting quiz:', err)
+      setError(err instanceof Error ? err.message : 'Failed to submit quiz')
+      alert('Failed to submit quiz. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleRetakeQuiz = () => {
     setQuizState('not-started')
     setCurrentQuestion(0)
-    setAnswers(new Array(quiz.questions.length).fill(null))
-    setScore(0)
-    setShowResults(false)
+    setAnswers({})
+    setResults(null)
+    setAttempt(null)
   }
 
   const formatTime = (seconds: number) => {
@@ -197,7 +229,39 @@ export default function QuizPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const answeredCount = answers.filter(a => a !== null).length
+  // Loading state
+  if (quizState === 'loading') {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
+          <p className="text-lg font-bold text-neutral-700">Loading quiz...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state or no quiz
+  if (error || !quiz) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="glass-effect concrete-texture border-4 border-danger/40 p-12 text-center max-w-md">
+          <AlertCircle className="mx-auto mb-4 text-danger" size={48} />
+          <h2 className="text-2xl font-black text-neutral-800 mb-4">QUIZ NOT FOUND</h2>
+          <p className="text-neutral-600 font-semibold mb-6">
+            {error || "The quiz you're looking for doesn't exist."}
+          </p>
+          <Link href={`/courses/${courseId}`}>
+            <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
+              BACK TO COURSE
+            </MagneticButton>
+          </Link>
+        </Card>
+      </div>
+    )
+  }
+
+  const answeredCount = Object.keys(answers).length
 
   // Not Started State
   if (quizState === 'not-started') {
@@ -229,7 +293,9 @@ export default function QuizPage() {
               </div>
 
               <h1 className="text-4xl md:text-5xl font-black text-neutral-800 mb-4">{quiz.title}</h1>
-              <p className="text-lg text-neutral-700 font-medium mb-8 max-w-2xl mx-auto">{quiz.description}</p>
+              <p className="text-lg text-neutral-700 font-medium mb-8 max-w-2xl mx-auto">
+                {quiz.description || 'Test your knowledge'}
+              </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 max-w-3xl mx-auto">
                 <Card className="glass-effect border-2 border-primary/30">
@@ -244,7 +310,7 @@ export default function QuizPage() {
                 <Card className="glass-effect border-2 border-warning/30">
                   <CardContent className="p-6 text-center">
                     <div className="text-3xl font-black bg-gradient-to-r from-warning to-orange-600 bg-clip-text text-transparent mb-2">
-                      {quiz.timeLimit} min
+                      {quiz.timeLimitMinutes || 30} min
                     </div>
                     <p className="text-sm font-bold text-neutral-600">TIME LIMIT</p>
                   </CardContent>
@@ -268,7 +334,7 @@ export default function QuizPage() {
                 <ul className="text-left space-y-2 text-neutral-700">
                   <li className="flex items-start gap-2">
                     <CheckCircle className="text-success flex-shrink-0 mt-1" size={16} />
-                    <span>You have {quiz.timeLimit} minutes to complete {quiz.questions.length} questions</span>
+                    <span>You have {quiz.timeLimitMinutes || 30} minutes to complete {quiz.questions.length} questions</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="text-success flex-shrink-0 mt-1" size={16} />
@@ -300,7 +366,7 @@ export default function QuizPage() {
   }
 
   // In Progress State
-  if (quizState === 'in-progress' && !showResults) {
+  if (quizState === 'in-progress') {
     const question = quiz.questions[currentQuestion]
 
     return (
@@ -340,7 +406,7 @@ export default function QuizPage() {
         <Card className="quiz-item opacity-0 glass-effect concrete-texture border-4 border-primary/40">
           <CardHeader>
             <CardTitle className="text-2xl font-black text-neutral-800">
-              {question.question}
+              {question.questionText}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -348,20 +414,20 @@ export default function QuizPage() {
               {question.options.map((option, index) => (
                 <button
                   key={index}
-                  onClick={() => handleSelectAnswer(index)}
+                  onClick={() => handleSelectAnswer(question.id, index)}
                   className={`w-full text-left p-4 rounded-lg border-2 transition-all font-semibold ${
-                    answers[currentQuestion] === index
+                    answers[question.id] === String(index)
                       ? 'border-primary bg-primary/10 text-primary'
                       : 'border-neutral-300 hover:border-primary/50 text-neutral-700'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                      answers[currentQuestion] === index
+                      answers[question.id] === String(index)
                         ? 'border-primary bg-primary'
                         : 'border-neutral-400'
                     }`}>
-                      {answers[currentQuestion] === index && (
+                      {answers[question.id] === String(index) && (
                         <CheckCircle className="text-white" size={16} />
                       )}
                     </div>
@@ -389,11 +455,11 @@ export default function QuizPage() {
               {currentQuestion === quiz.questions.length - 1 ? (
                 <MagneticButton
                   onClick={handleSubmitQuiz}
-                  disabled={answeredCount < quiz.questions.length}
+                  disabled={answeredCount < quiz.questions.length || submitting}
                   className="bg-gradient-to-r from-success to-green-600 text-white font-black disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Award className="mr-2" size={20} />
-                  SUBMIT QUIZ
+                  {submitting ? <Loader2 className="mr-2 animate-spin" size={20} /> : <Award className="mr-2" size={20} />}
+                  {submitting ? 'SUBMITTING...' : 'SUBMIT QUIZ'}
                 </MagneticButton>
               ) : (
                 <MagneticButton
@@ -415,14 +481,14 @@ export default function QuizPage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {quiz.questions.map((_, index) => (
+              {quiz.questions.map((q, index) => (
                 <button
-                  key={index}
+                  key={q.id}
                   onClick={() => setCurrentQuestion(index)}
                   className={`w-12 h-12 rounded-lg font-black transition-all ${
                     index === currentQuestion
                       ? 'bg-gradient-to-br from-primary to-blue-600 text-white scale-110'
-                      : answers[index] !== null
+                      : answers[q.id] !== undefined
                       ? 'bg-gradient-to-br from-success to-green-600 text-white'
                       : 'bg-neutral-200 text-neutral-600 hover:bg-neutral-300'
                   }`}
@@ -438,8 +504,8 @@ export default function QuizPage() {
   }
 
   // Completed State
-  if (quizState === 'completed' && showResults) {
-    const passed = score >= quiz.passingScore
+  if (quizState === 'completed' && results) {
+    const passed = results.passed
 
     return (
       <div className="space-y-6">
@@ -473,26 +539,26 @@ export default function QuizPage() {
               </h1>
               <p className="text-lg text-neutral-700 font-medium mb-8">
                 {passed
-                  ? `You passed the ${quiz.title} with a score of ${score}%!`
-                  : `You scored ${score}%. You need ${quiz.passingScore}% to pass.`}
+                  ? `You passed the ${quiz.title} with a score of ${results.score}%!`
+                  : `You scored ${results.score}%. You need ${results.passingScore}% to pass.`}
               </p>
 
               <div className="max-w-md mx-auto mb-8">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-bold text-neutral-700">Your Score</span>
-                  <span className={`text-3xl font-black ${passed ? 'text-success' : 'text-danger'}`}>{score}%</span>
+                  <span className={`text-3xl font-black ${passed ? 'text-success' : 'text-danger'}`}>{results.score}%</span>
                 </div>
                 <div className="w-full bg-neutral-200 rounded-full h-4">
                   <div
                     className={`bg-gradient-to-r ${
                       passed ? 'from-success to-green-600' : 'from-danger to-red-600'
                     } h-4 rounded-full transition-all`}
-                    style={{ width: `${score}%` }}
+                    style={{ width: `${results.score}%` }}
                   ></div>
                 </div>
                 <div className="flex items-center justify-between mt-2 text-sm font-semibold text-neutral-600">
-                  <span>Passing: {quiz.passingScore}%</span>
-                  <span>{answers.filter((a, i) => a === quiz.questions[i].correctAnswer).length}/{quiz.questions.length} correct</span>
+                  <span>Passing: {results.passingScore}%</span>
+                  <span>{results.correctCount}/{results.totalQuestions} correct</span>
                 </div>
               </div>
 
@@ -518,7 +584,7 @@ export default function QuizPage() {
                   <Link href="/certificates">
                     <MagneticButton className="bg-gradient-to-r from-success to-green-600 text-white font-black">
                       <Award className="mr-2" size={20} />
-                      VIEW CERTIFICATE
+                      VIEW CERTIFICATES
                     </MagneticButton>
                   </Link>
                 )}
@@ -537,37 +603,39 @@ export default function QuizPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {quiz.questions.map((question, qIndex) => {
-                const isCorrect = answers[qIndex] === question.correctAnswer
-                return (
-                  <div key={qIndex} className={`p-4 rounded-lg border-2 ${
-                    isCorrect ? 'border-success/30 bg-success/5' : 'border-danger/30 bg-danger/5'
-                  }`}>
-                    <div className="flex items-start gap-3 mb-3">
-                      {isCorrect ? (
-                        <CheckCircle className="text-success flex-shrink-0 mt-1" size={24} />
-                      ) : (
-                        <XCircle className="text-danger flex-shrink-0 mt-1" size={24} />
-                      )}
-                      <div className="flex-1">
-                        <h4 className="font-black text-neutral-800 mb-2">
-                          Question {qIndex + 1}: {question.question}
-                        </h4>
-                        <p className="text-sm font-semibold text-neutral-700">
-                          Your answer: <span className={isCorrect ? 'text-success' : 'text-danger'}>
-                            {question.options[answers[qIndex] ?? 0]}
-                          </span>
+              {results.detailedResults.map((result, index) => (
+                <div key={result.questionId} className={`p-4 rounded-lg border-2 ${
+                  result.isCorrect ? 'border-success/30 bg-success/5' : 'border-danger/30 bg-danger/5'
+                }`}>
+                  <div className="flex items-start gap-3 mb-3">
+                    {result.isCorrect ? (
+                      <CheckCircle className="text-success flex-shrink-0 mt-1" size={24} />
+                    ) : (
+                      <XCircle className="text-danger flex-shrink-0 mt-1" size={24} />
+                    )}
+                    <div className="flex-1">
+                      <h4 className="font-black text-neutral-800 mb-2">
+                        Question {index + 1}: {result.questionText}
+                      </h4>
+                      <p className="text-sm font-semibold text-neutral-700">
+                        Your answer: <span className={result.isCorrect ? 'text-success' : 'text-danger'}>
+                          {quiz.questions.find(q => q.id === result.questionId)?.options[parseInt(result.selectedAnswer)] || 'Not answered'}
+                        </span>
+                      </p>
+                      {!result.isCorrect && (
+                        <p className="text-sm font-semibold text-success mt-1">
+                          Correct answer: {quiz.questions.find(q => q.id === result.questionId)?.options[parseInt(result.correctAnswer)]}
                         </p>
-                        {!isCorrect && (
-                          <p className="text-sm font-semibold text-success mt-1">
-                            Correct answer: {question.options[question.correctAnswer]}
-                          </p>
-                        )}
-                      </div>
+                      )}
+                      {result.explanation && (
+                        <p className="text-sm text-neutral-600 mt-2 italic">
+                          {result.explanation}
+                        </p>
+                      )}
                     </div>
                   </div>
-                )
-              })}
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

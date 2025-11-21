@@ -7,10 +7,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAuth } from '@/lib/auth/api-auth'
 
-interface RouteParams {
-  params: { id: string }
-}
-
 interface SubmissionAnswer {
   questionId: string
   selectedAnswer: string
@@ -27,7 +23,7 @@ interface SubmissionBody {
  */
 export async function POST(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   return withAuth(async (req, user) => {
     try {
@@ -55,7 +51,7 @@ export async function POST(
           quiz: {
             include: {
               questions: true,
-              module: {
+              lesson: {
                 select: {
                   courseId: true,
                 },
@@ -98,7 +94,7 @@ export async function POST(
         )
       }
 
-      if (attempt.completed) {
+      if (attempt.completedAt) {
         return NextResponse.json(
           {
             success: false,
@@ -110,12 +106,12 @@ export async function POST(
       }
 
       // Check if time limit was exceeded (if applicable)
-      if (attempt.quiz.timeLimit) {
+      if (attempt.quiz.timeLimitMinutes) {
         const startTime = attempt.startedAt.getTime()
         const currentTime = new Date().getTime()
         const timeElapsedMinutes = (currentTime - startTime) / (1000 * 60)
 
-        if (timeElapsedMinutes > attempt.quiz.timeLimit) {
+        if (timeElapsedMinutes > attempt.quiz.timeLimitMinutes) {
           return NextResponse.json(
             {
               success: false,
@@ -151,7 +147,7 @@ export async function POST(
 
         return {
           questionId: question.id,
-          question: question.question,
+          questionText: question.questionText,
           selectedAnswer: answer.selectedAnswer,
           correctAnswer: question.correctAnswer,
           isCorrect,
@@ -167,11 +163,10 @@ export async function POST(
       const updatedAttempt = await prisma.quizAttempt.update({
         where: { id: attemptId },
         data: {
-          completed: true,
           completedAt: new Date(),
-          score,
+          scorePercentage: score,
           passed,
-          answers: answers,
+          answers: answers as any,
         },
       })
 
@@ -179,9 +174,14 @@ export async function POST(
       if (passed) {
         const pointsAwarded = 50 // Base points for passing a quiz
 
-        await prisma.user.update({
-          where: { id: user.userId },
-          data: {
+        await prisma.userPoints.upsert({
+          where: { userId: String(user.userId) },
+          create: {
+            userId: String(user.userId),
+            points: pointsAwarded,
+            level: 1,
+          },
+          update: {
             points: {
               increment: pointsAwarded,
             },
@@ -191,7 +191,7 @@ export async function POST(
         // Create notification
         await prisma.notification.create({
           data: {
-            userId: user.userId,
+            userId: String(user.userId),
             type: 'achievement',
             title: 'Quiz Passed!',
             message: `Congratulations! You passed "${attempt.quiz.title}" with a score of ${score}%. You earned ${pointsAwarded} points!`,
@@ -238,5 +238,5 @@ export async function POST(
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request, context)
 }

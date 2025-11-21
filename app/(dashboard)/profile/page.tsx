@@ -70,36 +70,37 @@ export default function ProfilePage() {
 
       // Fetch user profile
       const userResponse = await usersService.getCurrentUser()
-      if (userResponse.error) {
-        throw new Error(userResponse.error)
+      if (userResponse.status < 200 || userResponse.status >= 300) {
+        throw new Error(userResponse.error || 'Failed to fetch user profile')
       }
 
-      const userData = userResponse.data?.data
+      const userData = userResponse.data
       if (!userData) {
         throw new Error('User data not found')
       }
 
       setUser(userData)
+      const userDataAny = userData as any
       setFormData({
-        firstName: userData.firstName || '',
-        lastName: userData.lastName || '',
-        email: userData.email || '',
-        department: typeof userData.department === 'string' ? userData.department : (userData.department?.name || ''),
-        position: userData.position || '',
-        phone: userData.phone || '',
-        location: userData.location || ''
+        firstName: userDataAny.firstName || '',
+        lastName: userDataAny.lastName || '',
+        email: userDataAny.email || '',
+        department: typeof userDataAny.department === 'string' ? userDataAny.department : (userDataAny.department?.name || ''),
+        position: userDataAny.position || '',
+        phone: userDataAny.phone || '',
+        location: userDataAny.location || ''
       })
 
       // Fetch achievements and badges
       const achievementsResponse = await usersService.getUserAchievements()
       const badgesResponse = await usersService.getUserBadges()
 
-      if (achievementsResponse.data?.data) {
-        setAchievements(achievementsResponse.data.data)
+      if (achievementsResponse.status >= 200 && achievementsResponse.status < 300 && achievementsResponse.data) {
+        setAchievements(achievementsResponse.data)
       }
 
-      if (badgesResponse.data?.data) {
-        setBadges(badgesResponse.data.data)
+      if (badgesResponse.status >= 200 && badgesResponse.status < 300 && badgesResponse.data) {
+        setBadges(badgesResponse.data)
       }
     } catch (err) {
       console.error('Error fetching profile data:', err)
@@ -126,8 +127,8 @@ export default function ProfilePage() {
         location: formData.location
       })
 
-      if (response.error) {
-        throw new Error(response.error)
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(response.error || 'Failed to update profile')
       }
 
       // Refresh profile data
@@ -144,14 +145,15 @@ export default function ProfilePage() {
   const handleCancel = () => {
     // Reset form to current user data
     if (user) {
+      const userAny = user as any
       setFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
-        department: typeof user.department === 'string' ? user.department : (user.department?.name || ''),
-        position: user.position || '',
-        phone: user.phone || '',
-        location: user.location || ''
+        firstName: userAny.firstName || '',
+        lastName: userAny.lastName || '',
+        email: userAny.email || '',
+        department: typeof userAny.department === 'string' ? userAny.department : (userAny.department?.name || ''),
+        position: userAny.position || '',
+        phone: userAny.phone || '',
+        location: userAny.location || ''
       })
     }
     setIsEditing(false)

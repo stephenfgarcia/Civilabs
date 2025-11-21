@@ -29,48 +29,6 @@ const CATEGORY_COLORS: Record<string, string> = {
   Engineering: 'from-primary to-blue-600',
 }
 
-// Mock certificates data for reference
-const MOCK_CERTIFICATES_OLD = [
-  {
-    id: 1,
-    title: 'Construction Safety Fundamentals',
-    courseName: 'Safety Training Level 1',
-    issueDate: '2024-01-15',
-    expiryDate: '2026-01-15',
-    credentialId: 'CSF-2024-001234',
-    score: 98,
-    instructor: 'John Martinez',
-    icon: Shield,
-    color: 'from-danger to-red-600',
-    status: 'active'
-  },
-  {
-    id: 2,
-    title: 'Heavy Equipment Operation',
-    courseName: 'Equipment Operator Certification',
-    issueDate: '2024-02-10',
-    expiryDate: '2027-02-10',
-    credentialId: 'HEO-2024-005678',
-    score: 95,
-    instructor: 'Sarah Chen',
-    icon: HardHat,
-    color: 'from-warning to-orange-600',
-    status: 'active'
-  },
-  {
-    id: 3,
-    title: 'Electrical Systems Installation',
-    courseName: 'Advanced Electrical Training',
-    issueDate: '2024-03-05',
-    expiryDate: '2025-03-05',
-    credentialId: 'ESI-2024-009012',
-    score: 92,
-    instructor: 'Mike Johnson',
-    icon: Zap,
-    color: 'from-secondary to-purple-600',
-    status: 'expiring_soon'
-  }
-]
 
 export default function CertificatesPage() {
   const [certificates, setCertificates] = useState<any[]>([])
@@ -99,11 +57,11 @@ export default function CertificatesPage() {
       setError(null)
 
       const response = await certificatesService.getCertificates()
-      if (response.error) {
-        throw new Error(response.error)
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(response.error || 'Failed to fetch certificates')
       }
 
-      const certificatesData = response.data?.data || []
+      const certificatesData = (response.data as any)?.data || []
       setCertificates(certificatesData)
     } catch (err) {
       console.error('Error fetching certificates:', err)
@@ -247,7 +205,7 @@ export default function CertificatesPage() {
               <div>
                 <p className="text-sm font-bold text-neutral-600 uppercase">Active</p>
                 <p className="text-4xl font-black bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent mt-1">
-                  {certificates.filter(c => !c.expiryDate || new Date(c.expiryDate) > new Date()).length}
+                  {certificates.filter(c => !c.expiresAt || new Date(c.expiresAt) > new Date()).length}
                 </p>
               </div>
               <div className="w-14 h-14 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center">
@@ -284,7 +242,7 @@ export default function CertificatesPage() {
       {certificates.length > 0 ? (
         <div className="space-y-4">
           {certificates.map((certificate, index) => {
-            const categoryName = certificate.course?.category?.name || 'General'
+            const categoryName = certificate.certificate?.course?.category?.name || 'General'
             const IconComponent = CATEGORY_ICONS[categoryName] || Award
             const color = CATEGORY_COLORS[categoryName] || 'from-success to-green-600'
 
@@ -308,11 +266,11 @@ export default function CertificatesPage() {
                           <div className="flex items-start justify-between mb-2">
                             <div>
                               <h3 className="text-xl font-black text-neutral-800 group-hover:text-success transition-colors">
-                                {certificate.course?.title || 'Certificate'}
+                                {certificate.certificate?.course?.title || 'Certificate'}
                               </h3>
                               <p className="text-sm text-neutral-600 mt-1">{categoryName} Certification</p>
                             </div>
-                            {getStatusBadge(!certificate.expiryDate || new Date(certificate.expiryDate) > new Date() ? 'active' : 'expired')}
+                            {getStatusBadge(!certificate.expiresAt || new Date(certificate.expiresAt) > new Date() ? 'active' : 'expired')}
                           </div>
 
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
@@ -323,12 +281,12 @@ export default function CertificatesPage() {
                                 {new Date(certificate.issuedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                               </p>
                             </div>
-                            {certificate.expiryDate && (
+                            {certificate.expiresAt && (
                               <div>
                                 <p className="text-xs font-bold text-neutral-500 uppercase">Expiry Date</p>
                                 <p className="text-sm font-semibold text-neutral-800 mt-1 flex items-center gap-1">
                                   <Calendar size={14} className="text-primary" />
-                                  {new Date(certificate.expiryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  {new Date(certificate.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </p>
                               </div>
                             )}

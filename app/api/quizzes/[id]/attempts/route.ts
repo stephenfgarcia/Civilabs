@@ -7,17 +7,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAuth } from '@/lib/auth/api-auth'
 
-interface RouteParams {
-  params: { id: string }
-}
-
 /**
  * POST /api/quizzes/[id]/attempts
  * Start a new quiz attempt
  */
 export async function POST(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   return withAuth(async (req, user) => {
     try {
@@ -28,7 +24,7 @@ export async function POST(
       const quiz = await prisma.quiz.findUnique({
         where: { id: quizId },
         include: {
-          module: {
+          lesson: {
             select: {
               courseId: true,
             },
@@ -50,8 +46,8 @@ export async function POST(
       // Check enrollment
       const enrollment = await prisma.enrollment.findFirst({
         where: {
-          userId: user.userId,
-          courseId: quiz.module.courseId,
+          userId: String(user.userId),
+          courseId: quiz.lesson.courseId,
         },
       })
 
@@ -70,8 +66,8 @@ export async function POST(
       const inProgressAttempt = await prisma.quizAttempt.findFirst({
         where: {
           quizId,
-          userId: user.userId,
-          completed: false,
+          userId: String(user.userId),
+          completedAt: null,
         },
       })
 
@@ -83,14 +79,24 @@ export async function POST(
         })
       }
 
+      // Get previous attempts count
+      const previousAttempts = await prisma.quizAttempt.count({
+        where: {
+          quizId,
+          userId: String(user.userId),
+        },
+      })
+
       // Create new attempt
       const attempt = await prisma.quizAttempt.create({
         data: {
           quizId,
-          userId: user.userId,
+          userId: String(user.userId),
+          enrollmentId: enrollment.id,
+          attemptNumber: previousAttempts + 1,
           startedAt: new Date(),
-          completed: false,
-          score: 0,
+          answers: {},
+          timeSpentSeconds: 0,
         },
       })
 
@@ -113,5 +119,5 @@ export async function POST(
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request, context)
 }

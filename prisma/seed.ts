@@ -294,14 +294,25 @@ async function main() {
     })
   }
 
-  // Create a certificate for completed course
-  await prisma.certificate.create({
+  // Create certificate template for course
+  const certificate = await prisma.certificate.create({
     data: {
-      userId: learner.id,
       courseId: course2.id,
       templateHtml: '<div>Certificate of Completion</div>',
+      isActive: true,
+      expiryMonths: 12,
+    },
+  })
+
+  // Create user certificate for the completed enrollment
+  await prisma.userCertificate.create({
+    data: {
+      certificateId: certificate.id,
+      userId: learner.id,
+      enrollmentId: enrollment2.id,
       issuedAt: new Date(),
       expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+      verificationCode: `CERT-${Date.now()}`,
     },
   })
 

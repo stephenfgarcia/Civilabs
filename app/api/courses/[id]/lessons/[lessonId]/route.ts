@@ -8,23 +8,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAuth } from '@/lib/auth/api-auth'
 
-interface RouteParams {
-  params: { id: string; lessonId: string }
-}
-
 /**
  * GET /api/courses/[id]/lessons/[lessonId]
  * Get lesson details with user progress
  */
-export const GET = withAuth(async (request, user, context: RouteParams) => {
+export const GET = withAuth(async (request, user, context?: { params: Promise<{ id: string; lessonId: string }> }) => {
   try {
-    const params = await context.params
+    const params = await context!.params
     const { id: courseId, lessonId } = params
 
     // Check if user is enrolled in the course
     const enrollment = await prisma.enrollment.findFirst({
       where: {
-        userId: user.userId,
+        userId: String(user.userId),
         courseId,
       },
     })
@@ -84,7 +80,7 @@ export const GET = withAuth(async (request, user, context: RouteParams) => {
       where: {
         enrollmentId: enrollment.id,
         lessonId,
-        userId: user.userId,
+        userId: String(user.userId),
       },
     })
 
@@ -136,9 +132,9 @@ export const GET = withAuth(async (request, user, context: RouteParams) => {
  * POST /api/courses/[id]/lessons/[lessonId]/complete
  * Mark lesson as complete and update progress
  */
-export const POST = withAuth(async (request, user, context: RouteParams) => {
+export const POST = withAuth(async (request, user, context?: { params: Promise<{ id: string; lessonId: string }> }) => {
   try {
-    const params = await context.params
+    const params = await context!.params
     const { id: courseId, lessonId } = params
     const body = await request.json()
     const { timeSpentSeconds } = body
@@ -146,7 +142,7 @@ export const POST = withAuth(async (request, user, context: RouteParams) => {
     // Check if user is enrolled
     const enrollment = await prisma.enrollment.findFirst({
       where: {
-        userId: user.userId,
+        userId: String(user.userId),
         courseId,
       },
     })
@@ -192,9 +188,9 @@ export const POST = withAuth(async (request, user, context: RouteParams) => {
       create: {
         enrollmentId: enrollment.id,
         lessonId,
-        userId: user.userId,
+        userId: String(user.userId),
         status: 'COMPLETED',
-        timeSpentSeconds: timeSpentSeconds || lesson.durationMinutes ? lesson.durationMinutes * 60 : 0,
+        timeSpentSeconds: timeSpentSeconds || (lesson.durationMinutes ? lesson.durationMinutes * 60 : 0),
         completedAt: new Date(),
       },
       update: {

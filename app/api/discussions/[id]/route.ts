@@ -9,122 +9,108 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAuth } from '@/lib/auth/api-auth'
 
-interface RouteParams {
-  params: { id: string }
-}
-
 /**
  * GET /api/discussions/[id]
  * Get discussion thread with all replies
  */
 export async function GET(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
-  return withAuth(async (req, user) => {
-    try {
-      const params = await context.params
-      const { id } = params
+  try {
+    const params = await context.params
+    const { id } = params
 
-      const thread = await prisma.discussionThread.findUnique({
-        where: { id },
-        include: {
-          author: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              avatar: true,
-              role: true,
-            },
+    // Increment view count
+    await prisma.discussionThread.update({
+      where: { id },
+      data: { viewCount: { increment: 1 } },
+    })
+
+    const discussion = await prisma.discussionThread.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+            role: true,
           },
-          course: {
-            select: {
-              id: true,
-              title: true,
-            },
+        },
+        course: {
+          select: {
+            id: true,
+            title: true,
           },
-          replies: {
-            include: {
-              author: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  avatar: true,
-                  role: true,
-                },
+        },
+        replies: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                avatarUrl: true,
+                role: true,
               },
             },
-            orderBy: {
-              createdAt: 'asc',
+            _count: {
+              select: {
+                likes: true,
+                replies: true,
+              },
             },
           },
-          _count: {
-            select: {
-              likes: true,
-            },
+          orderBy: {
+            createdAt: 'asc',
           },
         },
-      })
-
-      if (!thread) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Not Found',
-            message: 'Discussion thread not found',
-          },
-          { status: 404 }
-        )
-      }
-
-      // Check if user has liked the thread
-      const userLike = await prisma.discussionLike.findFirst({
-        where: {
-          threadId: thread.id,
-          userId: user.userId,
-        },
-      })
-
-      // Increment view count
-      await prisma.discussionThread.update({
-        where: { id },
-        data: {
-          views: {
-            increment: 1,
+        _count: {
+          select: {
+            replies: true,
+            likes: true,
           },
         },
-      })
+      },
+    })
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          ...thread,
-          isLikedByUser: !!userLike,
-        },
-      })
-    } catch (error) {
-      console.error('Error fetching discussion thread:', error)
+    if (!discussion) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Failed to fetch discussion thread',
-          message: error instanceof Error ? error.message : 'Unknown error',
+          error: 'Not Found',
+          message: 'Discussion not found',
         },
-        { status: 500 }
+        { status: 404 }
       )
     }
-  })(request, { params })
+
+    return NextResponse.json({
+      success: true,
+      data: discussion,
+    })
+  } catch (error) {
+    console.error('Error fetching discussion:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to fetch discussion',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
+  }
 }
 
 /**
  * PUT /api/discussions/[id]
- * Update discussion thread (author or admin only)
+ * Update discussion thread (author/admin only)
  */
 export async function PUT(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   return withAuth(async (req, user) => {
     try {
@@ -132,23 +118,27 @@ export async function PUT(
       const { id } = params
       const body = await request.json()
 
-      const thread = await prisma.discussionThread.findUnique({
+      // Check if discussion exists
+      const existingDiscussion = await prisma.discussionThread.findUnique({
         where: { id },
       })
 
-      if (!thread) {
+      if (!existingDiscussion) {
         return NextResponse.json(
           {
             success: false,
             error: 'Not Found',
-            message: 'Discussion thread not found',
+            message: 'Discussion not found',
           },
           { status: 404 }
         )
       }
 
-      // Check permissions (author or admin)
-      if (thread.authorId !== user.userId && user.role !== 'admin') {
+      // Check if user is author or admin
+      const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user.role)
+      const isAuthor = existingDiscussion.userId === user.userId
+
+      if (!isAdmin && !isAuthor) {
         return NextResponse.json(
           {
             success: false,
@@ -160,27 +150,35 @@ export async function PUT(
       }
 
       const updateData: any = {}
-      if (body.title) updateData.title = body.title
-      if (body.content) updateData.content = body.content
-      if (body.category) updateData.category = body.category
+      if (body.title !== undefined) updateData.title = body.title
+      if (body.content !== undefined) updateData.content = body.content
 
-      // Only admins can pin/lock threads
-      if (user.role === 'admin') {
+      // Admin-only moderation fields
+      if (isAdmin) {
+        if (body.status !== undefined) updateData.status = body.status
         if (body.isPinned !== undefined) updateData.isPinned = body.isPinned
         if (body.isLocked !== undefined) updateData.isLocked = body.isLocked
+        if (body.isSolved !== undefined) updateData.isSolved = body.isSolved
+        if (body.isFlagged !== undefined) updateData.isFlagged = body.isFlagged
       }
 
-      const updatedThread = await prisma.discussionThread.update({
+      const updatedDiscussion = await prisma.discussionThread.update({
         where: { id },
         data: updateData,
         include: {
-          author: {
+          user: {
             select: {
               id: true,
               firstName: true,
               lastName: true,
-              avatar: true,
+              avatarUrl: true,
               role: true,
+            },
+          },
+          course: {
+            select: {
+              id: true,
+              title: true,
             },
           },
           _count: {
@@ -194,53 +192,57 @@ export async function PUT(
 
       return NextResponse.json({
         success: true,
-        data: updatedThread,
+        data: updatedDiscussion,
         message: 'Discussion updated successfully',
       })
     } catch (error) {
-      console.error('Error updating discussion thread:', error)
+      console.error('Error updating discussion:', error)
       return NextResponse.json(
         {
           success: false,
-          error: 'Failed to update discussion thread',
+          error: 'Failed to update discussion',
           message: error instanceof Error ? error.message : 'Unknown error',
         },
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request, context)
 }
 
 /**
  * DELETE /api/discussions/[id]
- * Delete discussion thread (author or admin only)
+ * Delete discussion thread (author/admin only)
  */
 export async function DELETE(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   return withAuth(async (req, user) => {
     try {
       const params = await context.params
       const { id } = params
 
-      const thread = await prisma.discussionThread.findUnique({
+      // Check if discussion exists
+      const existingDiscussion = await prisma.discussionThread.findUnique({
         where: { id },
       })
 
-      if (!thread) {
+      if (!existingDiscussion) {
         return NextResponse.json(
           {
             success: false,
             error: 'Not Found',
-            message: 'Discussion thread not found',
+            message: 'Discussion not found',
           },
           { status: 404 }
         )
       }
 
-      // Check permissions (author or admin)
-      if (thread.authorId !== user.userId && user.role !== 'admin') {
+      // Check if user is author or admin
+      const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user.role)
+      const isAuthor = existingDiscussion.userId === user.userId
+
+      if (!isAdmin && !isAuthor) {
         return NextResponse.json(
           {
             success: false,
@@ -260,15 +262,15 @@ export async function DELETE(
         message: 'Discussion deleted successfully',
       })
     } catch (error) {
-      console.error('Error deleting discussion thread:', error)
+      console.error('Error deleting discussion:', error)
       return NextResponse.json(
         {
           success: false,
-          error: 'Failed to delete discussion thread',
+          error: 'Failed to delete discussion',
           message: error instanceof Error ? error.message : 'Unknown error',
         },
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request, context)
 }

@@ -6,8 +6,12 @@ import { MagneticButton } from '@/components/ui/magnetic-button'
 import { BookOpen, Award, Clock, TrendingUp, HardHat, Target, Zap, AlertCircle, ChevronRight, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { coursesService, certificatesService } from '@/lib/services'
+import { useAuth } from '@/lib/hooks/useAuth'
 
 export default function DashboardPage() {
+  // Require authentication (any role)
+  useAuth()
+
   const [user, setUser] = useState<any>(null)
   const [stats, setStats] = useState({
     enrolled: 0,
@@ -48,16 +52,21 @@ export default function DashboardPage() {
       // Fetch enrollments
       const enrollmentsResponse = await coursesService.getEnrollments()
 
-      if (enrollmentsResponse.error) {
-        throw new Error(enrollmentsResponse.error)
+      if (enrollmentsResponse.status < 200 || enrollmentsResponse.status >= 300) {
+        throw new Error(enrollmentsResponse.error || 'Failed to fetch enrollments')
       }
 
-      const enrollmentsData = enrollmentsResponse.data?.data || []
+      const enrollmentsData = (enrollmentsResponse.data as any)?.data || []
       setEnrollments(enrollmentsData.slice(0, 2)) // Get first 2 for display
 
       // Fetch certificates
       const certificatesResponse = await certificatesService.getCertificates()
-      const certificatesData = certificatesResponse.data?.data || []
+
+      if (certificatesResponse.status < 200 || certificatesResponse.status >= 300) {
+        throw new Error(certificatesResponse.error || 'Failed to fetch certificates')
+      }
+
+      const certificatesData = (certificatesResponse.data as any)?.data || []
 
       // Calculate stats from enrollments
       const enrolled = enrollmentsData.length

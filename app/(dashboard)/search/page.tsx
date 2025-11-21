@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -42,7 +42,7 @@ const RESULT_TYPES = [
   { value: 'certificate', label: 'Certificates' }
 ]
 
-export default function SearchPage() {
+function SearchPageContent() {
   const searchParams = useSearchParams()
   const initialQuery = searchParams.get('q') || ''
 
@@ -408,5 +408,17 @@ export default function SearchPage() {
         </Card>
       )}
     </div>
+  )
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <p className="text-lg font-bold text-neutral-600">Loading search...</p>
+      </div>
+    }>
+      <SearchPageContent />
+    </Suspense>
   )
 }

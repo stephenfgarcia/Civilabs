@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
@@ -21,95 +21,116 @@ import {
   Search,
   Plus,
   Filter,
-  MoreVertical
+  MoreVertical,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react'
 import Link from 'next/link'
+import { instructorService, type InstructorCourse } from '@/lib/services'
 
 export default function InstructorMyCoursesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [courses, setCourses] = useState<InstructorCourse[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data
-  const courses = [
-    {
-      id: 1,
-      title: 'Construction Safety 101',
-      status: 'published',
-      students: 45,
-      rating: 4.9,
-      reviews: 23,
-      revenue: '$2,250',
-      completion: 92,
-      lastUpdated: '2 days ago',
-      thumbnail: '🏗️',
-      category: 'Safety',
-    },
-    {
-      id: 2,
-      title: 'Equipment Operation Fundamentals',
-      status: 'published',
-      students: 38,
-      rating: 4.7,
-      reviews: 19,
-      revenue: '$1,900',
-      completion: 85,
-      lastUpdated: '1 week ago',
-      thumbnail: '🚜',
-      category: 'Equipment',
-    },
-    {
-      id: 3,
-      title: 'Quality Control Basics',
-      status: 'published',
-      students: 32,
-      rating: 4.8,
-      reviews: 16,
-      revenue: '$1,600',
-      completion: 88,
-      lastUpdated: '3 days ago',
-      thumbnail: '✅',
-      category: 'Quality',
-    },
-    {
-      id: 4,
-      title: 'Advanced Blueprint Reading',
-      status: 'draft',
-      students: 0,
-      rating: 0,
-      reviews: 0,
-      revenue: '$0',
-      completion: 0,
-      lastUpdated: '1 day ago',
-      thumbnail: '📐',
-      category: 'Technical',
-    },
-    {
-      id: 5,
-      title: 'Site Management Essentials',
-      status: 'published',
-      students: 28,
-      rating: 4.6,
-      reviews: 14,
-      revenue: '$1,400',
-      completion: 79,
-      lastUpdated: '2 weeks ago',
-      thumbnail: '👷',
-      category: 'Management',
-    },
-  ]
+  useEffect(() => {
+    fetchCourses()
+  }, [statusFilter])
+
+  async function fetchCourses() {
+    try {
+      setLoading(true)
+      setError(null)
+      const params: any = {}
+      if (statusFilter !== 'all') {
+        params.status = statusFilter.toUpperCase()
+      }
+      const data = await instructorService.getCourses(params)
+      setCourses(data.courses)
+    } catch (err) {
+      console.error('Error fetching courses:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load courses')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredCourses = courses.filter((course) => {
-    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || course.status === statusFilter
-    return matchesSearch && matchesStatus
+    const matchesSearch =
+      course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (course.description && course.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    return matchesSearch
   })
 
   const stats = {
     total: courses.length,
-    published: courses.filter(c => c.status === 'published').length,
-    draft: courses.filter(c => c.status === 'draft').length,
-    totalStudents: courses.reduce((sum, c) => sum + c.students, 0),
-    totalRevenue: courses.reduce((sum, c) => sum + parseFloat(c.revenue.replace('$', '').replace(',', '')), 0),
+    published: courses.filter((c) => c.status === 'PUBLISHED').length,
+    draft: courses.filter((c) => c.status === 'DRAFT').length,
+    totalStudents: courses.reduce((sum, c) => sum + c.metrics.totalEnrollments, 0),
+    avgCompletion: courses.length > 0
+      ? Math.round(
+          courses.reduce((sum, c) => sum + c.metrics.completionRate, 0) / courses.length
+        )
+      : 0,
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PUBLISHED':
+        return 'bg-success/10 text-success'
+      case 'DRAFT':
+        return 'bg-warning/10 text-warning'
+      case 'ARCHIVED':
+        return 'bg-neutral-200 text-neutral-600'
+      default:
+        return 'bg-neutral-200 text-neutral-600'
+    }
+  }
+
+  const getRelativeTime = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+    if (diffDays === 0) return 'Today'
+    if (diffDays === 1) return '1 day ago'
+    if (diffDays < 7) return `${diffDays} days ago`
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
+    return `${Math.floor(diffDays / 30)} months ago`
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-warning mx-auto mb-4" />
+          <p className="text-lg font-bold text-neutral-600">Loading courses...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="p-8 border-4 border-danger/40 max-w-md">
+          <div className="text-center">
+            <AlertCircle className="w-12 h-12 text-danger mx-auto mb-4" />
+            <h2 className="text-xl font-black text-neutral-800 mb-2">Failed to Load</h2>
+            <p className="text-neutral-600 mb-4">{error}</p>
+            <MagneticButton
+              onClick={fetchCourses}
+              className="bg-gradient-to-r from-warning to-orange-600 text-white font-black"
+            >
+              TRY AGAIN
+            </MagneticButton>
+          </div>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -152,8 +173,8 @@ export default function InstructorMyCoursesPage() {
           <p className="text-3xl font-black text-primary">{stats.totalStudents}</p>
         </Card>
         <Card className="p-6 border-4 border-secondary/40">
-          <p className="text-sm font-bold text-neutral-600 mb-1">Total Revenue</p>
-          <p className="text-3xl font-black text-secondary">${stats.totalRevenue.toLocaleString()}</p>
+          <p className="text-sm font-bold text-neutral-600 mb-1">Avg Completion</p>
+          <p className="text-3xl font-black text-secondary">{stats.avgCompletion}%</p>
         </Card>
       </div>
 
@@ -161,7 +182,10 @@ export default function InstructorMyCoursesPage() {
       <Card className="p-6 border-4 border-neutral-200">
         <div className="flex items-center gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400" size={20} />
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400"
+              size={20}
+            />
             <Input
               type="text"
               placeholder="Search courses..."
@@ -207,103 +231,126 @@ export default function InstructorMyCoursesPage() {
       </Card>
 
       {/* Courses Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredCourses.map((course) => (
-          <Card key={course.id} className="p-6 border-4 border-neutral-200 hover:border-warning/40 transition-all">
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-warning to-orange-600 rounded-lg flex items-center justify-center text-3xl shadow-lg">
-                {course.thumbnail}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-xs font-black px-2 py-1 rounded ${
-                  course.status === 'published'
-                    ? 'bg-success/10 text-success'
-                    : 'bg-warning/10 text-warning'
-                }`}>
-                  {course.status.toUpperCase()}
-                </span>
-                <button className="text-neutral-600 hover:text-neutral-800">
-                  <MoreVertical size={20} />
-                </button>
-              </div>
-            </div>
-
-            <h3 className="text-lg font-black text-neutral-800 mb-2">{course.title}</h3>
-            <p className="text-sm font-medium text-neutral-600 mb-4">{course.category}</p>
-
-            <div className="space-y-3 mb-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium text-neutral-600 flex items-center gap-2">
-                  <Users size={16} />
-                  Students
-                </span>
-                <span className="font-black text-neutral-800">{course.students}</span>
-              </div>
-
-              {course.status === 'published' && (
-                <>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-neutral-600 flex items-center gap-2">
-                      <Star size={16} />
-                      Rating
-                    </span>
-                    <span className="font-black text-neutral-800">{course.rating} ({course.reviews})</span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-neutral-600 flex items-center gap-2">
-                      <TrendingUp size={16} />
-                      Revenue
-                    </span>
-                    <span className="font-black text-success">{course.revenue}</span>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="font-medium text-neutral-600">Completion</span>
-                      <span className="font-black text-neutral-800">{course.completion}%</span>
-                    </div>
-                    <div className="w-full bg-neutral-200 rounded-full h-2">
-                      <div
-                        className="bg-gradient-to-r from-primary to-blue-600 h-2 rounded-full"
-                        style={{ width: `${course.completion}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <p className="text-xs text-neutral-600 font-medium mb-4">
-              Last updated {course.lastUpdated}
-            </p>
-
-            <div className="flex items-center gap-2">
-              <Link href={`/instructor/courses/${course.id}`} className="flex-1">
-                <MagneticButton className="w-full glass-effect border-2 border-primary/30 text-neutral-700 font-black hover:border-primary/60 text-sm py-2">
-                  <Eye className="mr-2" size={16} />
-                  VIEW
-                </MagneticButton>
-              </Link>
-              <Link href={`/instructor/courses/${course.id}/edit`} className="flex-1">
-                <MagneticButton className="w-full bg-gradient-to-r from-warning to-orange-600 text-white font-black text-sm py-2">
-                  <Edit className="mr-2" size={16} />
-                  EDIT
-                </MagneticButton>
-              </Link>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {filteredCourses.length === 0 && (
+      {filteredCourses.length === 0 ? (
         <Card className="p-12 border-4 border-neutral-200 text-center">
           <BookOpen className="mx-auto text-neutral-400 mb-4" size={48} />
           <p className="text-lg font-bold text-neutral-600">No courses found</p>
           <p className="text-neutral-500 font-medium mt-2">
-            {searchQuery ? 'Try adjusting your search or filters' : 'Create your first course to get started'}
+            {searchQuery
+              ? 'Try adjusting your search or filters'
+              : courses.length === 0
+              ? 'Create your first course to get started'
+              : 'No courses match the selected filter'}
           </p>
+          {courses.length === 0 && (
+            <Link href="/instructor/courses/create" className="inline-block mt-4">
+              <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
+                <Plus className="mr-2" size={20} />
+                CREATE YOUR FIRST COURSE
+              </MagneticButton>
+            </Link>
+          )}
         </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCourses.map((course) => (
+            <Card
+              key={course.id}
+              className="p-6 border-4 border-neutral-200 hover:border-warning/40 transition-all"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-warning to-orange-600 rounded-lg flex items-center justify-center text-3xl shadow-lg">
+                  {course.category?.name.charAt(0) || '📚'}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-black px-2 py-1 rounded ${getStatusColor(course.status)}`}>
+                    {course.status}
+                  </span>
+                  <button className="text-neutral-600 hover:text-neutral-800">
+                    <MoreVertical size={20} />
+                  </button>
+                </div>
+              </div>
+
+              <h3 className="text-lg font-black text-neutral-800 mb-2 line-clamp-2">
+                {course.title}
+              </h3>
+              <p className="text-sm font-medium text-neutral-600 mb-4">
+                {course.category?.name || 'Uncategorized'}
+              </p>
+
+              <div className="space-y-3 mb-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-neutral-600 flex items-center gap-2">
+                    <Users size={16} />
+                    Students
+                  </span>
+                  <span className="font-black text-neutral-800">
+                    {course.metrics.totalEnrollments}
+                  </span>
+                </div>
+
+                {course.status === 'PUBLISHED' && course.metrics.totalEnrollments > 0 && (
+                  <>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-neutral-600 flex items-center gap-2">
+                        <TrendingUp size={16} />
+                        Active
+                      </span>
+                      <span className="font-black text-success">
+                        {course.metrics.activeEnrollments}
+                      </span>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span className="font-medium text-neutral-600">Completion</span>
+                        <span className="font-black text-neutral-800">
+                          {course.metrics.completionRate}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-neutral-200 rounded-full h-2">
+                        <div
+                          className="bg-gradient-to-r from-primary to-blue-600 h-2 rounded-full"
+                          style={{ width: `${course.metrics.completionRate}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-neutral-600 flex items-center gap-2">
+                    <BookOpen size={16} />
+                    Lessons
+                  </span>
+                  <span className="font-black text-neutral-800">
+                    {course.metrics.totalLessons}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs text-neutral-600 font-medium mb-4">
+                Last updated {getRelativeTime(course.updatedAt)}
+              </p>
+
+              <div className="flex items-center gap-2">
+                <Link href={`/courses/${course.id}`} className="flex-1">
+                  <MagneticButton className="w-full glass-effect border-2 border-primary/30 text-neutral-700 font-black hover:border-primary/60 text-sm py-2">
+                    <Eye className="mr-2" size={16} />
+                    VIEW
+                  </MagneticButton>
+                </Link>
+                <Link href={`/admin/courses?edit=${course.id}`} className="flex-1">
+                  <MagneticButton className="w-full bg-gradient-to-r from-warning to-orange-600 text-white font-black text-sm py-2">
+                    <Edit className="mr-2" size={16} />
+                    EDIT
+                  </MagneticButton>
+                </Link>
+              </div>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   )

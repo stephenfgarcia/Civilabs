@@ -117,7 +117,7 @@ export default function EnrollmentsPage() {
         setError(null)
         const response = await adminEnrollmentsService.getEnrollments()
 
-        if (response.success) {
+        if (response.success && response.data) {
           setEnrollments(response.data)
           setFilteredEnrollments(response.data)
 
@@ -127,7 +127,7 @@ export default function EnrollmentsPage() {
           )
           setCourses(['All', ...uniqueCourses])
         } else {
-          setError('Failed to load enrollments')
+          setError(response.error || 'Failed to load enrollments')
         }
       } catch (err) {
         setError('An error occurred while loading enrollments')

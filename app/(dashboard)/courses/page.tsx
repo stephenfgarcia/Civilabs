@@ -86,13 +86,14 @@ export default function CoursesPage() {
       // Fetch all courses
       const response = await coursesService.getCourses()
 
-      if (response.error) {
-        throw new Error(response.error)
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        setCourses(response.data)
+        setFilteredCourses(response.data)
+      } else {
+        throw new Error(response.error || 'Failed to load courses')
       }
 
-      const coursesData = response.data?.data || []
-      setCourses(coursesData)
-      setFilteredCourses(coursesData)
+      const coursesData = response.data || []
 
       // Extract unique categories
       const uniqueCategories = ['All', ...Array.from(new Set(coursesData.map((c: any) => c.category?.name).filter(Boolean)))]
@@ -118,8 +119,8 @@ export default function CoursesPage() {
 
       if (response.ok) {
         const data = await response.json()
-        const bookmarkedCourseIds = new Set(
-          data.data.map((bookmark: any) => bookmark.courseId)
+        const bookmarkedCourseIds = new Set<string>(
+          data.data.map((bookmark: any) => bookmark.courseId as string)
         )
         setBookmarkedCourses(bookmarkedCourseIds)
       }

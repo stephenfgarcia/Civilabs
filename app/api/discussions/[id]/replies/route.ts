@@ -7,25 +7,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAuth } from '@/lib/auth/api-auth'
 
-interface RouteParams {
-  params: { id: string }
-}
-
 /**
  * POST /api/discussions/[id]/replies
  * Create a reply to a discussion thread
  */
 export async function POST(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   return withAuth(async (req, user) => {
     try {
       const params = await context.params
-      const { id: threadId } = params
+      const { id } = params
       const body = await request.json()
 
-      // Validate content
+      // Validate required fields
       if (!body.content) {
         return NextResponse.json(
           {
@@ -37,16 +33,9 @@ export async function POST(
         )
       }
 
-      // Verify thread exists
+      // Check if discussion thread exists
       const thread = await prisma.discussionThread.findUnique({
-        where: { id: threadId },
-        include: {
-          author: {
-            select: {
-              id: true,
-            },
-          },
-        },
+        where: { id },
       })
 
       if (!thread) {
@@ -60,46 +49,59 @@ export async function POST(
         )
       }
 
-      // Check if thread is locked
-      if (thread.isLocked && user.role !== 'admin') {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Forbidden',
-            message: 'This discussion is locked',
-          },
-          { status: 403 }
-        )
+      // Check if parent reply exists (if replying to a reply)
+      if (body.parentId) {
+        const parentReply = await prisma.discussionReply.findUnique({
+          where: { id: body.parentId },
+        })
+
+        if (!parentReply) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Not Found',
+              message: 'Parent reply not found',
+            },
+            { status: 404 }
+          )
+        }
       }
 
-      // Create reply
       const reply = await prisma.discussionReply.create({
         data: {
+          threadId: id,
+          userId: String(user.userId),
           content: body.content,
-          threadId,
-          authorId: user.userId,
+          parentId: body.parentId || null,
         },
         include: {
-          author: {
+          user: {
             select: {
               id: true,
               firstName: true,
               lastName: true,
-              avatar: true,
+              avatarUrl: true,
               role: true,
+            },
+          },
+          _count: {
+            select: {
+              likes: true,
+              replies: true,
             },
           },
         },
       })
 
       // Create notification for thread author (if not replying to own thread)
-      if (thread.author.id !== user.userId) {
+      if (thread.userId !== user.userId) {
         await prisma.notification.create({
           data: {
-            userId: thread.author.id,
-            type: 'info',
-            title: 'New Reply',
-            message: `Someone replied to your discussion: "${thread.title}"`,
+            userId: thread.userId,
+            type: 'reply',
+            title: 'New reply to your discussion',
+            message: `${user.firstName} ${user.lastName} replied to your discussion "${thread.title}"`,
+            linkUrl: `/discussions/${id}`,
           },
         })
       }
@@ -108,7 +110,7 @@ export async function POST(
         {
           success: true,
           data: reply,
-          message: 'Reply posted successfully',
+          message: 'Reply created successfully',
         },
         { status: 201 }
       )
@@ -123,5 +125,5 @@ export async function POST(
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request, context)
 }

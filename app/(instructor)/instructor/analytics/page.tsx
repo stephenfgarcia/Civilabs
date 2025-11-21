@@ -5,6 +5,7 @@
 
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import {
@@ -15,37 +16,72 @@ import {
   BarChart3,
   PieChart,
   Download,
-  Calendar
+  Calendar,
+  Loader2,
+  AlertCircle
 } from 'lucide-react'
+import { instructorService, type InstructorAnalytics } from '@/lib/services'
 
 export default function InstructorAnalyticsPage() {
-  // Mock data
+  const [analytics, setAnalytics] = useState<InstructorAnalytics | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedPeriod, setSelectedPeriod] = useState('30')
+
+  useEffect(() => {
+    fetchAnalytics()
+  }, [selectedPeriod])
+
+  async function fetchAnalytics() {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await instructorService.getAnalytics({ period: selectedPeriod })
+      setAnalytics(data)
+    } catch (err) {
+      console.error('Error fetching analytics:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load analytics')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-warning mx-auto mb-4" />
+          <p className="text-lg font-bold text-neutral-600">Loading analytics...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !analytics) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="p-8 border-4 border-danger/40 max-w-md">
+          <div className="text-center">
+            <AlertCircle className="w-12 h-12 text-danger mx-auto mb-4" />
+            <h2 className="text-xl font-black text-neutral-800 mb-2">Failed to Load</h2>
+            <p className="text-neutral-600 mb-4">{error || 'Unable to load analytics'}</p>
+            <MagneticButton
+              onClick={fetchAnalytics}
+              className="bg-gradient-to-r from-warning to-orange-600 text-white font-black"
+            >
+              TRY AGAIN
+            </MagneticButton>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
   const overviewStats = [
-    { label: 'Total Revenue', value: '$8,150', change: '+12%', trend: 'up', icon: DollarSign, color: 'success' },
-    { label: 'Total Students', value: '234', change: '+8%', trend: 'up', icon: Users, color: 'primary' },
-    { label: 'Avg Rating', value: '4.8', change: '+0.1', trend: 'up', icon: Star, color: 'warning' },
-    { label: 'Course Views', value: '1,245', change: '+15%', trend: 'up', icon: TrendingUp, color: 'secondary' },
-  ]
-
-  const coursePerformance = [
-    { course: 'Construction Safety 101', students: 45, completion: 92, rating: 4.9, revenue: '$2,250' },
-    { course: 'Equipment Operation', students: 38, completion: 85, rating: 4.7, revenue: '$1,900' },
-    { course: 'Quality Control', students: 32, completion: 88, rating: 4.8, revenue: '$1,600' },
-    { course: 'Site Management', students: 28, completion: 79, rating: 4.6, revenue: '$1,400' },
-  ]
-
-  const monthlyRevenue = [
-    { month: 'Jan', revenue: 5200 },
-    { month: 'Feb', revenue: 6100 },
-    { month: 'Mar', revenue: 7300 },
-    { month: 'Apr', revenue: 8150 },
-  ]
-
-  const studentEngagement = [
-    { metric: 'Video Completion', value: 85, color: 'primary' },
-    { metric: 'Quiz Participation', value: 92, color: 'success' },
-    { metric: 'Discussion Posts', value: 68, color: 'warning' },
-    { metric: 'Assignment Submission', value: 78, color: 'secondary' },
+    { label: 'Total Courses', value: analytics.summary.totalCourses.toString(), change: '-', trend: 'up', icon: BarChart3, color: 'warning' },
+    { label: 'Total Students', value: analytics.summary.uniqueStudents.toString(), change: '-', trend: 'up', icon: Users, color: 'primary' },
+    { label: 'Completion Rate', value: `${analytics.summary.overallCompletionRate}%`, change: '-', trend: 'up', icon: TrendingUp, color: 'success' },
+    { label: 'Total Enrollments', value: analytics.summary.totalEnrollments.toString(), change: '-', trend: 'up', icon: Star, color: 'secondary' },
   ]
 
   return (
@@ -62,10 +98,16 @@ export default function InstructorAnalyticsPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <MagneticButton className="glass-effect border-2 border-neutral-300 text-neutral-700 font-black hover:border-neutral-400">
-            <Calendar className="mr-2" size={20} />
-            LAST 30 DAYS
-          </MagneticButton>
+          <select
+            value={selectedPeriod}
+            onChange={(e) => setSelectedPeriod(e.target.value)}
+            className="px-4 py-2 border-2 border-neutral-300 rounded-lg font-bold text-neutral-700 bg-white hover:border-warning/40 transition-all"
+          >
+            <option value="7">Last 7 Days</option>
+            <option value="30">Last 30 Days</option>
+            <option value="90">Last 90 Days</option>
+            <option value="365">Last Year</option>
+          </select>
           <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
             <Download className="mr-2" size={20} />
             EXPORT REPORT
@@ -101,89 +143,68 @@ export default function InstructorAnalyticsPage() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Revenue Trend */}
-        <Card className="p-6 border-4 border-success/40">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-black text-neutral-800 flex items-center gap-2">
-              <BarChart3 className="text-success" size={24} />
-              REVENUE TREND
-            </h2>
-          </div>
+      {/* Enrollment Trend */}
+      <Card className="p-6 border-4 border-primary/40">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-black text-neutral-800 flex items-center gap-2">
+            <TrendingUp className="text-primary" size={24} />
+            ENROLLMENT TREND
+          </h2>
+        </div>
 
-          <div className="space-y-4">
-            {monthlyRevenue.map((item, index) => {
-              const maxRevenue = Math.max(...monthlyRevenue.map(m => m.revenue))
-              const width = (item.revenue / maxRevenue) * 100
+        {analytics.enrollmentTrend && analytics.enrollmentTrend.length > 0 ? (
+          <>
+            <div className="space-y-4">
+              {analytics.enrollmentTrend.slice(0, 10).map((item, index) => {
+                const maxEnrollments = Math.max(...analytics.enrollmentTrend.map(t => t.enrollments))
+                const enrollmentWidth = maxEnrollments > 0 ? (item.enrollments / maxEnrollments) * 100 : 0
+                const completionWidth = item.enrollments > 0 ? (item.completions / item.enrollments) * 100 : 0
 
-              return (
-                <div key={index}>
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span className="font-black text-neutral-800">{item.month}</span>
-                    <span className="font-black text-success">${item.revenue.toLocaleString()}</span>
+                return (
+                  <div key={index}>
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="font-black text-neutral-800">
+                        {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-primary">{item.enrollments} enrolled</span>
+                        <span className="font-bold text-success">{item.completions} completed</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1 bg-neutral-200 rounded-full h-3">
+                        <div
+                          className="bg-gradient-to-r from-primary to-blue-600 h-3 rounded-full transition-all duration-500"
+                          style={{ width: `${enrollmentWidth}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex-1 bg-neutral-200 rounded-full h-3">
+                        <div
+                          className="bg-gradient-to-r from-success to-green-600 h-3 rounded-full transition-all duration-500"
+                          style={{ width: `${completionWidth}%` }}
+                        ></div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="w-full bg-neutral-200 rounded-full h-4">
-                    <div
-                      className="bg-gradient-to-r from-success to-green-600 h-4 rounded-full transition-all duration-500"
-                      style={{ width: `${width}%` }}
-                    ></div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
 
-          <div className="mt-6 p-4 bg-success/10 rounded-lg">
-            <p className="text-sm font-bold text-neutral-700">
-              Total Revenue This Quarter: <span className="text-success font-black">${monthlyRevenue.reduce((sum, m) => sum + m.revenue, 0).toLocaleString()}</span>
-            </p>
-            <p className="text-xs text-neutral-600 font-medium mt-1">
-              +24% compared to last quarter
-            </p>
+            <div className="mt-6 p-4 bg-primary/10 rounded-lg">
+              <p className="text-sm font-bold text-neutral-700">
+                Period: <span className="text-primary font-black">{analytics.period.days} days</span>
+              </p>
+              <p className="text-xs text-neutral-600 font-medium mt-1">
+                {new Date(analytics.period.startDate).toLocaleDateString()} - {new Date(analytics.period.endDate).toLocaleDateString()}
+              </p>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-neutral-600 font-medium">No enrollment data available for this period</p>
           </div>
-        </Card>
-
-        {/* Student Engagement */}
-        <Card className="p-6 border-4 border-primary/40">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-black text-neutral-800 flex items-center gap-2">
-              <PieChart className="text-primary" size={24} />
-              STUDENT ENGAGEMENT
-            </h2>
-          </div>
-
-          <div className="space-y-6">
-            {studentEngagement.map((item, index) => (
-              <div key={index}>
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="font-bold text-neutral-700">{item.metric}</span>
-                  <span className="font-black text-neutral-800">{item.value}%</span>
-                </div>
-                <div className="w-full bg-neutral-200 rounded-full h-3">
-                  <div
-                    className={`bg-gradient-to-r from-${item.color} to-${
-                      item.color === 'primary' ? 'blue' :
-                      item.color === 'success' ? 'green' :
-                      item.color === 'warning' ? 'orange' :
-                      'purple'
-                    }-600 h-3 rounded-full transition-all duration-500`}
-                    style={{ width: `${item.value}%` }}
-                  ></div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 p-4 bg-primary/10 rounded-lg">
-            <p className="text-sm font-bold text-neutral-700">
-              Overall Engagement Score: <span className="text-primary font-black">81%</span>
-            </p>
-            <p className="text-xs text-neutral-600 font-medium mt-1">
-              Above average for your course category
-            </p>
-          </div>
-        </Card>
-      </div>
+        )}
+      </Card>
 
       {/* Course Performance Table */}
       <Card className="p-6 border-4 border-warning/40">
@@ -191,58 +212,71 @@ export default function InstructorAnalyticsPage() {
           <h2 className="text-2xl font-black text-neutral-800">COURSE PERFORMANCE</h2>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gradient-to-r from-neutral-50 to-neutral-100 border-b-2 border-neutral-200">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-black text-neutral-700 uppercase">Course</th>
-                <th className="px-6 py-4 text-left text-sm font-black text-neutral-700 uppercase">Students</th>
-                <th className="px-6 py-4 text-left text-sm font-black text-neutral-700 uppercase">Completion</th>
-                <th className="px-6 py-4 text-left text-sm font-black text-neutral-700 uppercase">Rating</th>
-                <th className="px-6 py-4 text-left text-sm font-black text-neutral-700 uppercase">Revenue</th>
-              </tr>
-            </thead>
-            <tbody>
-              {coursePerformance.map((course, index) => (
-                <tr
-                  key={index}
-                  className="border-b border-neutral-200 hover:bg-neutral-50 transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <p className="font-black text-neutral-800">{course.course}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="font-black text-primary">{course.students}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-24 bg-neutral-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full ${
-                            course.completion >= 90 ? 'bg-gradient-to-r from-success to-green-600' :
-                            course.completion >= 80 ? 'bg-gradient-to-r from-warning to-orange-600' :
-                            'bg-gradient-to-r from-danger to-red-600'
-                          }`}
-                          style={{ width: `${course.completion}%` }}
-                        ></div>
-                      </div>
-                      <span className="font-black text-neutral-800 text-sm">{course.completion}%</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1 text-amber-500">
-                      <Star size={16} fill="currentColor" />
-                      <span className="font-black text-neutral-800">{course.rating}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="font-black text-success">{course.revenue}</span>
-                  </td>
+        {analytics.courseMetrics && analytics.courseMetrics.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gradient-to-r from-neutral-50 to-neutral-100 border-b-2 border-neutral-200">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-black text-neutral-700 uppercase">Course</th>
+                  <th className="px-6 py-4 text-left text-sm font-black text-neutral-700 uppercase">Category</th>
+                  <th className="px-6 py-4 text-left text-sm font-black text-neutral-700 uppercase">Total</th>
+                  <th className="px-6 py-4 text-left text-sm font-black text-neutral-700 uppercase">Active</th>
+                  <th className="px-6 py-4 text-left text-sm font-black text-neutral-700 uppercase">Completed</th>
+                  <th className="px-6 py-4 text-left text-sm font-black text-neutral-700 uppercase">Completion Rate</th>
+                  <th className="px-6 py-4 text-left text-sm font-black text-neutral-700 uppercase">Avg Time (hrs)</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {analytics.courseMetrics.map((course, index) => (
+                  <tr
+                    key={course.courseId}
+                    className="border-b border-neutral-200 hover:bg-neutral-50 transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <p className="font-black text-neutral-800">{course.courseTitle}</p>
+                      <p className="text-xs text-neutral-600 font-medium">{course.totalLessons} lessons</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-bold text-neutral-700">{course.category || 'Uncategorized'}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-black text-neutral-800">{course.totalEnrollments}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-black text-primary">{course.activeEnrollments}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-black text-success">{course.completedEnrollments}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-24 bg-neutral-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full ${
+                              course.completionRate >= 90 ? 'bg-gradient-to-r from-success to-green-600' :
+                              course.completionRate >= 80 ? 'bg-gradient-to-r from-warning to-orange-600' :
+                              course.completionRate >= 50 ? 'bg-gradient-to-r from-primary to-blue-600' :
+                              'bg-gradient-to-r from-danger to-red-600'
+                            }`}
+                            style={{ width: `${course.completionRate}%` }}
+                          ></div>
+                        </div>
+                        <span className="font-black text-neutral-800 text-sm">{course.completionRate}%</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-black text-neutral-800">{course.avgTimeSpentHours.toFixed(1)}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-neutral-600 font-medium">No course performance data available for this period</p>
+          </div>
+        )}
       </Card>
     </div>
   )

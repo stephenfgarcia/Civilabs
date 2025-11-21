@@ -70,8 +70,9 @@ export async function POST(request: NextRequest) {
       { expiresIn: '7d' }
     )
 
-    // Create response with user data (no token in body for security)
+    // Create response with user data and token
     const response = NextResponse.json({
+      token, // Include token for client-side storage
       user: {
         id: user.id,
         email: user.email,

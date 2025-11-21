@@ -65,13 +65,11 @@ export interface RevokeCertificateData {
 }
 
 export interface CertificatesListResponse {
-  success: boolean
   data: AdminCertificate[]
   count: number
 }
 
 export interface CertificateResponse {
-  success: boolean
   data: AdminCertificate
   message?: string
 }
@@ -85,7 +83,7 @@ class AdminCertificatesService {
     courseId?: string
     status?: 'ALL' | 'ACTIVE' | 'EXPIRED' | 'REVOKED'
     search?: string
-  }) {
+  }): Promise<CertificatesListResponse & { success: boolean; error?: string }> {
     try {
       const queryParams = new URLSearchParams()
       if (params?.userId) queryParams.append('userId', params.userId)
@@ -96,20 +94,37 @@ class AdminCertificatesService {
         `/certificates?${queryParams.toString()}`
       )
 
-      // Client-side search filtering if needed
-      if (response.success && params?.search) {
-        const searchLower = params.search.toLowerCase()
-        response.data = response.data.filter(cert =>
-          cert.user.firstName.toLowerCase().includes(searchLower) ||
-          cert.user.lastName.toLowerCase().includes(searchLower) ||
-          cert.user.email.toLowerCase().includes(searchLower) ||
-          cert.certificate.course.title.toLowerCase().includes(searchLower) ||
-          cert.verificationCode.toLowerCase().includes(searchLower)
-        )
-        response.count = response.data.length
+      // Check if response was successful
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        let certificates = response.data.data
+        let count = response.data.count
+
+        // Client-side search filtering if needed
+        if (params?.search) {
+          const searchLower = params.search.toLowerCase()
+          certificates = certificates.filter(cert =>
+            cert.user.firstName.toLowerCase().includes(searchLower) ||
+            cert.user.lastName.toLowerCase().includes(searchLower) ||
+            cert.user.email.toLowerCase().includes(searchLower) ||
+            cert.certificate.course.title.toLowerCase().includes(searchLower) ||
+            cert.verificationCode.toLowerCase().includes(searchLower)
+          )
+          count = certificates.length
+        }
+
+        return {
+          success: true,
+          data: certificates,
+          count,
+        }
       }
 
-      return response
+      return {
+        success: false,
+        data: [],
+        count: 0,
+        error: response.error || 'Failed to fetch certificates',
+      }
     } catch (error) {
       console.error('Error fetching certificates:', error)
       return {
@@ -124,10 +139,22 @@ class AdminCertificatesService {
   /**
    * Get certificate by ID
    */
-  async getCertificate(id: string) {
+  async getCertificate(id: string): Promise<{ success: boolean; data: AdminCertificate | null; error?: string }> {
     try {
       const response = await apiClient.get<CertificateResponse>(`/certificates/${id}`)
-      return response
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        return {
+          success: true,
+          data: response.data.data,
+        }
+      }
+
+      return {
+        success: false,
+        data: null,
+        error: response.error || 'Failed to fetch certificate',
+      }
     } catch (error) {
       console.error('Error fetching certificate:', error)
       return {
@@ -141,10 +168,23 @@ class AdminCertificatesService {
   /**
    * Issue certificate (admin only)
    */
-  async issueCertificate(data: IssueCertificateData) {
+  async issueCertificate(data: IssueCertificateData): Promise<{ success: boolean; data: AdminCertificate | null; error?: string; message?: string }> {
     try {
       const response = await apiClient.post<CertificateResponse>('/certificates', data)
-      return response
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        return {
+          success: true,
+          data: response.data.data,
+          message: response.data.message,
+        }
+      }
+
+      return {
+        success: false,
+        data: null,
+        error: response.error || 'Failed to issue certificate',
+      }
     } catch (error) {
       console.error('Error issuing certificate:', error)
       return {
@@ -158,13 +198,26 @@ class AdminCertificatesService {
   /**
    * Revoke certificate (admin only)
    */
-  async revokeCertificate(id: string, data?: RevokeCertificateData) {
+  async revokeCertificate(id: string, data?: RevokeCertificateData): Promise<{ success: boolean; data: AdminCertificate | null; error?: string; message?: string }> {
     try {
       const response = await apiClient.put<CertificateResponse>(
         `/certificates/${id}/revoke`,
         data || {}
       )
-      return response
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        return {
+          success: true,
+          data: response.data.data,
+          message: response.data.message,
+        }
+      }
+
+      return {
+        success: false,
+        data: null,
+        error: response.error || 'Failed to revoke certificate',
+      }
     } catch (error) {
       console.error('Error revoking certificate:', error)
       return {
@@ -178,10 +231,20 @@ class AdminCertificatesService {
   /**
    * Delete certificate (admin only)
    */
-  async deleteCertificate(id: string) {
+  async deleteCertificate(id: string): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await apiClient.delete(`/certificates/${id}`)
-      return response
+
+      if (response.status >= 200 && response.status < 300) {
+        return {
+          success: true,
+        }
+      }
+
+      return {
+        success: false,
+        error: response.error || 'Failed to delete certificate',
+      }
     } catch (error) {
       console.error('Error deleting certificate:', error)
       return {
@@ -194,11 +257,22 @@ class AdminCertificatesService {
   /**
    * Download certificate
    */
-  async downloadCertificate(id: string) {
+  async downloadCertificate(id: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       // Note: This should trigger a file download
       const response = await apiClient.get(`/certificates/${id}/download`)
-      return response
+
+      if (response.status >= 200 && response.status < 300) {
+        return {
+          success: true,
+          data: response.data,
+        }
+      }
+
+      return {
+        success: false,
+        error: response.error || 'Failed to download certificate',
+      }
     } catch (error) {
       console.error('Error downloading certificate:', error)
       return {

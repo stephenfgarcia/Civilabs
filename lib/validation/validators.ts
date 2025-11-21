@@ -30,7 +30,7 @@ export function validate<T>(
 
     // Transform Zod errors into a record
     const errors: Record<string, string> = {}
-    result.error.errors.forEach((error) => {
+    result.error.issues.forEach((error) => {
       const path = error.path.join('.')
       errors[path] = error.message
     })
@@ -59,7 +59,7 @@ export function validateField<T>(
 ): string | null {
   try {
     // Create a partial schema for the single field
-    const fieldSchema = schema.shape?.[fieldName as keyof typeof schema.shape]
+    const fieldSchema = (schema as any).shape?.[fieldName]
 
     if (!fieldSchema) {
       return null
@@ -69,7 +69,7 @@ export function validateField<T>(
     return null
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return error.errors[0]?.message || 'Validation failed'
+      return error.issues[0]?.message || 'Validation failed'
     }
     return 'Validation failed'
   }

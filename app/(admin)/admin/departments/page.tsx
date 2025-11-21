@@ -14,6 +14,7 @@ import {
   Users,
   ChevronRight,
   FolderTree,
+  Folder,
   AlertTriangle,
   MoreVertical,
 } from 'lucide-react'
@@ -306,13 +307,6 @@ export default function DepartmentsPage() {
                         )}
                       </div>
                     </div>
-                    <div className={`px-3 py-1 rounded-full text-xs font-black ${
-                      dept.status === 'active'
-                        ? 'bg-gradient-to-r from-success to-green-600 text-white'
-                        : 'bg-gradient-to-r from-neutral-400 to-neutral-600 text-white'
-                    }`}>
-                      {dept.status.toUpperCase()}
-                    </div>
                   </div>
 
                   {/* Description */}
@@ -327,11 +321,13 @@ export default function DepartmentsPage() {
                       <p className="font-black text-2xl text-neutral-800">{dept.userCount}</p>
                       <p className="text-xs text-neutral-600">Users</p>
                     </div>
-                    <div className="text-center">
-                      <AlertTriangle className="mx-auto mb-1 text-primary" size={20} />
-                      <p className="font-black text-2xl text-neutral-800">{dept.head}</p>
-                      <p className="text-xs text-neutral-600">Department Head</p>
-                    </div>
+                    {dept.children && dept.children.length > 0 && (
+                      <div className="text-center">
+                        <Folder className="mx-auto mb-1 text-primary" size={20} />
+                        <p className="font-black text-2xl text-neutral-800">{dept.children.length}</p>
+                        <p className="text-xs text-neutral-600">Sub-departments</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions */}

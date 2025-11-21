@@ -13,7 +13,7 @@ import { withRole } from '@/lib/auth/api-auth'
  */
 export const GET = withRole(['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'], async (request, user) => {
   try {
-    const instructorId = user.userId
+    const instructorId = String(user.userId)
 
     // Get instructor's courses
     const courses = await prisma.course.findMany({

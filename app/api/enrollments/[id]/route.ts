@@ -8,17 +8,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAuth } from '@/lib/auth/api-auth'
 
-interface RouteParams {
-  params: { id: string }
-}
-
 /**
  * GET /api/enrollments/[id]
  * Get detailed enrollment information
  */
-export const GET = withAuth(async (request, user, context: RouteParams) => {
+export const GET = withAuth(async (request, user, context?: { params: Promise<{ id: string }> }) => {
   try {
-    const params = await context.params
+    const params = await context!.params
     const { id } = params
 
     const enrollment = await prisma.enrollment.findUnique({
@@ -100,9 +96,9 @@ export const GET = withAuth(async (request, user, context: RouteParams) => {
  * DELETE /api/enrollments/[id]
  * Unenroll from a course
  */
-export const DELETE = withAuth(async (request, user, context: RouteParams) => {
+export const DELETE = withAuth(async (request, user, context?: { params: Promise<{ id: string }> }) => {
   try {
-    const params = await context.params
+    const params = await context!.params
     const { id } = params
 
     // Get the enrollment first
@@ -142,14 +138,14 @@ export const DELETE = withAuth(async (request, user, context: RouteParams) => {
 
     // Prevent unenrollment if course is completed and has certificate
     if (enrollment.status === 'COMPLETED') {
-      const certificate = await prisma.certificate.findFirst({
+      const userCertificate = await prisma.userCertificate.findFirst({
         where: {
           userId: enrollment.userId,
-          courseId: enrollment.courseId,
+          enrollmentId: enrollment.id,
         },
       })
 
-      if (certificate) {
+      if (userCertificate) {
         return NextResponse.json(
           {
             success: false,

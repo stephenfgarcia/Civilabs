@@ -16,7 +16,7 @@ import bcrypt from 'bcryptjs'
 export const GET = withAuth(async (request, user) => {
   try {
     const userData = await prisma.user.findUnique({
-      where: { id: user.userId },
+      where: { id: String(user.userId) },
       select: {
         id: true,
         email: true,
@@ -117,7 +117,7 @@ export const PUT = withAuth(async (request, user) => {
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: user.userId },
+      where: { id: String(user.userId) },
       data: updateData,
       select: {
         id: true,

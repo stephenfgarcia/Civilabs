@@ -15,134 +15,159 @@ import {
   Lock,
   TrendingUp
 } from 'lucide-react'
+import { apiClient } from '@/lib/services'
 
 interface Badge {
-  id: number
+  id: string
   name: string
-  description: string
-  icon: any
-  color: string
+  description: string | null
+  iconUrl: string | null
+  points: number
   earned: boolean
-  earnedDate?: string
-  progress?: number
-  requirement: string
-  category: string
+  earnedDate: string | null
+  progress: number
+  criteria: any
 }
 
-// Mock badges data
-const MOCK_BADGES: Badge[] = [
-  {
-    id: 1,
-    name: 'First Steps',
-    description: 'Complete your first lesson',
-    icon: Star,
-    color: 'from-warning to-orange-600',
-    earned: true,
-    earnedDate: 'January 10, 2024',
-    requirement: 'Complete 1 lesson',
-    category: 'Getting Started'
-  },
-  {
-    id: 2,
-    name: 'Course Crusher',
-    description: 'Complete your first course',
-    icon: Award,
-    color: 'from-success to-green-600',
-    earned: true,
-    earnedDate: 'January 20, 2024',
-    requirement: 'Complete 1 course',
-    category: 'Completion'
-  },
-  {
-    id: 3,
-    name: 'Week Warrior',
-    description: 'Maintain a 7-day learning streak',
-    icon: Flame,
-    color: 'from-danger to-red-600',
-    earned: true,
-    earnedDate: 'January 25, 2024',
-    requirement: '7-day streak',
-    category: 'Engagement'
-  },
-  {
-    id: 4,
-    name: 'Quiz Master',
-    description: 'Pass 5 quizzes with 100% score',
-    icon: Trophy,
-    color: 'from-warning to-yellow-600',
-    earned: false,
-    progress: 60,
-    requirement: 'Pass 5 quizzes with 100%',
-    category: 'Assessment'
-  },
-  {
-    id: 5,
-    name: 'Speed Learner',
-    description: 'Complete 10 lessons in one day',
-    icon: Zap,
-    color: 'from-primary to-blue-600',
-    earned: false,
-    progress: 40,
-    requirement: 'Complete 10 lessons in 24 hours',
-    category: 'Achievement'
-  },
-  {
-    id: 6,
-    name: 'Perfect Score',
-    description: 'Achieve 100% on any quiz',
-    icon: Target,
-    color: 'from-success to-green-600',
-    earned: false,
-    progress: 0,
-    requirement: 'Score 100% on 1 quiz',
-    category: 'Assessment'
-  },
-  {
-    id: 7,
-    name: 'Dedication',
-    description: 'Complete 30 days of learning',
-    icon: Medal,
-    color: 'from-secondary to-purple-600',
-    earned: false,
-    progress: 23,
-    requirement: 'Learn for 30 consecutive days',
-    category: 'Engagement'
-  },
-  {
-    id: 8,
-    name: 'Champion',
-    description: 'Complete 10 courses',
-    icon: Crown,
-    color: 'from-warning to-orange-600',
-    earned: false,
-    progress: 10,
-    requirement: 'Complete 10 courses',
-    category: 'Completion'
-  }
-]
+interface Stats {
+  total: number
+  earned: number
+  totalPoints: number
+  completionPercentage: number
+}
 
-const CATEGORIES = ['All', 'Getting Started', 'Completion', 'Assessment', 'Engagement', 'Achievement']
+// Icon mapping for badges (fallback if no iconUrl)
+const ICON_MAP: Record<string, any> = {
+  star: Star,
+  award: Award,
+  trophy: Trophy,
+  flame: Flame,
+  target: Target,
+  zap: Zap,
+  medal: Medal,
+  crown: Crown,
+}
+
+// Color schemes for different point ranges
+const getColorScheme = (points: number) => {
+  if (points >= 100) return 'from-warning to-orange-600'
+  if (points >= 50) return 'from-secondary to-purple-600'
+  if (points >= 25) return 'from-primary to-blue-600'
+  return 'from-success to-green-600'
+}
+
+// Get icon based on criteria type or name
+const getBadgeIcon = (badge: Badge) => {
+  if (badge.criteria?.type) {
+    switch (badge.criteria.type) {
+      case 'lessons_completed':
+        return Star
+      case 'courses_completed':
+        return Award
+      case 'perfect_quizzes':
+        return Trophy
+      case 'learning_streak':
+        return Flame
+      case 'certificates_earned':
+        return Medal
+      case 'discussion_participation':
+        return Target
+      default:
+        return Award
+    }
+  }
+  return Award
+}
+
+// Format criteria for display
+const getCriteriaText = (badge: Badge) => {
+  if (!badge.criteria || !badge.criteria.type) return 'Complete the challenge'
+
+  const target = badge.criteria.target || 1
+
+  switch (badge.criteria.type) {
+    case 'lessons_completed':
+      return `Complete ${target} lesson${target > 1 ? 's' : ''}`
+    case 'courses_completed':
+      return `Complete ${target} course${target > 1 ? 's' : ''}`
+    case 'perfect_quizzes':
+      return `Get 100% on ${target} quiz${target > 1 ? 'zes' : ''}`
+    case 'learning_streak':
+      return `Maintain ${target} day streak`
+    case 'certificates_earned':
+      return `Earn ${target} certificate${target > 1 ? 's' : ''}`
+    case 'discussion_participation':
+      return `Start ${target} discussion${target > 1 ? 's' : ''}`
+    case 'quiz_average':
+      return `Achieve ${target}% quiz average`
+    default:
+      return 'Complete the challenge'
+  }
+}
 
 export default function BadgesPage() {
-  const [badges, setBadges] = useState(MOCK_BADGES)
-  const [selectedCategory, setSelectedCategory] = useState('All')
+  const [badges, setBadges] = useState<Badge[]>([])
+  const [stats, setStats] = useState<Stats>({
+    total: 0,
+    earned: 0,
+    totalPoints: 0,
+    completionPercentage: 0,
+  })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Simple CSS-only entrance animations
-    const elements = document.querySelectorAll('.badge-item')
-    elements.forEach((el, index) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
+    fetchBadges()
+  }, [])
+
+  const fetchBadges = async () => {
+    try {
+      setLoading(true)
+      const response = await apiClient.get('/badges')
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        const apiData = response.data as any
+        setBadges(apiData.data?.badges || [])
+        setStats(apiData.data?.stats || {
+          total: 0,
+          earned: 0,
+          totalPoints: 0,
+          completionPercentage: 0,
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching badges:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!loading) {
+      // Simple CSS-only entrance animations
+      const elements = document.querySelectorAll('.badge-item')
+      elements.forEach((el, index) => {
+        const htmlEl = el as HTMLElement
+        htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
+      })
+    }
+  }, [loading])
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A'
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
     })
-  }, [selectedCategory])
+  }
 
-  const filteredBadges = selectedCategory === 'All'
-    ? badges
-    : badges.filter(b => b.category === selectedCategory)
-
-  const earnedCount = badges.filter(b => b.earned).length
-  const totalCount = badges.length
-  const earnedPercentage = Math.round((earnedCount / totalCount) * 100)
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-neutral-600">Loading badges...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -182,7 +207,7 @@ export default function BadgesPage() {
               <Card className="glass-effect border-2 border-success/30">
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-black bg-gradient-to-r from-success to-green-600 bg-clip-text text-transparent mb-2">
-                    {earnedCount}
+                    {stats.earned}
                   </div>
                   <p className="text-sm font-bold text-neutral-600">BADGES EARNED</p>
                 </CardContent>
@@ -191,7 +216,7 @@ export default function BadgesPage() {
               <Card className="glass-effect border-2 border-primary/30">
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-black bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent mb-2">
-                    {totalCount - earnedCount}
+                    {stats.total - stats.earned}
                   </div>
                   <p className="text-sm font-bold text-neutral-600">IN PROGRESS</p>
                 </CardContent>
@@ -200,7 +225,7 @@ export default function BadgesPage() {
               <Card className="glass-effect border-2 border-warning/30">
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-black bg-gradient-to-r from-warning to-orange-600 bg-clip-text text-transparent mb-2">
-                    {earnedPercentage}%
+                    {stats.completionPercentage}%
                   </div>
                   <p className="text-sm font-bold text-neutral-600">COMPLETION</p>
                 </CardContent>
@@ -210,39 +235,16 @@ export default function BadgesPage() {
         </div>
       </div>
 
-      {/* Category Filter */}
-      <Card className="badge-item opacity-0 glass-effect concrete-texture border-4 border-secondary/40">
-        <CardHeader>
-          <CardTitle className="text-xl font-black flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-secondary to-purple-600 rounded-lg flex items-center justify-center">
-              <TrendingUp className="text-white" size={20} />
-            </div>
-            FILTER BY CATEGORY
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-3 flex-wrap">
-            {CATEGORIES.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-6 py-3 rounded-lg font-bold transition-all ${
-                  selectedCategory === category
-                    ? 'bg-gradient-to-r from-secondary to-purple-600 text-white shadow-lg scale-105'
-                    : 'glass-effect border-2 border-secondary/30 text-neutral-700 hover:border-secondary/60'
-                }`}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Badges Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {filteredBadges.map((badge) => {
-          const Icon = badge.icon
+        {badges.length === 0 ? (
+          <div className="col-span-full text-center p-8 text-neutral-600">
+            No badges available yet. Start learning to earn badges!
+          </div>
+        ) : (
+          badges.map((badge) => {
+            const Icon = getBadgeIcon(badge)
+            const colorScheme = getColorScheme(badge.points)
 
           return (
             <Card
@@ -261,7 +263,7 @@ export default function BadgesPage() {
                 {/* Badge Icon */}
                 <div className="relative mb-4">
                   <div
-                    className={`w-24 h-24 bg-gradient-to-br ${badge.color} rounded-full flex items-center justify-center mx-auto shadow-lg group-hover:scale-110 transition-transform ${
+                    className={`w-24 h-24 bg-gradient-to-br ${colorScheme} rounded-full flex items-center justify-center mx-auto shadow-lg group-hover:scale-110 transition-transform ${
                       !badge.earned && 'opacity-40 grayscale'
                     }`}
                   >
@@ -281,38 +283,39 @@ export default function BadgesPage() {
 
                 {/* Badge Info */}
                 <h3 className="text-xl font-black text-neutral-800 mb-2">{badge.name}</h3>
-                <p className="text-sm text-neutral-600 mb-3 line-clamp-2">{badge.description}</p>
+                <p className="text-sm text-neutral-600 mb-3 line-clamp-2">{badge.description || 'Complete this challenge to earn the badge'}</p>
 
-                {/* Category Badge */}
-                <span className="inline-block px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-secondary to-purple-600 text-white mb-3">
-                  {badge.category}
+                {/* Points Badge */}
+                <span className="inline-block px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-warning to-orange-600 text-white mb-3">
+                  {badge.points} POINTS
                 </span>
 
                 {/* Progress or Earned Date */}
                 {badge.earned ? (
                   <div className="space-y-2">
                     <p className="text-xs font-bold text-success">EARNED</p>
-                    <p className="text-xs font-semibold text-neutral-500">{badge.earnedDate}</p>
+                    <p className="text-xs font-semibold text-neutral-500">{formatDate(badge.earnedDate)}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs font-semibold mb-1">
                       <span className="text-neutral-600">Progress</span>
-                      <span className="text-primary">{badge.progress || 0}%</span>
+                      <span className="text-primary">{Math.round(badge.progress)}%</span>
                     </div>
                     <div className="w-full bg-neutral-200 rounded-full h-2">
                       <div
                         className="bg-gradient-to-r from-primary to-blue-600 h-2 rounded-full transition-all"
-                        style={{ width: `${badge.progress || 0}%` }}
+                        style={{ width: `${Math.round(badge.progress)}%` }}
                       ></div>
                     </div>
-                    <p className="text-xs text-neutral-500 mt-2">{badge.requirement}</p>
+                    <p className="text-xs text-neutral-500 mt-2">{getCriteriaText(badge)}</p>
                   </div>
                 )}
               </CardContent>
             </Card>
           )
-        })}
+        })
+        )}
       </div>
     </div>
   )

@@ -13,8 +13,9 @@ import { withAuth, withInstructor } from '@/lib/auth/api-auth'
  * GET /api/quizzes/[id]
  * Get quiz by ID
  */
-export const GET = withAuth(async (request, user, { params }: { params: { id: string } }) => {
+export const GET = withAuth(async (request, user, context?: { params: Promise<{ id: string }> }) => {
   try {
+    const params = await context!.params
     const { id } = params
     const { searchParams } = new URL(request.url)
     const includeAnswers = searchParams.get('includeAnswers') === 'true'
@@ -109,7 +110,8 @@ export const GET = withAuth(async (request, user, { params }: { params: { id: st
   }
 })
 
-export const PUT = withInstructor(async (request, user, { params }: { params: { id: string } }) => {
+export const PUT = withInstructor(async (request, user, context?: { params: Promise<{ id: string }> }) => {
+  const params = await context!.params
   try {
     const { id } = params
     const body = await request.json()
@@ -142,7 +144,8 @@ export const PUT = withInstructor(async (request, user, { params }: { params: { 
   }
 })
 
-export const DELETE = withInstructor(async (request, user, { params }: { params: { id: string } }) => {
+export const DELETE = withInstructor(async (request, user, context?: { params: Promise<{ id: string }> }) => {
+  const params = await context!.params
   try {
     const { id } = params
 

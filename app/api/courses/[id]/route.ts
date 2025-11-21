@@ -9,11 +9,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withInstructor, withAdmin, authenticateRequest } from '@/lib/auth/api-auth'
 
-// Removed RouteParams interface - using inline type
-// interface RouteParams {
-//   params: { id: string }
-}
-
 /**
  * GET /api/courses/[id]
  * Get detailed course information including modules and lessons
@@ -36,7 +31,6 @@ export async function GET(
             firstName: true,
             lastName: true,
             email: true,
-            bio: true,
           },
         },
         category: {
@@ -70,7 +64,6 @@ export async function GET(
         _count: {
           select: {
             enrollments: true,
-            reviews: true,
           },
         },
       },
@@ -92,7 +85,7 @@ export async function GET(
     if (user) {
       enrollment = await prisma.enrollment.findFirst({
         where: {
-          userId: user.userId,
+          userId: String(user.userId),
           courseId: id,
         },
         include: {
@@ -108,19 +101,10 @@ export async function GET(
       })
     }
 
-    // Calculate average rating
-    const reviews = await prisma.review.aggregate({
-      where: { courseId: id },
-      _avg: {
-        rating: true,
-      },
-    })
-
     return NextResponse.json({
       success: true,
       data: {
         ...course,
-        averageRating: reviews._avg.rating || 0,
         isEnrolled: !!enrollment,
         enrollment: enrollment || null,
       },
@@ -147,7 +131,7 @@ export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  return withInstructor(async (req, user) => {
+  return withInstructor(async (req, user, ctx) => {
     try {
       const params = await context.params
       const { id } = params
@@ -236,7 +220,7 @@ export async function PUT(
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request, context)
 }
 
 /**
@@ -247,7 +231,7 @@ export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  return withAdmin(async (req, user) => {
+  return withAdmin(async (req, user, ctx) => {
     try {
       const params = await context.params
       const { id } = params
@@ -306,5 +290,5 @@ export async function DELETE(
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request, context)
 }

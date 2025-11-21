@@ -75,7 +75,7 @@ class CoursesService {
   /**
    * Get course by ID
    */
-  async getCourseById(id: number) {
+  async getCourseById(id: string) {
     return apiClient.get<Course>(`/courses/${id}`)
   }
 
@@ -147,6 +147,20 @@ class CoursesService {
    */
   async deleteCourse(id: number) {
     return apiClient.delete(`/courses/${id}`)
+  }
+
+  /**
+   * Get course progress for current user
+   */
+  async getCourseProgress(courseId: string) {
+    return apiClient.get(`/progress?courseId=${courseId}`)
+  }
+
+  /**
+   * Get lesson by ID with details
+   */
+  async getLesson(lessonId: string) {
+    return apiClient.get(`/lessons/${lessonId}`)
   }
 }
 

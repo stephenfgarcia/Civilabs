@@ -31,131 +31,6 @@ import {
 import Link from 'next/link'
 import { coursesService } from '@/lib/services'
 
-// Mock course data (same structure as courses page)
-const MOCK_COURSES = [
-  {
-    id: 1,
-    title: 'Construction Safety Fundamentals',
-    description: 'Essential safety protocols and procedures for construction sites. Learn to identify hazards, use personal protective equipment, and implement safety measures.',
-    fullDescription: 'This comprehensive safety course covers all aspects of construction site safety, from basic hazard identification to advanced emergency response procedures. You will learn OSHA regulations, proper PPE usage, fall protection, electrical safety, and how to create a culture of safety on your job sites.',
-    category: 'Safety',
-    level: 'Beginner',
-    duration: '4 hours',
-    students: 245,
-    rating: 4.8,
-    reviews: 89,
-    instructor: 'John Martinez',
-    instructorTitle: 'Safety Director',
-    icon: Shield,
-    color: 'from-danger to-red-600',
-    enrolled: true,
-    progress: 65,
-    modules: [
-      {
-        id: 1,
-        title: 'Introduction to Construction Safety',
-        lessons: [
-          { id: 1, title: 'Welcome and Course Overview', type: 'video', duration: '5 min', completed: true },
-          { id: 2, title: 'OSHA Regulations Overview', type: 'video', duration: '12 min', completed: true },
-          { id: 3, title: 'Safety Culture in Construction', type: 'reading', duration: '8 min', completed: true },
-          { id: 4, title: 'Module 1 Quiz', type: 'quiz', duration: '5 min', completed: true }
-        ]
-      },
-      {
-        id: 2,
-        title: 'Personal Protective Equipment (PPE)',
-        lessons: [
-          { id: 5, title: 'Types of PPE', type: 'video', duration: '10 min', completed: true },
-          { id: 6, title: 'Proper PPE Usage', type: 'video', duration: '15 min', completed: true },
-          { id: 7, title: 'PPE Maintenance and Inspection', type: 'reading', duration: '10 min', completed: false },
-          { id: 8, title: 'Module 2 Quiz', type: 'quiz', duration: '5 min', completed: false }
-        ]
-      },
-      {
-        id: 3,
-        title: 'Hazard Identification and Control',
-        lessons: [
-          { id: 9, title: 'Common Construction Hazards', type: 'video', duration: '18 min', completed: false },
-          { id: 10, title: 'Risk Assessment Methods', type: 'video', duration: '12 min', completed: false },
-          { id: 11, title: 'Control Measures and Hierarchy', type: 'reading', duration: '15 min', completed: false },
-          { id: 12, title: 'Module 3 Quiz', type: 'quiz', duration: '5 min', completed: false }
-        ]
-      },
-      {
-        id: 4,
-        title: 'Emergency Response Procedures',
-        lessons: [
-          { id: 13, title: 'Emergency Action Plans', type: 'video', duration: '10 min', completed: false },
-          { id: 14, title: 'First Aid Basics', type: 'video', duration: '20 min', completed: false },
-          { id: 15, title: 'Evacuation Procedures', type: 'reading', duration: '8 min', completed: false },
-          { id: 16, title: 'Final Assessment', type: 'quiz', duration: '15 min', completed: false }
-        ]
-      }
-    ],
-    learningObjectives: [
-      'Identify and assess construction site hazards',
-      'Select and properly use personal protective equipment',
-      'Implement OSHA safety regulations and standards',
-      'Develop emergency response plans',
-      'Create a safety-first culture on construction sites'
-    ],
-    requirements: [
-      'No prior construction experience required',
-      'Basic understanding of workplace safety',
-      'Access to a computer or mobile device'
-    ]
-  },
-  {
-    id: 2,
-    title: 'Heavy Equipment Operation',
-    description: 'Learn to operate excavators, bulldozers, and cranes safely',
-    fullDescription: 'Master the operation of heavy construction equipment including excavators, bulldozers, loaders, and cranes. This hands-on course combines theoretical knowledge with practical skills.',
-    category: 'Equipment',
-    level: 'Intermediate',
-    duration: '12 hours',
-    students: 189,
-    rating: 4.6,
-    reviews: 67,
-    instructor: 'Mike Johnson',
-    instructorTitle: 'Equipment Specialist',
-    icon: Wrench,
-    color: 'from-warning to-orange-600',
-    enrolled: false,
-    progress: 0,
-    modules: [
-      {
-        id: 1,
-        title: 'Equipment Basics',
-        lessons: [
-          { id: 1, title: 'Equipment Types and Uses', type: 'video', duration: '15 min', completed: false },
-          { id: 2, title: 'Safety Protocols', type: 'video', duration: '12 min', completed: false },
-          { id: 3, title: 'Pre-Operation Inspection', type: 'reading', duration: '10 min', completed: false }
-        ]
-      },
-      {
-        id: 2,
-        title: 'Excavator Operation',
-        lessons: [
-          { id: 4, title: 'Excavator Controls', type: 'video', duration: '20 min', completed: false },
-          { id: 5, title: 'Digging Techniques', type: 'video', duration: '25 min', completed: false },
-          { id: 6, title: 'Practice Exercises', type: 'quiz', duration: '15 min', completed: false }
-        ]
-      }
-    ],
-    learningObjectives: [
-      'Operate excavators, bulldozers, and loaders safely',
-      'Perform pre-operation inspections',
-      'Execute precise digging and grading tasks',
-      'Understand equipment maintenance requirements'
-    ],
-    requirements: [
-      'Valid driver\'s license',
-      'Basic mechanical knowledge',
-      'Physical ability to operate heavy machinery'
-    ]
-  }
-]
-
 // Icon mapping for categories
 const CATEGORY_ICONS: Record<string, any> = {
   Safety: Shield,
@@ -218,22 +93,21 @@ export default function CourseDetailPage() {
 
       // Fetch course details
       const courseResponse = await coursesService.getCourseById(courseId)
-      if (courseResponse.error) {
-        throw new Error(courseResponse.error)
-      }
 
-      const courseData = courseResponse.data?.data
-      if (!courseData) {
-        throw new Error('Course not found')
+      if (courseResponse.status >= 200 && courseResponse.status < 300 && courseResponse.data) {
+        setCourse(courseResponse.data)
+      } else {
+        throw new Error(courseResponse.error || 'Course not found')
       }
-
-      setCourse(courseData)
 
       // Check if user is enrolled
       const enrollmentsResponse = await coursesService.getEnrollments()
-      if (enrollmentsResponse.data?.data) {
-        const userEnrollment = enrollmentsResponse.data.data.find(
-          (e: any) => e.courseId === courseData.id
+      if (enrollmentsResponse.status >= 200 && enrollmentsResponse.status < 300 && enrollmentsResponse.data) {
+        const enrollments = Array.isArray(enrollmentsResponse.data)
+          ? enrollmentsResponse.data
+          : (enrollmentsResponse.data as any).data || []
+        const userEnrollment = enrollments.find(
+          (e: any) => e.courseId === courseResponse.data?.id
         )
         setEnrollment(userEnrollment)
       }
@@ -303,7 +177,7 @@ export default function CourseDetailPage() {
   const handleEnroll = async () => {
     try {
       setEnrolling(true)
-      const response = await coursesService.enrollInCourse(courseId)
+      const response = await coursesService.enrollCourse(courseId)
 
       if (response.error) {
         throw new Error(response.error)

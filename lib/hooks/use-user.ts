@@ -6,7 +6,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { usersService, type UserProfile, type Badge, type Achievement, type UpdateProfileData } from '@/lib/services'
+import { usersService, type UserProfile, type Badge, type Achievement } from '@/lib/services'
+
+type UpdateProfileData = Partial<UserProfile>
 
 interface UseCurrentUserReturn {
   user: UserProfile | null

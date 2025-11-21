@@ -71,13 +71,11 @@ export interface UpdateLessonData {
 }
 
 export interface LessonsListResponse {
-  success: boolean
   data: AdminLesson[]
   count: number
 }
 
 export interface LessonResponse {
-  success: boolean
   data: AdminLesson
   message?: string
 }
@@ -90,7 +88,7 @@ class AdminLessonsService {
     courseId?: string
     contentType?: string
     search?: string
-  }) {
+  }): Promise<{ success: boolean; data: AdminLesson[]; count: number; error?: string }> {
     try {
       const queryParams = new URLSearchParams()
       if (params?.courseId) queryParams.append('courseId', params.courseId)
@@ -99,8 +97,7 @@ class AdminLessonsService {
         `/lessons?${queryParams.toString()}`
       )
 
-      // Client-side filtering
-      if (response.success && response.data) {
+      if (response.status >= 200 && response.status < 300 && response.data) {
         let filtered = response.data.data
 
         // Filter by content type
@@ -125,7 +122,12 @@ class AdminLessonsService {
         }
       }
 
-      return response.data || { success: false, data: [], count: 0 }
+      return {
+        success: false,
+        data: [],
+        count: 0,
+        error: response.error || 'Failed to fetch lessons',
+      }
     } catch (error) {
       console.error('Error fetching lessons:', error)
       return {
@@ -140,10 +142,22 @@ class AdminLessonsService {
   /**
    * Get lesson by ID
    */
-  async getLesson(id: string) {
+  async getLesson(id: string): Promise<{ success: boolean; data: AdminLesson | null; error?: string }> {
     try {
       const response = await apiClient.get<LessonResponse>(`/lessons/${id}`)
-      return response.data || { success: false, data: null }
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        return {
+          success: true,
+          data: response.data.data,
+        }
+      }
+
+      return {
+        success: false,
+        data: null,
+        error: response.error || 'Failed to fetch lesson',
+      }
     } catch (error) {
       console.error('Error fetching lesson:', error)
       return {
@@ -157,10 +171,23 @@ class AdminLessonsService {
   /**
    * Create lesson (instructor/admin only)
    */
-  async createLesson(data: CreateLessonData) {
+  async createLesson(data: CreateLessonData): Promise<{ success: boolean; data: AdminLesson | null; error?: string; message?: string }> {
     try {
       const response = await apiClient.post<LessonResponse>('/lessons', data)
-      return response.data || { success: false, data: null }
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        return {
+          success: true,
+          data: response.data.data,
+          message: response.data.message,
+        }
+      }
+
+      return {
+        success: false,
+        data: null,
+        error: response.error || 'Failed to create lesson',
+      }
     } catch (error) {
       console.error('Error creating lesson:', error)
       return {
@@ -174,10 +201,23 @@ class AdminLessonsService {
   /**
    * Update lesson (instructor/admin only)
    */
-  async updateLesson(id: string, data: UpdateLessonData) {
+  async updateLesson(id: string, data: UpdateLessonData): Promise<{ success: boolean; data: AdminLesson | null; error?: string; message?: string }> {
     try {
       const response = await apiClient.put<LessonResponse>(`/lessons/${id}`, data)
-      return response.data || { success: false, data: null }
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        return {
+          success: true,
+          data: response.data.data,
+          message: response.data.message,
+        }
+      }
+
+      return {
+        success: false,
+        data: null,
+        error: response.error || 'Failed to update lesson',
+      }
     } catch (error) {
       console.error('Error updating lesson:', error)
       return {
@@ -191,10 +231,18 @@ class AdminLessonsService {
   /**
    * Delete lesson (instructor/admin only)
    */
-  async deleteLesson(id: string) {
+  async deleteLesson(id: string): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await apiClient.delete(`/lessons/${id}`)
-      return response.data || { success: false }
+
+      if (response.status >= 200 && response.status < 300) {
+        return { success: true }
+      }
+
+      return {
+        success: false,
+        error: response.error || 'Failed to delete lesson',
+      }
     } catch (error) {
       console.error('Error deleting lesson:', error)
       return {

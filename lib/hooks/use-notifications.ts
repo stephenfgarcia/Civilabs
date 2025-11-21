@@ -62,7 +62,7 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
   }, [isRead, category, limit])
 
   const markAsRead = useCallback(async (id: number) => {
-    const response = await notificationsService.markAsRead(id)
+    const response = await notificationsService.markAsRead(String(id))
     if (response.error) {
       setError(response.error)
     } else {
@@ -80,7 +80,7 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
   }, [fetchNotifications])
 
   const deleteNotification = useCallback(async (id: number) => {
-    const response = await notificationsService.deleteNotification(id)
+    const response = await notificationsService.deleteNotification(String(id))
     if (response.error) {
       setError(response.error)
     } else {

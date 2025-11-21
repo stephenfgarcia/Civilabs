@@ -80,6 +80,33 @@ enum QuestionType {
   FILL_BLANK
 }
 
+enum DiscussionStatus {
+  OPEN
+  CLOSED
+  PINNED
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+enum AssignmentStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  ARCHIVED
+}
+
+enum SubmissionStatus {
+  NOT_SUBMITTED
+  SUBMITTED
+  GRADED
+  LATE
+  RETURNED
+}
+
 model User {
   id            String     @id @default(uuid())
   email         String     @unique
@@ -111,6 +138,16 @@ model User {
   learningPathsCreated LearningPath[]
   assignedEnrollments  Enrollment[]         @relation("AssignedBy")
   bookmarks            Bookmark[]
+  discussionThreads    DiscussionThread[]
+  discussionReplies    DiscussionReply[]
+  discussionLikes      DiscussionLike[]
+  courseReviews        CourseReview[]
+  reviewLikes          ReviewLike[]
+  conversationsAsUser1 Conversation[]       @relation("ConversationUser1")
+  conversationsAsUser2 Conversation[]       @relation("ConversationUser2")
+  messagesSent         Message[]
+  assignmentsCreated   Assignment[]
+  assignmentSubmissions AssignmentSubmission[]
 
   @@index([email])
   @@index([departmentId])
@@ -173,6 +210,9 @@ model Course {
   certificate     Certificate?
   learningPathItems LearningPathItem[]
   bookmarks       Bookmark[]
+  discussions     DiscussionThread[]
+  reviews         CourseReview[]
+  assignments     Assignment[]
 
   @@index([slug])
   @@index([instructorId])
@@ -456,4 +496,191 @@ model Bookmark {
   @@unique([userId, courseId])
   @@index([userId])
   @@index([courseId])
+}
+
+model DiscussionThread {
+  id        String            @id @default(uuid())
+  title     String
+  content   String
+  courseId  String?
+  userId    String
+  status    DiscussionStatus  @default(OPEN)
+  isPinned  Boolean           @default(false)
+  isLocked  Boolean           @default(false)
+  isSolved  Boolean           @default(false)
+  isFlagged Boolean           @default(false)
+  viewCount Int               @default(0)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  user    User              @relation(fields: [userId], references: [id])
+  course  Course?           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  replies DiscussionReply[]
+  likes   DiscussionLike[]
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model DiscussionReply {
+  id        String   @id @default(uuid())
+  threadId  String
+  userId    String
+  content   String
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  thread  DiscussionThread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user    User              @relation(fields: [userId], references: [id])
+  parent  DiscussionReply?  @relation("ReplyThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies DiscussionReply[] @relation("ReplyThread")
+  likes   DiscussionLike[]
+
+  @@index([threadId])
+  @@index([userId])
+  @@index([parentId])
+  @@index([createdAt])
+}
+
+model DiscussionLike {
+  id        String   @id @default(uuid())
+  userId    String
+  threadId  String?
+  replyId   String?
+  createdAt DateTime @default(now())
+
+  user   User              @relation(fields: [userId], references: [id])
+  thread DiscussionThread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  reply  DiscussionReply?  @relation(fields: [replyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, threadId])
+  @@unique([userId, replyId])
+  @@index([userId])
+  @@index([threadId])
+  @@index([replyId])
+}
+
+model CourseReview {
+  id         String   @id @default(uuid())
+  courseId   String
+  userId     String
+  rating     Int
+  comment    String?
+  isVerified Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  course Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User         @relation(fields: [userId], references: [id])
+  likes  ReviewLike[]
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@index([userId])
+  @@index([rating])
+  @@index([createdAt])
+}
+
+model ReviewLike {
+  id        String   @id @default(uuid())
+  reviewId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  review CourseReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User         @relation(fields: [userId], references: [id])
+
+  @@unique([userId, reviewId])
+  @@index([reviewId])
+  @@index([userId])
+}
+
+model Conversation {
+  id            String   @id @default(uuid())
+  participant1  String
+  participant2  String
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  user1    User      @relation("ConversationUser1", fields: [participant1], references: [id])
+  user2    User      @relation("ConversationUser2", fields: [participant2], references: [id])
+  messages Message[]
+
+  @@unique([participant1, participant2])
+  @@index([participant1])
+  @@index([participant2])
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id             String        @id @default(uuid())
+  conversationId String
+  senderId       String
+  content        String
+  status         MessageStatus @default(SENT)
+  createdAt      DateTime      @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Assignment {
+  id               String            @id @default(uuid())
+  title            String
+  description      String?
+  instructions     String
+  courseId         String
+  instructorId     String
+  status           AssignmentStatus  @default(DRAFT)
+  dueDate          DateTime?
+  maxPoints        Int               @default(100)
+  allowLateSubmission Boolean        @default(false)
+  attachmentUrl    String?
+  metadata         Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  publishedAt      DateTime?
+
+  course      Course                  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  instructor  User                    @relation(fields: [instructorId], references: [id])
+  submissions AssignmentSubmission[]
+
+  @@index([courseId])
+  @@index([instructorId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model AssignmentSubmission {
+  id              String           @id @default(uuid())
+  assignmentId    String
+  userId          String
+  content         String?
+  fileUrl         String?
+  status          SubmissionStatus @default(NOT_SUBMITTED)
+  submittedAt     DateTime?
+  grade           Int?
+  feedback        String?
+  gradedAt        DateTime?
+  gradedBy        String?
+  metadata        Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@unique([assignmentId, userId])
+  @@index([assignmentId])
+  @@index([userId])
+  @@index([status])
+  @@index([submittedAt])
 }

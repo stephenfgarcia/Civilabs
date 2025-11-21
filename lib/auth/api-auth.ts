@@ -154,8 +154,8 @@ export function withRole<T = any>(
 /**
  * Wrapper for admin-only API routes
  */
-export function withAdmin(
-  handler: (request: NextRequest, user: TokenPayload) => Promise<NextResponse>
+export function withAdmin<T = any>(
+  handler: (request: NextRequest, user: TokenPayload, context?: T) => Promise<NextResponse>
 ) {
   return withRole(['admin', 'SUPER_ADMIN', 'ADMIN'], handler)
 }
@@ -163,8 +163,8 @@ export function withAdmin(
 /**
  * Wrapper for instructor (and admin) API routes
  */
-export function withInstructor(
-  handler: (request: NextRequest, user: TokenPayload) => Promise<NextResponse>
+export function withInstructor<T = any>(
+  handler: (request: NextRequest, user: TokenPayload, context?: T) => Promise<NextResponse>
 ) {
   return withRole(['admin', 'instructor', 'SUPER_ADMIN', 'ADMIN', 'INSTRUCTOR'], handler)
 }

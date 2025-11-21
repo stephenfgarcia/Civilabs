@@ -74,11 +74,11 @@ export default function MyLearningPage() {
 
       const response = await coursesService.getEnrollments()
 
-      if (response.error) {
-        throw new Error(response.error)
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(response.error || 'Failed to fetch enrollments')
       }
 
-      const enrollmentsData = response.data?.data || []
+      const enrollmentsData = (response.data as any)?.data || []
       setEnrollments(enrollmentsData)
       setFilteredCourses(enrollmentsData)
     } catch (err) {

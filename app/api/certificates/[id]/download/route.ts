@@ -12,8 +12,12 @@ import { pdfGeneratorService, CertificateData } from '@/lib/services/pdf-generat
  * GET /api/certificates/[id]/download
  * Generate and download certificate PDF
  */
-export const GET = withAuth(async (request, user, { params }: { params: { id: string } }) => {
+export const GET = withAuth(async (request, user, context?: { params: Promise<{ id: string }> }) => {
   try {
+    const params = await context?.params
+    if (!params) {
+      return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
+    }
     const { id } = params
 
     const userCertificate = await prisma.userCertificate.findUnique({

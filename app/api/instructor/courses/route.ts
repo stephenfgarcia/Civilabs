@@ -89,7 +89,7 @@ export const GET = withRole(['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'], async (reque
         visibility: course.visibility,
         difficultyLevel: course.difficultyLevel,
         durationMinutes: course.durationMinutes,
-        thumbnailUrl: course.thumbnailUrl,
+        thumbnail: course.thumbnail,
         publishedAt: course.publishedAt,
         createdAt: course.createdAt,
         updatedAt: course.updatedAt,

@@ -5,11 +5,13 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { PaginatedTable } from '@/components/ui/paginated-table'
 import type { Column } from '@/components/ui/data-table'
 import { MagneticButton } from '@/components/ui/magnetic-button'
+import { MessageModal } from '@/components/messaging/MessageModal'
+import { EmailComposerModal } from '@/components/messaging/EmailComposerModal'
 import {
   Users,
   TrendingUp,
@@ -17,89 +19,73 @@ import {
   Clock,
   Mail,
   MessageSquare,
-  Eye
+  Eye,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react'
+import { instructorService, type Student as StudentType } from '@/lib/services'
 
-interface Student {
-  id: number
+interface DisplayStudent {
+  id: string
   name: string
   email: string
   enrolledCourses: number
   completedCourses: number
   averageProgress: number
-  totalPoints: number
-  lastActive: string
-  status: 'active' | 'inactive'
+  department: string
+  courses: string
 }
 
 export default function InstructorStudentsPage() {
-  // Mock data
-  const students: Student[] = [
-    {
-      id: 1,
-      name: 'Sarah Johnson',
-      email: 'sarah.j@example.com',
-      enrolledCourses: 3,
-      completedCourses: 1,
-      averageProgress: 75,
-      totalPoints: 850,
-      lastActive: '2 hours ago',
-      status: 'active',
-    },
-    {
-      id: 2,
-      name: 'Mike Brown',
-      email: 'mike.b@example.com',
-      enrolledCourses: 2,
-      completedCourses: 0,
-      averageProgress: 45,
-      totalPoints: 320,
-      lastActive: '5 hours ago',
-      status: 'active',
-    },
-    {
-      id: 3,
-      name: 'Emma Davis',
-      email: 'emma.d@example.com',
-      enrolledCourses: 4,
-      completedCourses: 2,
-      averageProgress: 88,
-      totalPoints: 1250,
-      lastActive: '1 day ago',
-      status: 'active',
-    },
-    {
-      id: 4,
-      name: 'James Wilson',
-      email: 'james.w@example.com',
-      enrolledCourses: 2,
-      completedCourses: 2,
-      averageProgress: 100,
-      totalPoints: 980,
-      lastActive: '3 days ago',
-      status: 'inactive',
-    },
-    {
-      id: 5,
-      name: 'Lisa Anderson',
-      email: 'lisa.a@example.com',
-      enrolledCourses: 3,
-      completedCourses: 0,
-      averageProgress: 30,
-      totalPoints: 210,
-      lastActive: '12 hours ago',
-      status: 'active',
-    },
-  ]
+  const [students, setStudents] = useState<DisplayStudent[]>([])
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    activeStudents: 0,
+    totalEnrollments: 0,
+  })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [messageModalOpen, setMessageModalOpen] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState<{ id: string; name: string } | null>(null)
+  const [emailComposerOpen, setEmailComposerOpen] = useState(false)
 
-  const stats = {
-    totalStudents: students.length,
-    activeStudents: students.filter(s => s.status === 'active').length,
-    avgProgress: Math.round(students.reduce((sum, s) => sum + s.averageProgress, 0) / students.length),
-    completionRate: Math.round((students.reduce((sum, s) => sum + s.completedCourses, 0) / students.reduce((sum, s) => sum + s.enrolledCourses, 0)) * 100),
+  useEffect(() => {
+    fetchStudents()
+  }, [])
+
+  function handleViewProfile(studentId: string) {
+    window.location.href = `/instructor/students/${studentId}`
   }
 
-  const columns: Column<Student>[] = [
+  async function fetchStudents() {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await instructorService.getStudents()
+
+      // Transform the data for display
+      const displayStudents: DisplayStudent[] = data.students.map((student) => ({
+        id: student.id,
+        name: `${student.firstName} ${student.lastName}`,
+        email: student.email,
+        enrolledCourses: student.totalEnrollments,
+        completedCourses: student.completedCourses,
+        averageProgress: student.averageProgress,
+        department: student.department?.name || 'N/A',
+        courses: student.courses.map(c => c.courseTitle).join(', '),
+      }))
+
+      setStudents(displayStudents)
+      setStats(data.stats)
+    } catch (err) {
+      console.error('Error fetching students:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load students')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const columns: Column<DisplayStudent>[] = [
     {
       key: 'name',
       label: 'Student',
@@ -110,6 +96,12 @@ export default function InstructorStudentsPage() {
           <p className="text-xs text-neutral-600 font-medium">{row.email}</p>
         </div>
       ),
+    },
+    {
+      key: 'department',
+      label: 'Department',
+      sortable: true,
+      render: (value) => <span className="text-sm font-medium text-neutral-700">{value}</span>,
     },
     {
       key: 'enrolledCourses',
@@ -135,9 +127,11 @@ export default function InstructorStudentsPage() {
           <div className="w-full bg-neutral-200 rounded-full h-2">
             <div
               className={`h-2 rounded-full ${
-                value >= 80 ? 'bg-gradient-to-r from-success to-green-600' :
-                value >= 50 ? 'bg-gradient-to-r from-warning to-orange-600' :
-                'bg-gradient-to-r from-danger to-red-600'
+                value >= 80
+                  ? 'bg-gradient-to-r from-success to-green-600'
+                  : value >= 50
+                  ? 'bg-gradient-to-r from-warning to-orange-600'
+                  : 'bg-gradient-to-r from-danger to-red-600'
               }`}
               style={{ width: `${value}%` }}
             ></div>
@@ -146,50 +140,34 @@ export default function InstructorStudentsPage() {
       ),
     },
     {
-      key: 'totalPoints',
-      label: 'Points',
-      sortable: true,
-      render: (value) => <span className="font-black text-secondary">{value.toLocaleString()}</span>,
-    },
-    {
-      key: 'lastActive',
-      label: 'Last Active',
-      sortable: false,
-      render: (value) => <span className="text-sm font-medium text-neutral-600">{value}</span>,
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      sortable: true,
-      render: (value) => (
-        <span className={`text-xs font-black px-2 py-1 rounded ${
-          value === 'active' ? 'bg-success/10 text-success' : 'bg-neutral-200 text-neutral-600'
-        }`}>
-          {value.toUpperCase()}
-        </span>
-      ),
-    },
-    {
       key: 'id',
       label: 'Actions',
       sortable: false,
-      render: (value) => (
+      render: (value, row) => (
         <div className="flex items-center gap-2">
           <button
             className="p-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-all"
             title="View Profile"
+            onClick={() => handleViewProfile(value)}
           >
             <Eye size={16} />
           </button>
           <button
             className="p-2 bg-warning/10 text-warning rounded-lg hover:bg-warning/20 transition-all"
             title="Send Message"
+            onClick={() => {
+              setSelectedStudent({ id: value, name: row.name })
+              setMessageModalOpen(true)
+            }}
           >
             <MessageSquare size={16} />
           </button>
           <button
             className="p-2 bg-success/10 text-success rounded-lg hover:bg-success/20 transition-all"
             title="Send Email"
+            onClick={() => {
+              window.location.href = `mailto:${row.email}`
+            }}
           >
             <Mail size={16} />
           </button>
@@ -197,6 +175,47 @@ export default function InstructorStudentsPage() {
       ),
     },
   ]
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-warning mx-auto mb-4" />
+          <p className="text-lg font-bold text-neutral-600">Loading students...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="p-8 border-4 border-danger/40 max-w-md">
+          <div className="text-center">
+            <AlertCircle className="w-12 h-12 text-danger mx-auto mb-4" />
+            <h2 className="text-xl font-black text-neutral-800 mb-2">Failed to Load</h2>
+            <p className="text-neutral-600 mb-4">{error}</p>
+            <MagneticButton
+              onClick={fetchStudents}
+              className="bg-gradient-to-r from-warning to-orange-600 text-white font-black"
+            >
+              TRY AGAIN
+            </MagneticButton>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
+  const avgProgress = students.length > 0
+    ? Math.round(students.reduce((sum, s) => sum + s.averageProgress, 0) / students.length)
+    : 0
+
+  const completionRate = stats.totalEnrollments > 0
+    ? Math.round(
+        (students.reduce((sum, s) => sum + s.completedCourses, 0) / stats.totalEnrollments) * 100
+      )
+    : 0
 
   return (
     <div className="space-y-8">
@@ -239,7 +258,7 @@ export default function InstructorStudentsPage() {
             </div>
           </div>
           <p className="text-sm font-bold text-neutral-600 mb-1">Avg Progress</p>
-          <p className="text-3xl font-black text-neutral-800">{stats.avgProgress}%</p>
+          <p className="text-3xl font-black text-neutral-800">{avgProgress}%</p>
         </Card>
 
         <Card className="p-6 border-4 border-secondary/40">
@@ -249,7 +268,7 @@ export default function InstructorStudentsPage() {
             </div>
           </div>
           <p className="text-sm font-bold text-neutral-600 mb-1">Completion Rate</p>
-          <p className="text-3xl font-black text-neutral-800">{stats.completionRate}%</p>
+          <p className="text-3xl font-black text-neutral-800">{completionRate}%</p>
         </Card>
       </div>
 
@@ -257,20 +276,56 @@ export default function InstructorStudentsPage() {
       <Card className="p-6 border-4 border-neutral-200">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-black text-neutral-800">ALL STUDENTS</h2>
-          <MagneticButton className="glass-effect border-2 border-primary/30 text-neutral-700 font-black hover:border-primary/60">
+          <MagneticButton
+            className="glass-effect border-2 border-primary/30 text-neutral-700 font-black hover:border-primary/60"
+            onClick={() => setEmailComposerOpen(true)}
+          >
             <Mail className="mr-2" size={20} />
             EMAIL ALL
           </MagneticButton>
         </div>
 
-        <PaginatedTable
-          data={students}
-          columns={columns}
-          pageSize={10}
-          searchable={true}
-          searchPlaceholder="Search students by name or email..."
-        />
+        {students.length === 0 ? (
+          <div className="text-center py-12">
+            <Users className="mx-auto text-neutral-400 mb-4" size={48} />
+            <p className="text-lg font-bold text-neutral-600">No students yet</p>
+            <p className="text-neutral-500 font-medium mt-2">
+              Students will appear here when they enroll in your courses
+            </p>
+          </div>
+        ) : (
+          <PaginatedTable
+            data={students}
+            columns={columns}
+            pageSize={10}
+            searchable={true}
+            searchPlaceholder="Search students by name or email..."
+          />
+        )}
       </Card>
+
+      {/* Message Modal */}
+      {selectedStudent && (
+        <MessageModal
+          isOpen={messageModalOpen}
+          onClose={() => {
+            setMessageModalOpen(false)
+            setSelectedStudent(null)
+          }}
+          recipientId={selectedStudent.id}
+          recipientName={selectedStudent.name}
+        />
+      )}
+
+      {/* Email Composer Modal */}
+      <EmailComposerModal
+        isOpen={emailComposerOpen}
+        onClose={() => setEmailComposerOpen(false)}
+        onSuccess={() => {
+          // Optionally refresh data or show success message
+          console.log('Bulk email sent successfully')
+        }}
+      />
     </div>
   )
 }

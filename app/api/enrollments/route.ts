@@ -173,7 +173,7 @@ export const POST = withAuth(async (request, user) => {
     // Check if already enrolled
     const existingEnrollment = await prisma.enrollment.findFirst({
       where: {
-        userId: user.userId,
+        userId: String(user.userId),
         courseId,
       },
     })
@@ -192,7 +192,7 @@ export const POST = withAuth(async (request, user) => {
     // Create enrollment
     const enrollment = await prisma.enrollment.create({
       data: {
-        userId: user.userId,
+        userId: String(user.userId),
         courseId,
         status: 'ENROLLED',
         progressPercentage: 0,
@@ -215,7 +215,7 @@ export const POST = withAuth(async (request, user) => {
     // Create notification
     await prisma.notification.create({
       data: {
-        userId: user.userId,
+        userId: String(user.userId),
         type: 'enrollment',
         title: 'Enrollment Successful',
         message: `You have successfully enrolled in ${course.title}`,

@@ -21,7 +21,7 @@ export const GET = withAuth(async (request, user) => {
 
     const notifications = await prisma.notification.findMany({
       where: {
-        userId: user.userId,
+        userId: String(user.userId),
         ...(unreadOnly && { isRead: false }),
       },
       orderBy: {
@@ -33,7 +33,7 @@ export const GET = withAuth(async (request, user) => {
 
     const unreadCount = await prisma.notification.count({
       where: {
-        userId: user.userId,
+        userId: String(user.userId),
         isRead: false,
       },
     })

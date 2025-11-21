@@ -12,175 +12,46 @@ import {
   MessageCircle,
   Clock,
   User,
-  Tag,
   TrendingUp,
   CheckCircle,
   Pin,
-  Lock
+  Lock,
+  Flag
 } from 'lucide-react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
+import { apiClient } from '@/lib/services'
 
 interface Discussion {
-  id: number
+  id: string
   title: string
-  author: string
-  authorAvatar?: string
-  category: string
-  course: string
-  createdAt: string
-  lastActivity: string
-  views: number
-  replies: number
-  likes: number
+  content: string
+  courseId: string | null
+  userId: string
+  status: string
   isPinned: boolean
   isLocked: boolean
   isSolved: boolean
-  tags: string[]
-  preview: string
-}
-
-// Mock discussions data
-const MOCK_DISCUSSIONS: Discussion[] = [
-  {
-    id: 1,
-    title: 'Best practices for fall protection systems?',
-    author: 'Mike Chen',
-    category: 'Safety',
-    course: 'Construction Safety Fundamentals',
-    createdAt: '2 hours ago',
-    lastActivity: '15 minutes ago',
-    views: 245,
-    replies: 18,
-    likes: 34,
-    isPinned: true,
-    isLocked: false,
-    isSolved: true,
-    tags: ['Fall Protection', 'OSHA', 'Safety'],
-    preview: 'Looking for recommendations on the most effective fall protection systems for high-rise construction projects...'
-  },
-  {
-    id: 2,
-    title: 'Quiz 2 - OSHA Regulations clarification needed',
-    author: 'Sarah Johnson',
-    category: 'Questions',
-    course: 'Construction Safety Fundamentals',
-    createdAt: '5 hours ago',
-    lastActivity: '1 hour ago',
-    views: 156,
-    replies: 12,
-    likes: 23,
-    isPinned: false,
-    isLocked: false,
-    isSolved: false,
-    tags: ['Quiz Help', 'OSHA'],
-    preview: 'Can someone explain the difference between 1926.500 and 1926.501 regulations? I got confused on question 5...'
-  },
-  {
-    id: 3,
-    title: 'Excavator operation tips for beginners',
-    author: 'David Martinez',
-    category: 'Tips & Tricks',
-    course: 'Heavy Equipment Operation',
-    createdAt: '1 day ago',
-    lastActivity: '3 hours ago',
-    views: 423,
-    replies: 31,
-    likes: 67,
-    isPinned: true,
-    isLocked: false,
-    isSolved: false,
-    tags: ['Excavator', 'Equipment', 'Beginner'],
-    preview: 'After completing the course, here are some practical tips I learned from experienced operators...'
-  },
-  {
-    id: 4,
-    title: 'PPE requirements update - 2024 changes',
-    author: 'Admin',
-    category: 'Announcements',
-    course: 'Construction Safety Fundamentals',
-    createdAt: '2 days ago',
-    lastActivity: '2 days ago',
-    views: 892,
-    replies: 5,
-    likes: 45,
-    isPinned: true,
-    isLocked: true,
-    isSolved: false,
-    tags: ['PPE', 'Announcement', 'Updates'],
-    preview: 'Important updates to PPE requirements effective March 2024. Please review the new guidelines...'
-  },
-  {
-    id: 5,
-    title: 'Study group for upcoming certification exam',
-    author: 'Jennifer Lee',
-    category: 'Study Groups',
-    course: 'Construction Safety Fundamentals',
-    createdAt: '3 days ago',
-    lastActivity: '5 hours ago',
-    views: 167,
-    replies: 24,
-    likes: 19,
-    isPinned: false,
-    isLocked: false,
-    isSolved: false,
-    tags: ['Study Group', 'Certification'],
-    preview: 'Looking to form a study group for the safety certification exam scheduled for next month...'
-  },
-  {
-    id: 6,
-    title: 'Scaffold inspection checklist - share your templates',
-    author: 'Robert Kim',
-    category: 'Resources',
-    course: 'Construction Safety Fundamentals',
-    createdAt: '4 days ago',
-    lastActivity: '1 day ago',
-    views: 334,
-    replies: 15,
-    likes: 41,
-    isPinned: false,
-    isLocked: false,
-    isSolved: true,
-    tags: ['Scaffold', 'Checklist', 'Resources'],
-    preview: 'Does anyone have a good scaffold inspection checklist template they can share?...'
-  },
-  {
-    id: 7,
-    title: 'Crane safety - wind speed limitations',
-    author: 'Tom Wilson',
-    category: 'Safety',
-    course: 'Heavy Equipment Operation',
-    createdAt: '5 days ago',
-    lastActivity: '2 days ago',
-    views: 298,
-    replies: 9,
-    likes: 28,
-    isPinned: false,
-    isLocked: false,
-    isSolved: true,
-    tags: ['Crane', 'Weather', 'Safety'],
-    preview: 'What are the standard wind speed limitations for crane operations? The course mentions 30mph but...'
-  },
-  {
-    id: 8,
-    title: 'Recommended additional reading materials',
-    author: 'Emily Zhang',
-    category: 'Resources',
-    course: 'Construction Safety Fundamentals',
-    createdAt: '1 week ago',
-    lastActivity: '3 days ago',
-    views: 445,
-    replies: 22,
-    likes: 56,
-    isPinned: false,
-    isLocked: false,
-    isSolved: false,
-    tags: ['Reading', 'Resources'],
-    preview: 'Here are some excellent books and resources I found helpful for supplemental learning...'
+  isFlagged: boolean
+  viewCount: number
+  createdAt: string
+  updatedAt: string
+  user: {
+    id: string
+    firstName: string
+    lastName: string
+    avatarUrl: string | null
+    role: string
   }
-]
-
-const CATEGORIES = ['All', 'Safety', 'Questions', 'Tips & Tricks', 'Announcements', 'Study Groups', 'Resources']
+  course: {
+    id: string
+    title: string
+  } | null
+  _count: {
+    replies: number
+    likes: number
+  }
+}
 
 const SORT_OPTIONS = [
   { value: 'recent', label: 'Most Recent' },
@@ -192,70 +63,64 @@ export default function DiscussionsPage() {
   const [discussions, setDiscussions] = useState<Discussion[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [apiMessage, setApiMessage] = useState<string | null>(null)
-  const [selectedCategory, setSelectedCategory] = useState('All')
   const [sortBy, setSortBy] = useState('recent')
   const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   // Fetch discussions from API
   useEffect(() => {
-    const fetchDiscussions = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        const token = localStorage.getItem('token')
-        const response = await fetch('/api/discussions', {
-          headers: {
-            ...(token && { Authorization: `Bearer ${token}` })
-          }
-        })
-
-        const data = await response.json()
-
-        if (data.success) {
-          setDiscussions(data.data || [])
-          // Store API message if discussions are empty (e.g., "coming soon" message)
-          if (data.message && data.data.length === 0) {
-            setApiMessage(data.message)
-          }
-        } else {
-          setError(data.message || 'Failed to fetch discussions')
-        }
-      } catch (err) {
-        console.error('Error fetching discussions:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch discussions')
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchDiscussions()
   }, [])
 
+  const fetchDiscussions = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await apiClient.get('/discussions')
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        const apiData = response.data as any
+        setDiscussions(apiData.data || [])
+      } else {
+        setError(response.error || 'Failed to fetch discussions')
+      }
+    } catch (err) {
+      console.error('Error fetching discussions:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch discussions')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Entrance animations
   useEffect(() => {
-    // Simple CSS-only entrance animations
-    const elements = document.querySelectorAll('.discussion-item')
-    elements.forEach((el, index) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
-    })
-  }, [selectedCategory, sortBy, loading])
+    if (!loading) {
+      const elements = document.querySelectorAll('.discussion-item')
+      elements.forEach((el, index) => {
+        const htmlEl = el as HTMLElement
+        htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
+      })
+    }
+  }, [sortBy, loading])
 
   const filteredDiscussions = discussions
     .filter(d => {
-      const matchesCategory = selectedCategory === 'All' || d.category === selectedCategory
       const matchesSearch = !searchQuery ||
         d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.preview.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      return matchesCategory && matchesSearch
+        d.content.toLowerCase().includes(searchQuery.toLowerCase())
+
+      const matchesStatus = statusFilter === 'all' ||
+        (statusFilter === 'solved' && d.isSolved) ||
+        (statusFilter === 'unsolved' && !d.isSolved && d.status === 'OPEN') ||
+        (statusFilter === 'locked' && d.isLocked)
+
+      return matchesSearch && matchesStatus
     })
     .sort((a, b) => {
-      if (sortBy === 'popular') return b.likes - a.likes
-      if (sortBy === 'unanswered') return a.replies - b.replies
-      return 0 // recent is default order
+      if (sortBy === 'popular') return b._count.likes - a._count.likes
+      if (sortBy === 'unanswered') return a._count.replies - b._count.replies
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     })
 
   // Separate pinned and regular discussions
@@ -263,8 +128,25 @@ export default function DiscussionsPage() {
   const regularDiscussions = filteredDiscussions.filter(d => !d.isPinned)
 
   const totalDiscussions = discussions.length
-  const totalReplies = discussions.reduce((acc, d) => acc + d.replies, 0)
-  const activeToday = discussions.filter(d => d.lastActivity.includes('hour') || d.lastActivity.includes('minute')).length
+  const totalReplies = discussions.reduce((acc, d) => acc + d._count.replies, 0)
+  const solvedCount = discussions.filter(d => d.isSolved).length
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(diff / 3600000)
+    const days = Math.floor(diff / 86400000)
+
+    if (minutes < 60) return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`
+    if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`
+    if (days < 7) return `${days} day${days !== 1 ? 's' : ''} ago`
+
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
 
   // Show loading state
   if (loading) {
@@ -289,7 +171,7 @@ export default function DiscussionsPage() {
           <h3 className="text-2xl font-black text-neutral-700 mb-2">ERROR LOADING DISCUSSIONS</h3>
           <p className="text-neutral-600 font-semibold mb-6">{error}</p>
           <MagneticButton
-            onClick={() => window.location.reload()}
+            onClick={() => fetchDiscussions()}
             className="bg-gradient-to-r from-danger to-red-600 text-white font-black"
           >
             RETRY
@@ -358,9 +240,9 @@ export default function DiscussionsPage() {
               <Card className="glass-effect border-2 border-success/30">
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-black bg-gradient-to-r from-success to-green-600 bg-clip-text text-transparent mb-2">
-                    {activeToday}
+                    {solvedCount}
                   </div>
-                  <p className="text-sm font-bold text-neutral-600">ACTIVE TODAY</p>
+                  <p className="text-sm font-bold text-neutral-600">SOLVED</p>
                 </CardContent>
               </Card>
             </div>
@@ -384,28 +266,33 @@ export default function DiscussionsPage() {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400" size={20} />
             <Input
               type="text"
-              placeholder="Search discussions, tags..."
+              placeholder="Search discussions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-12 h-12 glass-effect border-2 border-primary/30 focus:border-primary font-medium"
             />
           </div>
 
-          {/* Category Filters */}
+          {/* Status Filters */}
           <div>
-            <p className="text-sm font-bold text-neutral-700 mb-3">CATEGORIES</p>
+            <p className="text-sm font-bold text-neutral-700 mb-3">STATUS</p>
             <div className="flex gap-3 flex-wrap">
-              {CATEGORIES.map((category) => (
+              {[
+                { value: 'all', label: 'All' },
+                { value: 'solved', label: 'Solved' },
+                { value: 'unsolved', label: 'Unsolved' },
+                { value: 'locked', label: 'Locked' },
+              ].map((status) => (
                 <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
+                  key={status.value}
+                  onClick={() => setStatusFilter(status.value)}
                   className={`px-4 py-2 rounded-lg font-bold transition-all ${
-                    selectedCategory === category
+                    statusFilter === status.value
                       ? 'bg-gradient-to-r from-secondary to-purple-600 text-white shadow-lg scale-105'
                       : 'glass-effect border-2 border-secondary/30 text-neutral-700 hover:border-secondary/60'
                   }`}
                 >
-                  {category}
+                  {status.label}
                 </button>
               ))}
             </div>
@@ -444,7 +331,7 @@ export default function DiscussionsPage() {
           </div>
 
           {pinnedDiscussions.map((discussion) => (
-            <DiscussionCard key={discussion.id} discussion={discussion} />
+            <DiscussionCard key={discussion.id} discussion={discussion} formatDate={formatDate} />
           ))}
         </div>
       )}
@@ -459,7 +346,7 @@ export default function DiscussionsPage() {
 
         {regularDiscussions.length > 0 ? (
           regularDiscussions.map((discussion) => (
-            <DiscussionCard key={discussion.id} discussion={discussion} />
+            <DiscussionCard key={discussion.id} discussion={discussion} formatDate={formatDate} />
           ))
         ) : (
           <Card className="discussion-item opacity-0 glass-effect concrete-texture border-4 border-neutral-300">
@@ -469,13 +356,7 @@ export default function DiscussionsPage() {
               </div>
               <h3 className="text-2xl font-black text-neutral-700 mb-2">NO DISCUSSIONS FOUND</h3>
               <p className="text-neutral-600 font-semibold mb-6">
-                {apiMessage ? (
-                  apiMessage
-                ) : searchQuery ? (
-                  `No discussions match "${searchQuery}"`
-                ) : (
-                  `No discussions in ${selectedCategory} category`
-                )}
+                {searchQuery ? `No discussions match "${searchQuery}"` : 'No discussions available'}
               </p>
               <MagneticButton className="bg-gradient-to-r from-success to-green-600 text-white font-black">
                 <Plus className="mr-2" size={20} />
@@ -489,7 +370,7 @@ export default function DiscussionsPage() {
   )
 }
 
-function DiscussionCard({ discussion }: { discussion: Discussion }) {
+function DiscussionCard({ discussion, formatDate }: { discussion: Discussion; formatDate: (date: string) => string }) {
   return (
     <Link href={`/discussions/${discussion.id}`}>
       <Card className="discussion-item opacity-0 glass-effect concrete-texture border-4 border-secondary/20 hover:border-secondary/40 transition-all group cursor-pointer">
@@ -505,6 +386,9 @@ function DiscussionCard({ discussion }: { discussion: Discussion }) {
                   {discussion.isLocked && (
                     <Lock className="text-neutral-500 flex-shrink-0" size={16} />
                   )}
+                  {discussion.isFlagged && (
+                    <Flag className="text-danger flex-shrink-0" size={16} />
+                  )}
                   {discussion.isSolved && (
                     <div className="flex items-center gap-1 text-success">
                       <CheckCircle size={16} />
@@ -512,7 +396,7 @@ function DiscussionCard({ discussion }: { discussion: Discussion }) {
                     </div>
                   )}
                   <span className="text-xs font-black px-3 py-1 rounded-full bg-gradient-to-r from-secondary to-purple-600 text-white">
-                    {discussion.category}
+                    {discussion.status}
                   </span>
                 </div>
 
@@ -521,35 +405,24 @@ function DiscussionCard({ discussion }: { discussion: Discussion }) {
                 </h3>
 
                 <p className="text-neutral-600 mb-3 line-clamp-2">
-                  {discussion.preview}
+                  {discussion.content.substring(0, 200)}...
                 </p>
-
-                {/* Tags */}
-                <div className="flex items-center gap-2 flex-wrap mb-3">
-                  {discussion.tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="text-xs font-bold px-2 py-1 rounded-full bg-neutral-100 text-neutral-700 flex items-center gap-1"
-                    >
-                      <Tag size={12} />
-                      {tag}
-                    </span>
-                  ))}
-                </div>
 
                 {/* Meta */}
                 <div className="flex items-center gap-4 text-sm font-semibold text-neutral-600 flex-wrap">
                   <div className="flex items-center gap-1">
                     <User size={14} />
-                    <span>{discussion.author}</span>
+                    <span>{discussion.user.firstName} {discussion.user.lastName}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock size={14} />
-                    <span>{discussion.createdAt}</span>
+                    <span>{formatDate(discussion.createdAt)}</span>
                   </div>
-                  <div className="text-xs text-neutral-500">
-                    in {discussion.course}
-                  </div>
+                  {discussion.course && (
+                    <div className="text-xs text-neutral-500">
+                      in {discussion.course.title}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -560,7 +433,7 @@ function DiscussionCard({ discussion }: { discussion: Discussion }) {
                 <div className="w-8 h-8 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center">
                   <MessageCircle className="text-white" size={14} />
                 </div>
-                <span className="font-black text-neutral-800">{discussion.replies}</span>
+                <span className="font-black text-neutral-800">{discussion._count.replies}</span>
                 <span className="text-sm text-neutral-600">replies</span>
               </div>
 
@@ -568,18 +441,18 @@ function DiscussionCard({ discussion }: { discussion: Discussion }) {
                 <div className="w-8 h-8 bg-gradient-to-br from-danger to-red-600 rounded-lg flex items-center justify-center">
                   <ThumbsUp className="text-white" size={14} />
                 </div>
-                <span className="font-black text-neutral-800">{discussion.likes}</span>
+                <span className="font-black text-neutral-800">{discussion._count.likes}</span>
                 <span className="text-sm text-neutral-600">likes</span>
               </div>
 
               <div className="flex items-center gap-2">
                 <TrendingUp className="text-success" size={16} />
-                <span className="font-black text-neutral-800">{discussion.views}</span>
+                <span className="font-black text-neutral-800">{discussion.viewCount}</span>
                 <span className="text-sm text-neutral-600">views</span>
               </div>
 
               <div className="ml-auto text-xs font-bold text-neutral-500">
-                Last activity: {discussion.lastActivity}
+                Last activity: {formatDate(discussion.updatedAt)}
               </div>
             </div>
           </div>

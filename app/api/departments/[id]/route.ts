@@ -9,17 +9,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAdmin, withAuth } from '@/lib/auth/api-auth'
 
-interface RouteParams {
-  params: { id: string }
-}
-
 /**
  * GET /api/departments/[id]
  * Get department details with hierarchy
  */
 export async function GET(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   return withAuth(async (req, user) => {
     try {
@@ -82,7 +78,7 @@ export async function GET(
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request, context)
 }
 
 /**
@@ -91,7 +87,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   return withAdmin(async (req, user) => {
     try {
@@ -241,7 +237,7 @@ export async function PUT(
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request, context)
 }
 
 /**
@@ -250,7 +246,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  context: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   return withAdmin(async (req, user) => {
     try {
@@ -324,5 +320,5 @@ export async function DELETE(
         { status: 500 }
       )
     }
-  })(request, { params })
+  })(request, context)
 }

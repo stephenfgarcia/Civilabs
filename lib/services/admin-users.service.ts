@@ -46,14 +46,12 @@ export interface UpdateUserData {
 }
 
 export interface UsersListResponse {
-  success: boolean
   data: AdminUser[]
   count: number
   total: number
 }
 
 export interface UserResponse {
-  success: boolean
   data: AdminUser
   message?: string
 }
@@ -68,7 +66,7 @@ class AdminUsersService {
     search?: string
     limit?: number
     offset?: number
-  }) {
+  }): Promise<{ success: boolean; data: AdminUser[]; count: number; total: number; error?: string }> {
     try {
       const queryParams = new URLSearchParams()
       if (params?.role) queryParams.append('role', params.role)
@@ -80,7 +78,23 @@ class AdminUsersService {
       const response = await apiClient.get<UsersListResponse>(
         `/users?${queryParams.toString()}`
       )
-      return response
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        return {
+          success: true,
+          data: response.data.data,
+          count: response.data.count,
+          total: response.data.total,
+        }
+      }
+
+      return {
+        success: false,
+        data: [],
+        count: 0,
+        total: 0,
+        error: response.error || 'Failed to fetch users',
+      }
     } catch (error) {
       console.error('Error fetching users:', error)
       return {
@@ -96,10 +110,22 @@ class AdminUsersService {
   /**
    * Get user by ID
    */
-  async getUser(id: string) {
+  async getUser(id: string): Promise<{ success: boolean; data: AdminUser | null; error?: string }> {
     try {
       const response = await apiClient.get<UserResponse>(`/users/${id}`)
-      return response
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        return {
+          success: true,
+          data: response.data.data,
+        }
+      }
+
+      return {
+        success: false,
+        data: null,
+        error: response.error || 'Failed to fetch user',
+      }
     } catch (error) {
       console.error('Error fetching user:', error)
       return {
@@ -113,10 +139,23 @@ class AdminUsersService {
   /**
    * Create new user
    */
-  async createUser(data: CreateUserData) {
+  async createUser(data: CreateUserData): Promise<{ success: boolean; data: AdminUser | null; error?: string; message?: string }> {
     try {
       const response = await apiClient.post<UserResponse>('/users', data)
-      return response
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        return {
+          success: true,
+          data: response.data.data,
+          message: response.data.message,
+        }
+      }
+
+      return {
+        success: false,
+        data: null,
+        error: response.error || 'Failed to create user',
+      }
     } catch (error) {
       console.error('Error creating user:', error)
       return {
@@ -130,10 +169,23 @@ class AdminUsersService {
   /**
    * Update user
    */
-  async updateUser(id: string, data: UpdateUserData) {
+  async updateUser(id: string, data: UpdateUserData): Promise<{ success: boolean; data: AdminUser | null; error?: string; message?: string }> {
     try {
       const response = await apiClient.put<UserResponse>(`/users/${id}`, data)
-      return response
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        return {
+          success: true,
+          data: response.data.data,
+          message: response.data.message,
+        }
+      }
+
+      return {
+        success: false,
+        data: null,
+        error: response.error || 'Failed to update user',
+      }
     } catch (error) {
       console.error('Error updating user:', error)
       return {
@@ -147,10 +199,18 @@ class AdminUsersService {
   /**
    * Delete user
    */
-  async deleteUser(id: string) {
+  async deleteUser(id: string): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await apiClient.delete(`/users/${id}`)
-      return response
+
+      if (response.status >= 200 && response.status < 300) {
+        return { success: true }
+      }
+
+      return {
+        success: false,
+        error: response.error || 'Failed to delete user',
+      }
     } catch (error) {
       console.error('Error deleting user:', error)
       return {

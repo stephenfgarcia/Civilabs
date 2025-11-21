@@ -100,6 +100,12 @@ export const GET = withAdmin(async (request, user) => {
               enrollments: true,
             },
           },
+          category: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
         orderBy: {
           enrollments: {

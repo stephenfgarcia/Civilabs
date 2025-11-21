@@ -7,7 +7,7 @@ export function CustomCursor() {
   const [isLowPower, setIsLowPower] = useState(false)
   const cursorRef = useRef<HTMLDivElement>(null)
   const dotRef = useRef<HTMLDivElement>(null)
-  const rafIdRef = useRef<number>()
+  const rafIdRef = useRef<number>(0)
 
   useEffect(() => {
     // Check for reduced motion preference or low-end device

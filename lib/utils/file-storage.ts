@@ -109,7 +109,7 @@ class FileStorageManager {
   async cleanup(options: CleanupOptions = {}): Promise<CleanupResult> {
     const result: CleanupResult = {
       filesDeleted: 0,
-      spaceFreed: 0,
+      spaceFree: 0,
       errors: [],
     }
 
@@ -141,7 +141,7 @@ class FileStorageManager {
               await fs.unlink(file)
             }
             result.filesDeleted++
-            result.spaceFreed += fileStats.size
+            result.spaceFree += fileStats.size
           }
         } catch (error) {
           result.errors.push(`Error processing ${file}: ${error}`)

@@ -18,238 +18,93 @@ import {
   User,
   Send,
   Reply,
-  MoreVertical
+  MoreVertical,
+  Loader2,
+  AlertCircle
 } from 'lucide-react'
 import Link from 'next/link'
 import { Textarea } from '@/components/ui/textarea'
+import { apiClient } from '@/lib/services'
 
 interface DiscussionReply {
-  id: number
-  author: string
-  authorAvatar?: string
-  authorRole: string
+  id: string
   content: string
   createdAt: string
-  likes: number
-  isLiked: boolean
   isSolution: boolean
-  replies?: DiscussionReply[]
+  user: {
+    id: string
+    firstName: string
+    lastName: string
+    avatarUrl: string | null
+    role: string
+  }
+  _count: {
+    likes: number
+    replies: number
+  }
 }
 
 interface DiscussionDetail {
-  id: number
+  id: string
   title: string
-  author: string
-  authorAvatar?: string
-  authorRole: string
+  content: string
+  status: string
   category: string
-  course: string
-  createdAt: string
-  lastActivity: string
-  views: number
-  likes: number
-  isLiked: boolean
+  tags: string[]
   isPinned: boolean
   isLocked: boolean
   isSolved: boolean
-  tags: string[]
-  content: string
+  viewCount: number
+  createdAt: string
+  updatedAt: string
+  user: {
+    id: string
+    firstName: string
+    lastName: string
+    avatarUrl: string | null
+    role: string
+  }
+  course: {
+    id: string
+    title: string
+  }
   replies: DiscussionReply[]
+  _count: {
+    likes: number
+    replies: number
+  }
 }
 
-// Mock discussion detail data
-const MOCK_DISCUSSION_DETAIL: { [key: number]: DiscussionDetail } = {
-  1: {
-    id: 1,
-    title: 'Best practices for fall protection systems?',
-    author: 'Mike Chen',
-    authorRole: 'Advanced Learner',
-    category: 'Safety',
-    course: 'Construction Safety Fundamentals',
-    createdAt: '2 hours ago',
-    lastActivity: '15 minutes ago',
-    views: 245,
-    likes: 34,
-    isLiked: false,
-    isPinned: true,
-    isLocked: false,
-    isSolved: true,
-    tags: ['Fall Protection', 'OSHA', 'Safety'],
-    content: `Looking for recommendations on the most effective fall protection systems for high-rise construction projects. We're working on a 20-story building and need to ensure maximum safety for our crew.
+// Helper function to format relative time
+const formatRelativeTime = (dateString: string): string => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
 
-I've reviewed the course materials on fall protection, but I'm curious about real-world experiences with different systems:
-
-1. **Guardrail Systems** - Are these practical for high-rise?
-2. **Personal Fall Arrest Systems (PFAS)** - What's the best harness configuration?
-3. **Safety Net Systems** - When are these the best option?
-
-Also, what are the key OSHA requirements we need to keep in mind? The course covered the basics, but I'd love to hear from those who have implemented these systems on actual projects.
-
-Any insights would be greatly appreciated!`,
-    replies: [
-      {
-        id: 1,
-        author: 'Sarah Johnson',
-        authorRole: 'Safety Inspector',
-        content: `Great question, Mike! I've worked on several high-rise projects and here's my take:
-
-For buildings over 15 stories, I strongly recommend a combination approach:
-
-**Primary: PFAS with proper anchor points**
-- Use full-body harnesses (not waist belts)
-- Install permanent anchor points every 15 feet
-- Ensure shock-absorbing lanyards are rated for the work height
-
-**Secondary: Edge protection wherever possible**
-- Guardrails on all floor edges before concrete pour
-- Toe boards to prevent falling objects
-
-**OSHA 1926.501(b)(1)** requires fall protection at 6 feet for construction. For high-rise, you'll also need:
-- Competent person on-site for inspections
-- Regular equipment checks (every 6 months minimum)
-- Proper training documentation
-
-The key is redundancy - never rely on a single system!`,
-        createdAt: '1 hour ago',
-        likes: 28,
-        isLiked: true,
-        isSolution: true
-      },
-      {
-        id: 2,
-        author: 'David Martinez',
-        authorRole: 'Equipment Specialist',
-        content: `I'll add to Sarah's excellent points. From an equipment perspective:
-
-**Harness Selection:**
-- Look for ANSI Z359.11 certified harnesses
-- Dorsal D-ring for standard fall arrest
-- Front D-ring if you need rescue capabilities
-- Padding for comfort during long work periods
-
-**Common Mistakes to Avoid:**
-1. ❌ Using damaged equipment (check before every use!)
-2. ❌ Incorrect anchor points (must support 5,000 lbs per person)
-3. ❌ Improper fit (harness should be snug but not restrictive)
-
-Also, don't forget about rescue plans! OSHA requires a plan to rescue a fallen worker within 6 minutes to prevent suspension trauma.`,
-        createdAt: '45 minutes ago',
-        likes: 15,
-        isLiked: false,
-        isSolution: false
-      },
-      {
-        id: 3,
-        author: 'Mike Chen',
-        authorRole: 'Advanced Learner',
-        content: `Thank you both! This is exactly the kind of practical advice I was looking for.
-
-@Sarah - The redundancy point is crucial. We were planning to rely primarily on PFAS, but I see now that edge protection should be our first line of defense where possible.
-
-@David - Great reminder about the rescue plan. That's something we hadn't fully developed yet. The 6-minute window is critical info.
-
-I'm marking Sarah's response as the solution since it directly addresses the OSHA requirements and system selection. But both answers are incredibly helpful!`,
-        createdAt: '30 minutes ago',
-        likes: 8,
-        isLiked: false,
-        isSolution: false
-      },
-      {
-        id: 4,
-        author: 'Jennifer Lee',
-        authorRole: 'Course Instructor',
-        content: `Excellent discussion everyone! This is a perfect real-world application of the course material.
-
-I'd like to add one more resource: OSHA's Fall Protection guide (Publication 3146) has excellent diagrams and decision trees for selecting the right system.
-
-Also, consider reaching out to your local OSHA consultation program - they offer free assistance for safety planning and are an incredible resource for high-risk projects like high-rise construction.
-
-Keep up the great collaborative learning! 🏗️`,
-        createdAt: '15 minutes ago',
-        likes: 12,
-        isLiked: true,
-        isSolution: false
-      }
-    ]
-  },
-  2: {
-    id: 2,
-    title: 'Quiz 2 - OSHA Regulations clarification needed',
-    author: 'Sarah Johnson',
-    authorRole: 'New Learner',
-    category: 'Questions',
-    course: 'Construction Safety Fundamentals',
-    createdAt: '5 hours ago',
-    lastActivity: '1 hour ago',
-    views: 156,
-    likes: 23,
-    isLiked: false,
-    isPinned: false,
-    isLocked: false,
-    isSolved: false,
-    tags: ['Quiz Help', 'OSHA'],
-    content: `Can someone explain the difference between 1926.500 and 1926.501 regulations? I got confused on question 5 of Quiz 2.
-
-The question asks which regulation covers "duty to have fall protection" and I'm not sure if that's 1926.500 (scope and definitions) or 1926.501 (duty to have fall protection).
-
-The course materials mention both, but I want to make sure I understand the distinction before I retake the quiz.
-
-Thanks in advance!`,
-    replies: [
-      {
-        id: 1,
-        author: 'Tom Wilson',
-        authorRole: 'Advanced Learner',
-        content: `Hey Sarah! I just completed this quiz yesterday. Here's the breakdown:
-
-**1926.500** - Scope, Application, and Definitions
-- This section defines WHAT fall protection is
-- Covers terminology and when the regulations apply
-
-**1926.501** - Duty to Have Fall Protection
-- This section specifies WHEN you must use fall protection
-- Covers specific situations (leading edges, holes, roofs, etc.)
-
-So for question 5, if it's asking about the "duty to have" fall protection, that's **1926.501**.
-
-Hope this helps!`,
-        createdAt: '3 hours ago',
-        likes: 18,
-        isLiked: false,
-        isSolution: false
-      },
-      {
-        id: 2,
-        author: 'Sarah Johnson',
-        authorRole: 'New Learner',
-        content: `That makes perfect sense now! So 1926.500 is the "what" and 1926.501 is the "when".
-
-Thank you so much, Tom! I'll retake the quiz now with this understanding.`,
-        createdAt: '1 hour ago',
-        likes: 5,
-        isLiked: false,
-        isSolution: false
-      }
-    ]
-  }
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`
+  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
+  if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
+  return date.toLocaleDateString()
 }
 
 export default function DiscussionDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const discussionId = parseInt(params.id as string)
+  const discussionId = params.id as string
 
-  const [discussion, setDiscussion] = useState<DiscussionDetail | null>(
-    MOCK_DISCUSSION_DETAIL[discussionId]
-  )
+  const [discussion, setDiscussion] = useState<DiscussionDetail | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [isLiked, setIsLiked] = useState(false)
 
   useEffect(() => {
-    if (discussion) {
-      setIsLiked(discussion.isLiked)
-    }
-  }, [discussion])
+    fetchDiscussion()
+  }, [discussionId])
 
   useEffect(() => {
     if (!discussion) return
@@ -261,13 +116,48 @@ export default function DiscussionDetailPage() {
     })
   }, [discussion])
 
-  if (!discussion) {
+  const fetchDiscussion = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await apiClient.get(`/discussions/${discussionId}`)
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        const apiData = response.data as any
+        setDiscussion(apiData.data)
+      } else {
+        setError(response.error || 'Failed to fetch discussion')
+      }
+    } catch (err) {
+      console.error('Error fetching discussion:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load discussion')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Loading state
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="glass-effect concrete-texture border-4 border-danger/40 p-12 text-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-12 w-12 mx-auto text-secondary mb-4" />
+          <p className="text-lg font-bold text-neutral-700">Loading discussion...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error || !discussion) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="glass-effect concrete-texture border-4 border-danger/40 p-12 text-center max-w-md">
+          <AlertCircle className="mx-auto mb-4 text-danger" size={48} />
           <h2 className="text-2xl font-black text-neutral-800 mb-4">DISCUSSION NOT FOUND</h2>
           <p className="text-neutral-600 font-semibold mb-6">
-            The discussion you're looking for doesn't exist.
+            {error || "The discussion you're looking for doesn't exist."}
           </p>
           <Link href="/discussions">
             <MagneticButton className="bg-gradient-to-r from-secondary to-purple-600 text-white font-black">
@@ -279,37 +169,41 @@ export default function DiscussionDetailPage() {
     )
   }
 
-  const handleLike = () => {
-    setIsLiked(!isLiked)
-    setDiscussion({
-      ...discussion,
-      likes: isLiked ? discussion.likes - 1 : discussion.likes + 1,
-      isLiked: !isLiked
-    })
+  const handleLike = async () => {
+    try {
+      // TODO: Implement like API call
+      setIsLiked(!isLiked)
+    } catch (err) {
+      console.error('Error liking discussion:', err)
+    }
   }
 
-  const handleReplyLike = (replyId: number) => {
-    setDiscussion({
-      ...discussion,
-      replies: discussion.replies.map(reply =>
-        reply.id === replyId
-          ? {
-              ...reply,
-              likes: reply.isLiked ? reply.likes - 1 : reply.likes + 1,
-              isLiked: !reply.isLiked
-            }
-          : reply
-      )
-    })
+  const handleReplyLike = async (replyId: string) => {
+    try {
+      // TODO: Implement reply like API call
+      console.log('Like reply:', replyId)
+    } catch (err) {
+      console.error('Error liking reply:', err)
+    }
   }
 
-  const handleSubmitReply = () => {
+  const handleSubmitReply = async () => {
     if (!replyText.trim()) return
 
-    // Mock reply submission
-    alert(`Reply submitted: ${replyText}`)
-    setReplyText('')
+    try {
+      // TODO: Implement reply submission API call
+      alert(`Reply submitted: ${replyText}`)
+      setReplyText('')
+      fetchDiscussion() // Refresh to show new reply
+    } catch (err) {
+      console.error('Error submitting reply:', err)
+      alert('Failed to submit reply. Please try again.')
+    }
   }
+
+  const authorName = `${discussion.user.firstName} ${discussion.user.lastName}`
+  const createdAtFormatted = formatRelativeTime(discussion.createdAt)
+  const updatedAtFormatted = formatRelativeTime(discussion.updatedAt)
 
   return (
     <div className="space-y-6">
@@ -377,27 +271,27 @@ export default function DiscussionDetailPage() {
                 <User className="text-white" size={24} />
               </div>
               <div>
-                <p className="font-black text-neutral-800">{discussion.author}</p>
-                <p className="text-sm text-neutral-600">{discussion.authorRole}</p>
+                <p className="font-black text-neutral-800">{authorName}</p>
+                <p className="text-sm text-neutral-600">{discussion.user.role}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-4 text-sm font-semibold text-neutral-600">
               <div className="flex items-center gap-1">
                 <Clock size={14} />
-                <span>{discussion.createdAt}</span>
+                <span>{createdAtFormatted}</span>
               </div>
               <div>
-                {discussion.views} views
+                {discussion.viewCount} views
               </div>
             </div>
           </div>
 
           {/* Course Info */}
           <div className="mt-4">
-            <Link href={`/courses/${1}`}>
+            <Link href={`/courses/${discussion.course.id}`}>
               <p className="text-sm font-bold text-primary hover:text-secondary transition-colors">
-                Posted in: {discussion.course}
+                Posted in: {discussion.course.title}
               </p>
             </Link>
           </div>
@@ -425,7 +319,7 @@ export default function DiscussionDetailPage() {
               } font-black`}
             >
               <ThumbsUp size={18} className="mr-2" />
-              {discussion.likes} LIKES
+              {discussion._count.likes} LIKES
             </MagneticButton>
 
             <MagneticButton className="glass-effect border-2 border-primary/30 text-neutral-700 font-black">
@@ -474,13 +368,13 @@ export default function DiscussionDetailPage() {
                   <User className="text-white" size={20} />
                 </div>
                 <div>
-                  <p className="font-black text-neutral-800">{reply.author}</p>
-                  <p className="text-sm text-neutral-600">{reply.authorRole}</p>
+                  <p className="font-black text-neutral-800">{reply.user.firstName} {reply.user.lastName}</p>
+                  <p className="text-sm text-neutral-600">{reply.user.role}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-sm text-neutral-500">{reply.createdAt}</span>
+                <span className="text-sm text-neutral-500">{formatRelativeTime(reply.createdAt)}</span>
                 <button className="text-neutral-400 hover:text-neutral-700">
                   <MoreVertical size={18} />
                 </button>
@@ -504,14 +398,10 @@ export default function DiscussionDetailPage() {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => handleReplyLike(reply.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all ${
-                  reply.isLiked
-                    ? 'bg-gradient-to-r from-danger to-red-600 text-white'
-                    : 'glass-effect border-2 border-danger/30 text-neutral-700 hover:border-danger/60'
-                }`}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold glass-effect border-2 border-danger/30 text-neutral-700 hover:border-danger/60 transition-all"
               >
                 <ThumbsUp size={14} />
-                {reply.likes}
+                {reply._count.likes}
               </button>
 
               <button className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold glass-effect border-2 border-primary/30 text-neutral-700 hover:border-primary/60 transition-all">
