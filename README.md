@@ -194,7 +194,16 @@ The application uses a comprehensive database schema with the following main ent
 - `POST /api/quizzes/:id/attempts` - Start quiz attempt
 - `PUT /api/quizzes/:id/attempts/:attemptId` - Submit quiz
 
-See full API documentation in `/docs/api.md`
+## Documentation
+
+📚 **[Complete Documentation Index](DOCUMENTATION.md)** - Find all documentation organized by category
+
+### Quick Links:
+- **Getting Started**: [SETUP.md](SETUP.md) | [QUICK_START.md](QUICK_START.md)
+- **Development**: [ARCHITECTURE.md](docs/development/ARCHITECTURE.md) | [DEVELOPMENT_WORKFLOW.md](docs/development/DEVELOPMENT_WORKFLOW.md)
+- **Deployment**: [DEPLOYMENT.md](docs/deployment/DEPLOYMENT.md) | [HOSTINGER_DEPLOYMENT.md](docs/deployment/HOSTINGER_DEPLOYMENT.md)
+- **Testing**: [TESTING.md](docs/testing/TESTING.md) | [TEST_ACCOUNTS.md](docs/testing/TEST_ACCOUNTS.md)
+- **QA Status**: [QA_SPRINT_SUMMARY.md](QA_SPRINT_SUMMARY.md)
 
 ## Development
 

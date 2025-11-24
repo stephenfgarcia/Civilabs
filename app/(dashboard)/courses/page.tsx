@@ -385,7 +385,7 @@ export default function CoursesPage() {
                         </div>
                         <div>
                           <p className="text-xs text-neutral-500">Duration</p>
-                          <p className="text-sm font-bold text-neutral-800">{course.duration}</p>
+                          <p className="text-sm font-bold text-neutral-800">{course.durationMinutes ? `${Math.ceil(course.durationMinutes / 60)}h` : 'N/A'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -394,7 +394,7 @@ export default function CoursesPage() {
                         </div>
                         <div>
                           <p className="text-xs text-neutral-500">Students</p>
-                          <p className="text-sm font-bold text-neutral-800">{course.students}</p>
+                          <p className="text-sm font-bold text-neutral-800">{course._count?.enrollments || 0}</p>
                         </div>
                       </div>
                     </div>

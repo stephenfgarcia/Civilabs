@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/utils/prisma'
+import { checkRateLimit, createRateLimitResponse, RATE_LIMITS } from '@/lib/utils/rate-limit'
 
 export async function POST(request: NextRequest) {
+  // Apply rate limiting (5 attempts per 15 minutes)
+  const rateLimit = checkRateLimit(request, RATE_LIMITS.AUTH)
+  if (rateLimit.limited) {
+    return createRateLimitResponse(rateLimit.resetTime)
+  }
+
   try {
     const { email, password } = await request.json()
 
@@ -30,9 +37,12 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Generic error message to prevent user enumeration
+    const genericErrorMessage = 'Invalid email or security code. Please check your credentials and try again.'
+
     if (!user || !user.passwordHash) {
       return NextResponse.json(
-        { error: 'No worker account found with this email address. Please check your email or register for site access.' },
+        { error: genericErrorMessage },
         { status: 401 }
       )
     }
@@ -41,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     if (!isValidPassword) {
       return NextResponse.json(
-        { error: 'Incorrect security code. Please verify your password and try again.' },
+        { error: genericErrorMessage },
         { status: 401 }
       )
     }
@@ -58,6 +68,10 @@ export async function POST(request: NextRequest) {
       data: { lastLogin: new Date() },
     })
 
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not configured')
+    }
+
     const token = jwt.sign(
       {
         userId: user.id,
@@ -66,7 +80,7 @@ export async function POST(request: NextRequest) {
         firstName: user.firstName,
         lastName: user.lastName,
       },
-      process.env.JWT_SECRET || 'secret',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     )
 

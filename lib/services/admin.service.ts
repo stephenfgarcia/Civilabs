@@ -31,7 +31,10 @@ export interface AdminStats {
     id: string
     title: string
     enrollmentCount: number
-    category: string
+    category: {
+      id: string
+      name: string
+    } | null
   }>
 }
 

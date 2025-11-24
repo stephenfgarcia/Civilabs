@@ -6,11 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAuth } from '@/lib/auth/api-auth'
-
-interface SubmissionAnswer {
-  questionId: string
-  selectedAnswer: string
-}
+import { gradeQuizSubmission, type SubmissionAnswer } from '@/lib/utils/quiz-grading'
 
 interface SubmissionBody {
   attemptId: string
@@ -105,73 +101,66 @@ export async function POST(
         )
       }
 
-      // Check if time limit was exceeded (if applicable)
+      // SECURITY FIX: Check if time limit was exceeded (server-side validation)
       if (attempt.quiz.timeLimitMinutes) {
         const startTime = attempt.startedAt.getTime()
         const currentTime = new Date().getTime()
         const timeElapsedMinutes = (currentTime - startTime) / (1000 * 60)
 
-        if (timeElapsedMinutes > attempt.quiz.timeLimitMinutes) {
+        // Add 30-second grace period for network latency
+        if (timeElapsedMinutes > (attempt.quiz.timeLimitMinutes + 0.5)) {
+          // Auto-submit with current answers and mark as time-exceeded
+          const gradeResult = gradeQuizSubmission(
+            attempt.quiz.questions,
+            answers,
+            attempt.quiz.passingScore
+          )
+
+          await prisma.quizAttempt.update({
+            where: { id: attemptId },
+            data: {
+              completedAt: new Date(),
+              scorePercentage: gradeResult.score,
+              passed: gradeResult.passed,
+              answers: answers as any,
+            },
+          })
+
           return NextResponse.json(
             {
               success: false,
-              error: 'Forbidden',
-              message: 'Time limit exceeded for this quiz',
+              error: 'Time Limit Exceeded',
+              message: `Quiz time limit (${attempt.quiz.timeLimitMinutes} minutes) was exceeded. Your quiz has been auto-submitted.`,
+              data: {
+                attempt: attempt,
+                results: gradeResult,
+              },
             },
             { status: 403 }
           )
         }
       }
 
-      // Grade the quiz
-      const questions = attempt.quiz.questions
-      let correctCount = 0
-      const detailedResults = answers.map((answer) => {
-        const question = questions.find((q) => q.id === answer.questionId)
-
-        if (!question) {
-          return {
-            questionId: answer.questionId,
-            isCorrect: false,
-            selectedAnswer: answer.selectedAnswer,
-            correctAnswer: null,
-            question: 'Question not found',
-          }
-        }
-
-        const isCorrect = answer.selectedAnswer === question.correctAnswer
-
-        if (isCorrect) {
-          correctCount++
-        }
-
-        return {
-          questionId: question.id,
-          questionText: question.questionText,
-          selectedAnswer: answer.selectedAnswer,
-          correctAnswer: question.correctAnswer,
-          isCorrect,
-          explanation: question.explanation || null,
-        }
-      })
-
-      const totalQuestions = questions.length
-      const score = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0
-      const passed = score >= attempt.quiz.passingScore
+      // Grade the quiz using shared utility function
+      const gradeResult = gradeQuizSubmission(
+        attempt.quiz.questions,
+        answers,
+        attempt.quiz.passingScore
+      )
 
       // Update attempt with results
       const updatedAttempt = await prisma.quizAttempt.update({
         where: { id: attemptId },
         data: {
           completedAt: new Date(),
-          scorePercentage: score,
-          passed,
+          scorePercentage: gradeResult.score,
+          passed: gradeResult.passed,
           answers: answers as any,
         },
       })
 
       // Award points if passed
-      if (passed) {
+      if (gradeResult.passed) {
         const pointsAwarded = 50 // Base points for passing a quiz
 
         await prisma.userPoints.upsert({
@@ -194,7 +183,7 @@ export async function POST(
             userId: String(user.userId),
             type: 'achievement',
             title: 'Quiz Passed!',
-            message: `Congratulations! You passed "${attempt.quiz.title}" with a score of ${score}%. You earned ${pointsAwarded} points!`,
+            message: `Congratulations! You passed "${attempt.quiz.title}" with a score of ${gradeResult.score}%. You earned ${pointsAwarded} points!`,
           },
         })
       } else {
@@ -204,7 +193,7 @@ export async function POST(
             userId: user.userId,
             type: 'info',
             title: 'Quiz Completed',
-            message: `You completed "${attempt.quiz.title}" with a score of ${score}%. The passing score is ${attempt.quiz.passingScore}%. You can try again!`,
+            message: `You completed "${attempt.quiz.title}" with a score of ${gradeResult.score}%. The passing score is ${attempt.quiz.passingScore}%. You can try again!`,
           },
         })
       }
@@ -214,16 +203,9 @@ export async function POST(
           success: true,
           data: {
             attempt: updatedAttempt,
-            results: {
-              score,
-              passed,
-              correctCount,
-              totalQuestions,
-              passingScore: attempt.quiz.passingScore,
-              detailedResults,
-            },
+            results: gradeResult,
           },
-          message: passed ? 'Quiz passed successfully!' : 'Quiz completed. You can try again.',
+          message: gradeResult.passed ? 'Quiz passed successfully!' : 'Quiz completed. You can try again.',
         },
         { status: 200 }
       )

@@ -87,6 +87,18 @@ export async function POST(
         },
       })
 
+      // SECURITY FIX: Check if user has exceeded attempts limit
+      if (quiz.attemptsAllowed && previousAttempts >= quiz.attemptsAllowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Forbidden',
+            message: `Maximum attempts (${quiz.attemptsAllowed}) reached for this quiz`,
+          },
+          { status: 403 }
+        )
+      }
+
       // Create new attempt
       const attempt = await prisma.quizAttempt.create({
         data: {

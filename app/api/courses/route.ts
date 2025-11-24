@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
-import { withInstructor } from '@/lib/auth/api-auth'
+import { withInstructor, authenticateRequest } from '@/lib/auth/api-auth'
 
 /**
  * GET /api/courses
@@ -20,6 +20,14 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
     const published = searchParams.get('published')
 
+    // Check if user is admin/instructor to determine default visibility
+    const user = authenticateRequest(request)
+    const isAdminOrInstructor = user && (
+      user.role === 'ADMIN' ||
+      user.role === 'SUPER_ADMIN' ||
+      user.role === 'INSTRUCTOR'
+    )
+
     const courses = await prisma.course.findMany({
       where: {
         ...(category && { categoryId: category }),
@@ -29,6 +37,10 @@ export async function GET(request: NextRequest) {
         }),
         ...(published !== null && published === 'false' && {
           publishedAt: null
+        }),
+        // Non-admins can only see published courses by default
+        ...(!isAdminOrInstructor && published === null && {
+          publishedAt: { not: null }
         }),
         ...(search && {
           OR: [

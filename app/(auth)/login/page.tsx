@@ -100,7 +100,6 @@ export default function LoginPage() {
     } catch (err: any) {
       console.error('Login error:', err)
       setError(err.message || 'Access Denied to Construction Site')
-      setLoading(false) // Ensure loading is set to false immediately
       // Simple CSS shake animation
       if (cardRef.current) {
         cardRef.current.style.animation = 'shake 0.4s ease-in-out'

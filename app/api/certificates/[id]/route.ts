@@ -77,7 +77,8 @@ export async function GET(
       }
 
       // Only allow user to view their own certificates (unless admin)
-      if (user.role !== 'admin' && userCertificate.userId !== user.userId) {
+      const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN'
+      if (!isAdmin && userCertificate.userId !== user.userId) {
         return NextResponse.json(
           {
             success: false,

@@ -1,12 +1,18 @@
 /**
  * Quiz API Routes
  * GET /api/courses/[id]/lessons/[lessonId]/quiz - Get quiz with questions
- * POST /api/courses/[id]/lessons/[lessonId]/quiz/submit - Submit quiz answers
+ * POST /api/courses/[id]/lessons/[lessonId]/quiz - Submit quiz answers
+ *
+ * ⚠️ DEPRECATION WARNING:
+ * The POST endpoint is deprecated. Please use the canonical endpoints instead:
+ * - POST /api/quizzes/[quizId]/attempts - Start a quiz attempt
+ * - POST /api/quizzes/[quizId]/submit - Submit quiz answers
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withAuth } from '@/lib/auth/api-auth'
+import { gradeQuizSubmission, convertAnswersToArray } from '@/lib/utils/quiz-grading'
 
 /**
  * GET /api/courses/[id]/lessons/[lessonId]/quiz
@@ -223,53 +229,19 @@ export const POST = withAuth(async (request, user, context?: { params: Promise<{
       )
     }
 
-    // Grade the quiz
-    let totalPoints = 0
-    let earnedPoints = 0
-    const results: any[] = []
+    // SECURITY FIX: Validate time limit (server-side enforcement)
+    // Note: This endpoint doesn't track quiz start time separately, so we can't validate time limit accurately
+    // This is why we need to consolidate to the proper attempt-based flow
+    // For now, we'll add a warning comment
+    // TODO: Migrate to use /api/quizzes/[id]/attempts and /api/quizzes/[id]/submit for proper time tracking
 
-    for (const question of lesson.quiz.questions) {
-      totalPoints += question.points
-      const userAnswer = answers[question.id]
-
-      let isCorrect = false
-
-      if (question.questionType === 'MULTIPLE_CHOICE') {
-        // Find the correct option
-        const correctOption = (question.options as any[]).find(
-          (opt: any) => opt.isCorrect
-        )
-        isCorrect = userAnswer === correctOption?.id
-      } else if (question.questionType === 'TRUE_FALSE') {
-        isCorrect = userAnswer === question.correctAnswer
-      } else if (question.questionType === 'SHORT_ANSWER') {
-        // Case-insensitive comparison, trim whitespace
-        isCorrect =
-          userAnswer?.toLowerCase().trim() ===
-          question.correctAnswer?.toLowerCase().trim()
-      }
-
-      if (isCorrect) {
-        earnedPoints += question.points
-      }
-
-      results.push({
-        questionId: question.id,
-        questionText: question.questionText,
-        userAnswer,
-        correctAnswer:
-          question.questionType === 'MULTIPLE_CHOICE'
-            ? (question.options as any[]).find((opt: any) => opt.isCorrect)?.id
-            : question.correctAnswer,
-        isCorrect,
-        points: question.points,
-        earnedPoints: isCorrect ? question.points : 0,
-        explanation: question.explanation,
-      })
-    }
-
-    const score = Math.round((earnedPoints / totalPoints) * 100)
-    const passed = score >= lesson.quiz.passingScore
+    // Grade the quiz using shared utility function for consistency
+    const submissionAnswers = convertAnswersToArray(answers)
+    const gradeResult = gradeQuizSubmission(
+      lesson.quiz.questions,
+      submissionAnswers,
+      lesson.quiz.passingScore
+    )
 
     // Create quiz attempt
     const attempt = await prisma.quizAttempt.create({
@@ -278,16 +250,17 @@ export const POST = withAuth(async (request, user, context?: { params: Promise<{
         userId: String(user.userId),
         enrollmentId: enrollment.id,
         attemptNumber: previousAttempts + 1,
-        scorePercentage: score,
-        passed,
+        scorePercentage: gradeResult.score,
+        passed: gradeResult.passed,
         answers,
         timeSpentSeconds: timeSpentSeconds || 0,
         startedAt: new Date(),
+        completedAt: new Date(), // Mark as completed immediately
       },
     })
 
     // If passed, mark lesson as completed
-    if (passed) {
+    if (gradeResult.passed) {
       await prisma.lessonProgress.upsert({
         where: {
           enrollmentId_lessonId: {
@@ -339,19 +312,19 @@ export const POST = withAuth(async (request, user, context?: { params: Promise<{
       success: true,
       data: {
         attemptId: attempt.id,
-        score,
-        passed,
-        earnedPoints,
-        totalPoints,
+        score: gradeResult.score,
+        passed: gradeResult.passed,
+        earnedPoints: gradeResult.earnedPoints,
+        totalPoints: gradeResult.totalPoints,
         passingScore: lesson.quiz.passingScore,
-        results,
+        results: gradeResult.detailedResults,
         attemptsRemaining: lesson.quiz.attemptsAllowed
           ? lesson.quiz.attemptsAllowed - (previousAttempts + 1)
           : null,
       },
-      message: passed
+      message: gradeResult.passed
         ? 'Congratulations! You passed the quiz!'
-        : `You scored ${score}%. Keep trying!`,
+        : `You scored ${gradeResult.score}%. Keep trying!`,
     })
   } catch (error) {
     console.error('Error submitting quiz:', error)

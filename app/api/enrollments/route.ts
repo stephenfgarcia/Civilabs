@@ -83,27 +83,35 @@ export const GET = withAuth(async (request, user) => {
       },
     })
 
-    // Enrich with progress information
-    const enrichedEnrollments = await Promise.all(
-      enrollments.map(async (enrollment) => {
-        // Count total lessons in course
-        const totalLessons = await prisma.lesson.count({
-          where: {
-            courseId: enrollment.courseId,
-          },
-        })
+    // Enrich with progress information (optimized to avoid N+1 query)
+    // Step 1: Get all unique course IDs
+    const courseIds = [...new Set(enrollments.map(e => e.courseId))]
 
-        const completedCount = enrollment.lessonProgress.length
-        const progress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0
+    // Step 2: Single query to get lesson counts for all courses
+    const lessonCounts = await prisma.lesson.groupBy({
+      by: ['courseId'],
+      where: { courseId: { in: courseIds } },
+      _count: { id: true },
+    })
 
-        return {
-          ...enrollment,
-          totalLessons,
-          completedLessonsCount: completedCount,
-          calculatedProgress: progress,
-        }
-      })
+    // Step 3: Create lookup map for O(1) access
+    const lessonCountMap = Object.fromEntries(
+      lessonCounts.map(lc => [lc.courseId, lc._count.id])
     )
+
+    // Step 4: Enrich enrollments without additional queries
+    const enrichedEnrollments = enrollments.map((enrollment) => {
+      const totalLessons = lessonCountMap[enrollment.courseId] || 0
+      const completedCount = enrollment.lessonProgress.length
+      const progress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0
+
+      return {
+        ...enrollment,
+        totalLessons,
+        completedLessonsCount: completedCount,
+        calculatedProgress: progress,
+      }
+    })
 
     return NextResponse.json({
       success: true,
@@ -159,7 +167,8 @@ export const POST = withAuth(async (request, user) => {
       )
     }
 
-    if (course.status !== 'PUBLISHED') {
+    // Check if course is published (uses publishedAt field, not status)
+    if (!course.publishedAt) {
       return NextResponse.json(
         {
           success: false,

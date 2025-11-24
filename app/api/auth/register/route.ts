@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/utils/prisma'
+import { checkRateLimit, createRateLimitResponse, RATE_LIMITS } from '@/lib/utils/rate-limit'
 
 export async function POST(request: NextRequest) {
+  // Apply rate limiting (5 attempts per 15 minutes)
+  const rateLimit = checkRateLimit(request, RATE_LIMITS.AUTH)
+  if (rateLimit.limited) {
+    return createRateLimitResponse(rateLimit.resetTime)
+  }
+
   try {
     const { email, password, firstName, lastName } = await request.json()
 
@@ -63,6 +70,10 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not configured')
+    }
+
     const token = jwt.sign(
       {
         userId: user.id,
@@ -71,12 +82,13 @@ export async function POST(request: NextRequest) {
         firstName: user.firstName,
         lastName: user.lastName,
       },
-      process.env.JWT_SECRET || 'secret',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     )
 
-    // Create response with user data (no token in body for security)
+    // Create response with user data and token
     const response = NextResponse.json({
+      token, // Include token for client-side storage
       user: {
         id: user.id,
         email: user.email,

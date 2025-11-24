@@ -309,7 +309,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="flex-1">
                     <p className="font-bold text-neutral-800">{course.title}</p>
-                    <p className="text-sm text-neutral-600">{course.category || 'Uncategorized'}</p>
+                    <p className="text-sm text-neutral-600">{course.category?.name || 'Uncategorized'}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Users size={16} className="text-success" />

@@ -32,25 +32,19 @@ export const GET = withAuth(async (request, user) => {
       where.userId = userId || user.userId
     }
 
-    // Handle status filter (active/expired/revoked)
+    // Handle status filter (active/expired)
+    // NOTE: revokedAt field doesn't exist in schema - removed revoked status filter
     if (status && status !== 'ALL') {
       const now = new Date()
       if (status === 'ACTIVE') {
-        where.AND = [
-          { revokedAt: null },
-          {
-            OR: [
-              { expiresAt: null },
-              { expiresAt: { gte: now } }
-            ]
-          }
+        where.OR = [
+          { expiresAt: null },
+          { expiresAt: { gte: now } }
         ]
       } else if (status === 'EXPIRED') {
         where.expiresAt = { lt: now }
-        where.revokedAt = null
-      } else if (status === 'REVOKED') {
-        where.revokedAt = { not: null }
       }
+      // REVOKED status removed - field doesn't exist in database schema
     }
 
     const certificates = await prisma.userCertificate.findMany({

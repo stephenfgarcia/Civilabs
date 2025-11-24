@@ -154,7 +154,9 @@ export async function PUT(
       }
 
       // Check ownership (instructors can only edit their own courses)
-      if (user.role !== 'admin' && existingCourse.instructorId !== user.userId) {
+      // Admins and Super Admins can edit any course
+      const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN'
+      if (!isAdmin && existingCourse.instructorId !== user.userId) {
         return NextResponse.json(
           {
             success: false,
@@ -169,7 +171,7 @@ export async function PUT(
 
       if (body.title) updateData.title = body.title
       if (body.description !== undefined) updateData.description = body.description
-      if (body.category) updateData.category = body.category
+      if (body.categoryId) updateData.categoryId = body.categoryId
       if (body.difficulty) updateData.difficultyLevel = body.difficulty
       if (body.duration !== undefined) updateData.durationMinutes = body.duration
       if (body.thumbnail !== undefined) updateData.thumbnail = body.thumbnail
