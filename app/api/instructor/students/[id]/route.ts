@@ -20,16 +20,42 @@ export async function GET(
       const params = await context.params
       const { id } = params
 
-      // Verify user is instructor
-      if (user.role !== 'INSTRUCTOR' && user.role !== 'ADMIN') {
+      // Verify user is instructor or admin
+      const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN'
+      const isInstructor = user.role === 'INSTRUCTOR'
+
+      if (!isAdmin && !isInstructor) {
         return NextResponse.json(
           {
             success: false,
             error: 'Forbidden',
-            message: 'Only instructors can view student profiles',
+            message: 'Only instructors and admins can view student profiles',
           },
           { status: 403 }
         )
+      }
+
+      // SECURITY: Verify instructor actually teaches this student (unless admin)
+      if (isInstructor) {
+        const studentEnrollmentInInstructorCourse = await prisma.enrollment.findFirst({
+          where: {
+            userId: id,
+            course: {
+              instructorId: String(user.userId),
+            },
+          },
+        })
+
+        if (!studentEnrollmentInInstructorCourse) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Forbidden',
+              message: 'You can only view students enrolled in your courses',
+            },
+            { status: 403 }
+          )
+        }
       }
 
       // Get student basic info
@@ -63,7 +89,7 @@ export async function GET(
         )
       }
 
-      // Get enrollments with progress
+      // Get enrollments with progress - optimized to avoid N+1 queries
       const enrollments = await prisma.enrollment.findMany({
         where: { userId: id },
         include: {
@@ -79,37 +105,38 @@ export async function GET(
                   lastName: true,
                 },
               },
+              _count: {
+                select: {
+                  lessons: true,
+                },
+              },
+            },
+          },
+          lessonProgress: {
+            where: {
+              completedAt: { not: null },
+            },
+            select: {
+              id: true,
             },
           },
         },
         orderBy: { enrolledAt: 'desc' },
       })
 
-      // Get course progress for each enrollment
-      const enrollmentsWithProgress = await Promise.all(
-        enrollments.map(async (enrollment) => {
-          const lessonsCount = await prisma.lesson.count({
-            where: { courseId: enrollment.courseId },
-          })
+      // Calculate progress from loaded data (no additional queries)
+      const enrollmentsWithProgress = enrollments.map((enrollment) => {
+        const lessonsCount = enrollment.course._count.lessons
+        const completedLessons = enrollment.lessonProgress.length
+        const progress = lessonsCount > 0 ? Math.round((completedLessons / lessonsCount) * 100) : 0
 
-          const completedLessons = await prisma.lessonProgress.count({
-            where: {
-              userId: id,
-              lesson: { courseId: enrollment.courseId },
-              completedAt: { not: null },
-            },
-          })
-
-          const progress = lessonsCount > 0 ? Math.round((completedLessons / lessonsCount) * 100) : 0
-
-          return {
-            ...enrollment,
-            lessonsCount,
-            completedLessons,
-            progress,
-          }
-        })
-      )
+        return {
+          ...enrollment,
+          lessonsCount,
+          completedLessons,
+          progress,
+        }
+      })
 
       // Get quiz attempts with scores
       const quizAttempts = await prisma.quizAttempt.findMany({
