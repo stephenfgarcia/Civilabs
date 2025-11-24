@@ -12,6 +12,9 @@ export { certificatesService, default as certificates } from './certificates.ser
 export { adminService, default as admin } from './admin.service'
 export { instructorService, default as instructor } from './instructor.service'
 export { searchService, default as search } from './search.service'
+export { reviewsService, default as reviews } from './reviews.service'
+export { bookmarksService, default as bookmarks } from './bookmarks.service'
+export { messagesService, default as messages } from './messages.service'
 
 // Export types
 export type { Course, Lesson, Quiz, CourseProgress } from './courses.service'
@@ -29,3 +32,6 @@ export type {
   CourseMetrics,
 } from './instructor.service'
 export type { SearchResult, SearchResponse, SearchType } from './search.service'
+export type { Review, ReviewsResponse } from './reviews.service'
+export type { Bookmark } from './bookmarks.service'
+export type { Message, Conversation } from './messages.service'

@@ -18,6 +18,8 @@ import {
   Search,
   MessageSquare,
   Medal,
+  Bookmark,
+  Mail,
 } from 'lucide-react'
 
 const navigationItems = [
@@ -25,7 +27,9 @@ const navigationItems = [
   { name: 'My Learning', href: '/my-learning', icon: GraduationCap, color: 'from-secondary to-purple-600' },
   { name: 'Course Catalog', href: '/courses', icon: BookOpen, color: 'from-success to-green-600' },
   { name: 'Search', href: '/search', icon: Search, color: 'from-cyan-500 to-blue-500' },
+  { name: 'Messages', href: '/messages', icon: Mail, color: 'from-blue-500 to-indigo-500' },
   { name: 'Discussions', href: '/discussions', icon: MessageSquare, color: 'from-purple-500 to-pink-500' },
+  { name: 'Bookmarks', href: '/bookmarks', icon: Bookmark, color: 'from-amber-500 to-yellow-500' },
   { name: 'Badges', href: '/badges', icon: Medal, color: 'from-yellow-500 to-orange-500' },
   { name: 'Certificates', href: '/certificates', icon: Award, color: 'from-warning to-orange-600' },
   { name: 'Leaderboard', href: '/leaderboard', icon: Trophy, color: 'from-pink-500 to-rose-600' },
