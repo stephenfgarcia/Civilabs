@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import anime from 'animejs'
 import { Bell, Search, LogOut, Settings, User as UserIcon } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import SearchModal from '@/components/search/SearchModal'
 
 export function Header() {
   const router = useRouter()
   const headerRef = useRef<HTMLElement>(null)
   const [user, setUser] = useState<any>(null)
   const [showProfile, setShowProfile] = useState(false)
+  const [showSearchModal, setShowSearchModal] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -41,6 +42,17 @@ export function Header() {
       duration: 600,
       easing: 'easeOutCubic',
     })
+
+    // Keyboard shortcut for search (Cmd+K / Ctrl+K)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowSearchModal(true)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   const handleLogout = () => {
@@ -70,12 +82,16 @@ export function Header() {
         {/* Search */}
         <div className="flex-1 max-w-xl header-item opacity-0">
           <div className="relative group">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 group-focus-within:text-primary transition-colors" size={20} />
-            <Input
-              type="search"
-              placeholder="Search courses, lessons..."
-              className="pl-10 h-12 glass-effect border-2 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-            />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 group-focus-within:text-primary transition-colors pointer-events-none" size={20} />
+            <button
+              onClick={() => setShowSearchModal(true)}
+              className="w-full text-left pl-10 pr-4 h-12 glass-effect border-2 border-neutral-200 hover:border-primary focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all rounded-lg text-neutral-500 hover:text-neutral-700"
+            >
+              Search courses, lessons...
+              <kbd className="hidden md:inline-block float-right mt-0.5 px-2 py-1 text-xs bg-white/50 border border-neutral-300 rounded">
+                ⌘K
+              </kbd>
+            </button>
           </div>
         </div>
 
@@ -126,6 +142,9 @@ export function Header() {
           </div>
         </div>
       </div>
+
+      {/* Search Modal */}
+      <SearchModal isOpen={showSearchModal} onClose={() => setShowSearchModal(false)} />
     </header>
   )
 }

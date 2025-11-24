@@ -11,6 +11,7 @@ export { notificationsService, default as notifications } from './notifications.
 export { certificatesService, default as certificates } from './certificates.service'
 export { adminService, default as admin } from './admin.service'
 export { instructorService, default as instructor } from './instructor.service'
+export { searchService, default as search } from './search.service'
 
 // Export types
 export type { Course, Lesson, Quiz, CourseProgress } from './courses.service'
@@ -27,3 +28,4 @@ export type {
   InstructorAnalytics,
   CourseMetrics,
 } from './instructor.service'
+export type { SearchResult, SearchResponse, SearchType } from './search.service'
