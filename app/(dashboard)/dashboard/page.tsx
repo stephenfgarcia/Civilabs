@@ -70,12 +70,21 @@ export default function DashboardPage() {
 
       // Calculate stats from enrollments
       const enrolled = enrollmentsData.length
-      const inProgress = enrollmentsData.filter((e: any) => e.status === 'ENROLLED' && e.progressPercentage > 0 && e.progressPercentage < 100).length
-      const completed = enrollmentsData.filter((e: any) => e.status === 'COMPLETED' || e.progressPercentage === 100).length
+      const inProgress = enrollmentsData.filter((e: any) => {
+        const progress = e.calculatedProgress || e.progressPercentage || 0
+        return e.status === 'ENROLLED' && progress > 0 && progress < 100
+      }).length
+      const completed = enrollmentsData.filter((e: any) => {
+        const progress = e.calculatedProgress || e.progressPercentage || 0
+        return e.status === 'COMPLETED' || progress === 100
+      }).length
       const certificates = certificatesData.length
 
       // Calculate total learning hours (placeholder - would need real tracking)
-      const learningHours = Math.round(enrollmentsData.reduce((acc: number, e: any) => acc + (e.progressPercentage || 0) / 10, 0))
+      const learningHours = Math.round(enrollmentsData.reduce((acc: number, e: any) => {
+        const progress = e.calculatedProgress || e.progressPercentage || 0
+        return acc + progress / 10
+      }, 0))
 
       setStats({
         enrolled,
@@ -275,7 +284,7 @@ export default function DashboardPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {enrollments.map((enrollment: any, index) => {
-                const progress = enrollment.progressPercentage || 0
+                const progress = enrollment.calculatedProgress || enrollment.progressPercentage || 0
                 const colors = index === 0
                   ? { border: 'border-primary/20 hover:border-primary/40', bg: 'from-primary/20 to-blue-600/20', text: 'text-primary', gradient: 'from-primary to-blue-600' }
                   : { border: 'border-success/20 hover:border-success/40', bg: 'from-success/20 to-green-600/20', text: 'text-success', gradient: 'from-success to-green-600' }
