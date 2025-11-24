@@ -133,6 +133,7 @@ model User {
   badges               UserBadge[]
   points               UserPoints?
   notifications        Notification[]
+  notificationPreference NotificationPreference?
   activityLogs         ActivityLog[]
   coursesCreated       Course[]
   learningPathsCreated LearningPath[]
@@ -464,6 +465,23 @@ model Notification {
 
   @@index([userId])
   @@index([isRead])
+}
+
+model NotificationPreference {
+  id                   String   @id @default(uuid())
+  userId               String   @unique
+  emailNotifications   Boolean  @default(true)
+  pushNotifications    Boolean  @default(true)
+  courseUpdates        Boolean  @default(true)
+  discussionReplies    Boolean  @default(true)
+  achievements         Boolean  @default(true)
+  systemAnnouncements  Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model ActivityLog {

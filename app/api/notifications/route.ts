@@ -123,3 +123,33 @@ export const POST = withAdmin(async (request, user) => {
     )
   }
 })
+
+/**
+ * DELETE /api/notifications
+ * Clear all notifications for authenticated user
+ */
+export const DELETE = withAuth(async (request, user) => {
+  try {
+    const result = await prisma.notification.deleteMany({
+      where: {
+        userId: String(user.userId),
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: `${result.count} notifications deleted successfully`,
+      count: result.count,
+    })
+  } catch (error) {
+    console.error('Error deleting notifications:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to delete notifications',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
+  }
+})
