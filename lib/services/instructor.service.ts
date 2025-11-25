@@ -231,6 +231,106 @@ class InstructorService {
     const response = await apiClient.get<{ data: InstructorAnalytics }>(url)
     return response.data!.data
   }
+
+  /**
+   * Get assignments for instructor's courses
+   */
+  async getAssignments(params?: {
+    courseId?: string
+    status?: string
+    search?: string
+  }): Promise<any> {
+    const queryParams = new URLSearchParams()
+    if (params?.courseId) queryParams.append('courseId', params.courseId)
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.search) queryParams.append('search', params.search)
+
+    const url = `/api/instructor/assignments${
+      queryParams.toString() ? `?${queryParams.toString()}` : ''
+    }`
+    const response = await apiClient.get<{ data: any }>(url)
+    return response.data!.data
+  }
+
+  /**
+   * Get assignment by ID
+   */
+  async getAssignmentById(id: string): Promise<any> {
+    const response = await apiClient.get<{ data: any }>(`/api/instructor/assignments/${id}`)
+    return response.data!.data
+  }
+
+  /**
+   * Get certificates issued in instructor's courses
+   */
+  async getCertificates(params?: {
+    courseId?: string
+    status?: string
+    search?: string
+  }): Promise<any> {
+    const queryParams = new URLSearchParams()
+    if (params?.courseId) queryParams.append('courseId', params.courseId)
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.search) queryParams.append('search', params.search)
+
+    const url = `/api/instructor/certificates${
+      queryParams.toString() ? `?${queryParams.toString()}` : ''
+    }`
+    const response = await apiClient.get<{ data: any }>(url)
+    return response.data!.data
+  }
+
+  /**
+   * Get discussions from instructor's courses
+   */
+  async getDiscussions(params?: {
+    courseId?: string
+    status?: string
+    search?: string
+  }): Promise<any> {
+    const queryParams = new URLSearchParams()
+    if (params?.courseId) queryParams.append('courseId', params.courseId)
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.search) queryParams.append('search', params.search)
+
+    const url = `/api/instructor/discussions${
+      queryParams.toString() ? `?${queryParams.toString()}` : ''
+    }`
+    const response = await apiClient.get<{ data: any }>(url)
+    return response.data!.data
+  }
+
+  /**
+   * Get discussion by ID (instructor view)
+   */
+  async getDiscussionById(id: string): Promise<any> {
+    const response = await apiClient.get<{ data: any }>(`/api/instructor/discussions/${id}`)
+    return response.data!.data
+  }
+
+  /**
+   * Get student by ID (instructor view)
+   */
+  async getStudentById(id: string): Promise<any> {
+    const response = await apiClient.get<{ data: any }>(`/api/instructor/students/${id}`)
+    return response.data!.data
+  }
+
+  /**
+   * Send bulk email to students
+   */
+  async sendBulkEmail(data: {
+    studentIds?: string[]
+    courseId?: string
+    subject: string
+    message: string
+  }): Promise<any> {
+    const response = await apiClient.post<{ data: any }>(
+      '/api/instructor/students/bulk-email',
+      data
+    )
+    return response.data!.data
+  }
 }
 
 export const instructorService = new InstructorService()

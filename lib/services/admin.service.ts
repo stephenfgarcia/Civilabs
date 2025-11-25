@@ -133,6 +133,20 @@ class AdminService {
   }) {
     return apiClient.post('/certificates', data)
   }
+
+  /**
+   * Send notification to users (admin only)
+   */
+  async sendNotification(data: {
+    title: string
+    message: string
+    type: 'info' | 'success' | 'warning' | 'error'
+    recipients: 'all' | 'instructors' | 'learners' | 'admins'
+    category?: string
+    scheduledDate?: string
+  }) {
+    return apiClient.post('/admin/notifications/send', data)
+  }
 }
 
 export const adminService = new AdminService()
