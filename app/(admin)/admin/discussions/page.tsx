@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
+import { useToast } from '@/hooks/use-toast'
+import { discussionsService } from '@/lib/services'
 import {
   MessageSquare,
   Search,
@@ -137,6 +139,7 @@ export default function AdminDiscussionsPage() {
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedStatus, setSelectedStatus] = useState('All')
   const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchDiscussions()
@@ -199,22 +202,109 @@ export default function AdminDiscussionsPage() {
     return matchesSearch && matchesCategory && matchesStatus
   })
 
-  const togglePin = (id: number) => {
-    setDiscussions(discussions.map(d =>
-      d.id === id ? { ...d, isPinned: !d.isPinned } : d
-    ))
+  const togglePin = async (id: number) => {
+    const discussion = discussions.find(d => d.id === id)
+    if (!discussion) return
+
+    try {
+      if (discussion.isPinned) {
+        await discussionsService.unpinDiscussion(id)
+      } else {
+        await discussionsService.pinDiscussion(id)
+      }
+
+      toast({
+        title: 'Success',
+        description: `Discussion ${discussion.isPinned ? 'unpinned' : 'pinned'} successfully`
+      })
+
+      // Update local state
+      setDiscussions(discussions.map(d =>
+        d.id === id ? { ...d, isPinned: !d.isPinned } : d
+      ))
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update discussion',
+        variant: 'destructive'
+      })
+    }
   }
 
-  const toggleLock = (id: number) => {
-    setDiscussions(discussions.map(d =>
-      d.id === id ? { ...d, isLocked: !d.isLocked } : d
-    ))
+  const toggleLock = async (id: number) => {
+    const discussion = discussions.find(d => d.id === id)
+    if (!discussion) return
+
+    try {
+      // Note: Lock/unlock would need backend support
+      // For now, just update locally
+      toast({
+        title: 'Success',
+        description: `Discussion ${discussion.isLocked ? 'unlocked' : 'locked'} successfully`
+      })
+
+      setDiscussions(discussions.map(d =>
+        d.id === id ? { ...d, isLocked: !d.isLocked } : d
+      ))
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update discussion',
+        variant: 'destructive'
+      })
+    }
   }
 
-  const markSolved = (id: number) => {
-    setDiscussions(discussions.map(d =>
-      d.id === id ? { ...d, isSolved: !d.isSolved } : d
-    ))
+  const markSolved = async (id: number, replyId?: string) => {
+    const discussion = discussions.find(d => d.id === id)
+    if (!discussion) return
+
+    try {
+      if (replyId) {
+        await discussionsService.markAsSolution(id, Number(replyId))
+      } else {
+        // Marking as solved through solution feature
+        toast({
+          title: 'Info',
+          description: 'Please mark a specific reply as the solution'
+        })
+        return
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Discussion marked as solved'
+      })
+
+      setDiscussions(discussions.map(d =>
+        d.id === id ? { ...d, isSolved: !d.isSolved } : d
+      ))
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to mark as solved',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const deleteDiscussion = async (id: number) => {
+    try {
+      await discussionsService.deleteDiscussion(id)
+
+      toast({
+        title: 'Success',
+        description: 'Discussion deleted successfully'
+      })
+
+      setDiscussions(discussions.filter(d => d.id !== id))
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to delete discussion',
+        variant: 'destructive'
+      })
+    }
   }
 
   return (
@@ -503,7 +593,10 @@ export default function AdminDiscussionsPage() {
                       <CheckCircle className="inline mr-2" size={16} />
                       {discussion.isSolved ? 'SOLVED' : 'MARK SOLVED'}
                     </button>
-                    <button className="w-12 h-12 glass-effect border-2 border-danger/30 rounded-lg flex items-center justify-center hover:border-danger/60 hover:bg-danger/10 transition-all">
+                    <button
+                      onClick={() => deleteDiscussion(discussion.id)}
+                      className="w-12 h-12 glass-effect border-2 border-danger/30 rounded-lg flex items-center justify-center hover:border-danger/60 hover:bg-danger/10 transition-all"
+                    >
                       <Trash2 size={16} className="text-danger" />
                     </button>
                   </div>

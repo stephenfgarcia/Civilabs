@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
+import { useToast } from '@/hooks/use-toast'
+import { mediaService } from '@/lib/services'
 import {
   Files,
   Upload,
@@ -20,6 +22,7 @@ import {
   HardDrive,
   CheckCircle,
   MoreVertical,
+  Loader2,
 } from 'lucide-react'
 
 interface ContentFile {
@@ -41,7 +44,10 @@ export default function ContentPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState('All')
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
   const [mediaStats, setMediaStats] = useState<any>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchMediaData()
@@ -73,6 +79,45 @@ export default function ContentPage() {
       console.error('Error fetching media:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = event.target.files
+    if (!selectedFiles || selectedFiles.length === 0) return
+
+    try {
+      setUploading(true)
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i]
+        const result = await mediaService.uploadMedia(file)
+
+        toast({
+          title: 'Success',
+          description: `${file.name} uploaded successfully`
+        })
+      }
+
+      // Refresh media data after upload
+      fetchMediaData()
+
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to upload file',
+        variant: 'destructive'
+      })
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -144,10 +189,31 @@ export default function ContentPage() {
                 </p>
               </div>
 
-              <MagneticButton className="bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-black">
-                <Upload className="mr-2" size={20} />
-                UPLOAD FILES
+              <MagneticButton
+                onClick={handleUploadClick}
+                disabled={uploading}
+                className="bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-black"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="mr-2 animate-spin" size={20} />
+                    UPLOADING...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2" size={20} />
+                    UPLOAD FILES
+                  </>
+                )}
               </MagneticButton>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
             </div>
           </div>
         </div>

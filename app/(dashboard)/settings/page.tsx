@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
+import { useToast } from '@/hooks/use-toast'
+import { usersService, notificationsService } from '@/lib/services'
 import {
   Settings as SettingsIcon,
   User,
@@ -15,7 +17,8 @@ import {
   Save,
   Eye,
   EyeOff,
-  CheckCircle
+  CheckCircle,
+  Loader2
 } from 'lucide-react'
 
 export default function SettingsPage() {
@@ -24,6 +27,22 @@ export default function SettingsPage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [updatingPassword, setUpdatingPassword] = useState(false)
+  const [savingNotifications, setSavingNotifications] = useState(false)
+
+  const [profileForm, setProfileForm] = useState({
+    firstName: '',
+    lastName: ''
+  })
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
+
+  const { toast } = useToast()
 
   useEffect(() => {
     // Simple CSS-only entrance animations
@@ -33,12 +52,138 @@ export default function SettingsPage() {
       htmlEl.style.animation = `fadeInUp 0.4s ease-out forwards ${index * 0.05}s`
     })
 
-    // Load user data
-    const userData = localStorage.getItem('user')
-    if (userData) {
-      setUser(JSON.parse(userData))
-    }
+    loadUserData()
   }, [])
+
+  const loadUserData = async () => {
+    try {
+      const response = await usersService.getCurrentUser()
+      const userData = response.data
+      setUser(userData)
+      setProfileForm({
+        firstName: userData?.firstName || '',
+        lastName: userData?.lastName || ''
+      })
+
+      // Load notification preferences
+      const prefsResponse = await notificationsService.getPreferences()
+      const prefs = prefsResponse.data
+      if (prefs) {
+        setNotifications(prev => ({
+          ...prev,
+          // Only update fields that exist in the response
+          ...(typeof prefs === 'object' ? prefs : {})
+        }))
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error)
+      // Fallback to localStorage
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        const parsed = JSON.parse(userData)
+        setUser(parsed)
+        setProfileForm({
+          firstName: parsed.firstName || '',
+          lastName: parsed.lastName || ''
+        })
+      }
+    }
+  }
+
+  const handleSaveProfile = async () => {
+    try {
+      setSavingProfile(true)
+      await usersService.updateProfile(profileForm)
+
+      toast({
+        title: 'Success',
+        description: 'Profile updated successfully'
+      })
+
+      loadUserData()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update profile',
+        variant: 'destructive'
+      })
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
+  const handleUpdatePassword = async () => {
+    if (!passwordForm.newPassword || !passwordForm.confirmPassword) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in all password fields',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast({
+        title: 'Validation Error',
+        description: 'New passwords do not match',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      toast({
+        title: 'Validation Error',
+        description: 'Password must be at least 8 characters',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      setUpdatingPassword(true)
+      // Password update would need a separate endpoint
+      // For now, just show success
+      toast({
+        title: 'Info',
+        description: 'Password update would require a separate API endpoint'
+      })
+
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      })
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update password',
+        variant: 'destructive'
+      })
+    } finally {
+      setUpdatingPassword(false)
+    }
+  }
+
+  const handleSaveNotifications = async () => {
+    try {
+      setSavingNotifications(true)
+      await notificationsService.updatePreferences(notifications as any)
+
+      toast({
+        title: 'Success',
+        description: 'Notification preferences updated successfully'
+      })
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update preferences',
+        variant: 'destructive'
+      })
+    } finally {
+      setSavingNotifications(false)
+    }
+  }
 
   // Notification settings state
   const [notifications, setNotifications] = useState({
@@ -129,7 +274,8 @@ export default function SettingsPage() {
                   FIRST NAME
                 </label>
                 <Input
-                  defaultValue={user?.firstName || ''}
+                  value={profileForm.firstName}
+                  onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
                   className="h-12 glass-effect border-2 border-success/30 focus:border-success font-medium"
                 />
               </div>
@@ -139,7 +285,8 @@ export default function SettingsPage() {
                   LAST NAME
                 </label>
                 <Input
-                  defaultValue={user?.lastName || ''}
+                  value={profileForm.lastName}
+                  onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
                   className="h-12 glass-effect border-2 border-success/30 focus:border-success font-medium"
                 />
               </div>
@@ -180,9 +327,13 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <MagneticButton className="w-full md:w-auto bg-gradient-to-r from-success to-green-600 text-white font-black flex items-center justify-center gap-2">
-              <Save size={18} />
-              SAVE CHANGES
+            <MagneticButton
+              onClick={handleSaveProfile}
+              disabled={savingProfile}
+              className="w-full md:w-auto bg-gradient-to-r from-success to-green-600 text-white font-black flex items-center justify-center gap-2"
+            >
+              {savingProfile ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+              {savingProfile ? 'SAVING...' : 'SAVE CHANGES'}
             </MagneticButton>
           </CardContent>
         </Card>
