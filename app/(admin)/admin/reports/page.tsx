@@ -8,6 +8,8 @@ import { DistributionChart } from '@/components/charts/DistributionChart'
 import { TrendChart } from '@/components/charts/TrendChart'
 import { ComparisonChart } from '@/components/charts/ComparisonChart'
 import { ActivityChart } from '@/components/charts/ActivityChart'
+import { useToast } from '@/hooks/use-toast'
+import { usersService, coursesService, adminEnrollmentsService, certificatesService } from '@/lib/services'
 import {
   BarChart3,
   FileText,
@@ -22,6 +24,7 @@ import {
   PieChart,
   LineChart,
   Activity,
+  Loader2,
 } from 'lucide-react'
 
 interface ReportType {
@@ -116,6 +119,10 @@ const ACTIVITY_DATA = [
 export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState({ start: '2024-01-01', end: '2024-12-31' })
+  const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [reportData, setReportData] = useState<any[]>([])
+  const { toast } = useToast()
 
   useEffect(() => {
     const elements = document.querySelectorAll('.admin-item')
@@ -124,6 +131,203 @@ export default function ReportsPage() {
       htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.05}s`
     })
   }, [])
+
+  useEffect(() => {
+    if (selectedReport) {
+      loadReportData()
+    }
+  }, [selectedReport, dateRange])
+
+  const loadReportData = async () => {
+    if (!selectedReport) return
+
+    try {
+      setLoading(true)
+      let data: any[] = []
+
+      switch (selectedReport) {
+        case 'users':
+          const usersResponse = await usersService.getUsers()
+          data = usersResponse.data || []
+          break
+        case 'courses':
+          const coursesResponse = await coursesService.getCourses()
+          data = coursesResponse.data || []
+          break
+        case 'enrollments':
+          const enrollmentsResponse = await adminEnrollmentsService.getEnrollments()
+          data = enrollmentsResponse.data || []
+          break
+        case 'certificates':
+          const certificatesResponse = await certificatesService.getCertificates()
+          // getCertificates returns the full object with success, data, count
+          data = (certificatesResponse as any).data || []
+          break
+        case 'revenue':
+          // Revenue data would come from a financial service
+          data = []
+          break
+      }
+
+      setReportData(data)
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load report data',
+        variant: 'destructive'
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const exportToCSV = () => {
+    if (!selectedReport || reportData.length === 0) {
+      toast({
+        title: 'No Data',
+        description: 'Please select a report with data to export',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      setExporting(true)
+
+      // Get headers based on report type
+      let headers: string[] = []
+      let rows: any[] = []
+
+      switch (selectedReport) {
+        case 'users':
+          headers = ['ID', 'Name', 'Email', 'Role', 'Created At']
+          rows = reportData.map((user: any) => [
+            user.id,
+            `${user.firstName} ${user.lastName}`,
+            user.email,
+            user.role,
+            new Date(user.createdAt).toLocaleDateString()
+          ])
+          break
+        case 'courses':
+          headers = ['ID', 'Title', 'Category', 'Duration', 'Price', 'Published', 'Enrollments']
+          rows = reportData.map((course: any) => [
+            course.id,
+            course.title,
+            course.category,
+            course.duration,
+            course.price,
+            course.published ? 'Yes' : 'No',
+            course._count?.enrollments || 0
+          ])
+          break
+        case 'enrollments':
+          headers = ['ID', 'User', 'Course', 'Status', 'Progress', 'Enrolled At']
+          rows = reportData.map((enrollment: any) => [
+            enrollment.id,
+            enrollment.user?.email || 'N/A',
+            enrollment.course?.title || 'N/A',
+            enrollment.status,
+            `${enrollment.progress}%`,
+            new Date(enrollment.enrolledAt).toLocaleDateString()
+          ])
+          break
+        case 'certificates':
+          headers = ['ID', 'User', 'Course', 'Issued Date', 'Certificate Number']
+          rows = reportData.map((cert: any) => [
+            cert.id,
+            cert.user?.email || 'N/A',
+            cert.course?.title || 'N/A',
+            new Date(cert.issuedAt).toLocaleDateString(),
+            cert.certificateNumber
+          ])
+          break
+      }
+
+      // Create CSV content
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ].join('\n')
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', `${selectedReport}_report_${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      toast({
+        title: 'Success',
+        description: 'CSV file downloaded successfully'
+      })
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to export CSV',
+        variant: 'destructive'
+      })
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const exportToPDF = () => {
+    if (!selectedReport) {
+      toast({
+        title: 'No Report Selected',
+        description: 'Please select a report to export',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      setExporting(true)
+
+      // Use browser's print functionality for PDF export
+      window.print()
+
+      toast({
+        title: 'PDF Export',
+        description: 'Use your browser\'s print dialog to save as PDF'
+      })
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to open print dialog',
+        variant: 'destructive'
+      })
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const exportToExcel = () => {
+    // Excel export uses same CSV format with .xlsx extension
+    // For true Excel support, would need additional library
+    toast({
+      title: 'Info',
+      description: 'Excel export uses CSV format. For full Excel features, use a spreadsheet application to open the CSV file.'
+    })
+    exportToCSV()
+  }
+
+  const exportAll = () => {
+    if (!selectedReport) {
+      toast({
+        title: 'No Report Selected',
+        description: 'Please select a report to export',
+        variant: 'destructive'
+      })
+      return
+    }
+    exportToCSV()
+  }
 
   return (
     <div className="space-y-6">
@@ -149,9 +353,22 @@ export default function ReportsPage() {
                 </p>
               </div>
 
-              <MagneticButton className="bg-gradient-to-r from-pink-500 to-rose-600 text-white font-black">
-                <Download className="mr-2" size={20} />
-                EXPORT ALL
+              <MagneticButton
+                onClick={exportAll}
+                disabled={!selectedReport || exporting}
+                className="bg-gradient-to-r from-pink-500 to-rose-600 text-white font-black"
+              >
+                {exporting ? (
+                  <>
+                    <Loader2 className="mr-2 animate-spin" size={20} />
+                    EXPORTING...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2" size={20} />
+                    EXPORT ALL
+                  </>
+                )}
               </MagneticButton>
             </div>
           </div>
@@ -296,19 +513,42 @@ export default function ReportsPage() {
                 </span>
               </p>
               <div className="flex gap-3 flex-wrap">
-                <MagneticButton className="bg-gradient-to-r from-danger to-red-600 text-white font-black">
+                <MagneticButton
+                  onClick={exportToPDF}
+                  disabled={exporting || loading}
+                  className="bg-gradient-to-r from-danger to-red-600 text-white font-black"
+                >
                   <FileText className="mr-2" size={16} />
                   EXPORT PDF
                 </MagneticButton>
-                <MagneticButton className="bg-gradient-to-r from-success to-green-600 text-white font-black">
+                <MagneticButton
+                  onClick={exportToCSV}
+                  disabled={exporting || loading || reportData.length === 0}
+                  className="bg-gradient-to-r from-success to-green-600 text-white font-black"
+                >
                   <FileText className="mr-2" size={16} />
                   EXPORT CSV
                 </MagneticButton>
-                <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
+                <MagneticButton
+                  onClick={exportToExcel}
+                  disabled={exporting || loading || reportData.length === 0}
+                  className="bg-gradient-to-r from-primary to-blue-600 text-white font-black"
+                >
                   <FileText className="mr-2" size={16} />
                   EXPORT EXCEL
                 </MagneticButton>
               </div>
+              {loading && (
+                <div className="flex items-center gap-2 text-pink-600 mt-3">
+                  <Loader2 className="animate-spin" size={16} />
+                  <span className="text-sm font-bold">Loading report data...</span>
+                </div>
+              )}
+              {reportData.length > 0 && !loading && (
+                <p className="text-sm font-semibold text-success mt-3">
+                  {reportData.length} records loaded and ready to export
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

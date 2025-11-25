@@ -10,6 +10,7 @@ export { discussionsService, default as discussions } from './discussions.servic
 export { notificationsService, default as notifications } from './notifications.service'
 export { certificatesService, default as certificates } from './certificates.service'
 export { adminService, default as admin } from './admin.service'
+export { adminEnrollmentsService, default as adminEnrollments } from './admin-enrollments.service'
 export { instructorService, default as instructor } from './instructor.service'
 export { searchService, default as search } from './search.service'
 export { reviewsService, default as reviews } from './reviews.service'
