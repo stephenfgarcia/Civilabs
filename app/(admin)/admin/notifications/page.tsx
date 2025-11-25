@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { useToast } from '@/hooks/use-toast'
+import { adminService } from '@/lib/services'
 import {
   Bell,
   Search,
@@ -106,6 +108,24 @@ const STATUSES = ['All', 'Sent', 'Scheduled', 'Draft']
 export default function AdminNotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
+  const [sendingNotification, setSendingNotification] = useState(false)
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedType, setSelectedType] = useState('All')
+  const [selectedRecipients, setSelectedRecipients] = useState('All')
+  const [selectedStatus, setSelectedStatus] = useState('All')
+  const [showComposer, setShowComposer] = useState(false)
+
+  const [notificationForm, setNotificationForm] = useState({
+    title: '',
+    message: '',
+    type: 'info' as 'info' | 'success' | 'warning' | 'error',
+    recipients: 'all' as 'all' | 'instructors' | 'learners' | 'admins',
+    category: 'general',
+    scheduledDate: ''
+  })
+
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchNotifications()
@@ -126,11 +146,54 @@ export default function AdminNotificationsPage() {
       setLoading(false)
     }
   }
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedType, setSelectedType] = useState('All')
-  const [selectedRecipients, setSelectedRecipients] = useState('All')
-  const [selectedStatus, setSelectedStatus] = useState('All')
-  const [showComposer, setShowComposer] = useState(false)
+
+  const handleSendNotification = async () => {
+    if (!notificationForm.title || !notificationForm.message) {
+      toast({
+        title: 'Validation Error',
+        description: 'Title and message are required',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      setSendingNotification(true)
+      await adminService.sendNotification({
+        title: notificationForm.title,
+        message: notificationForm.message,
+        type: notificationForm.type,
+        recipients: notificationForm.recipients,
+        category: notificationForm.category,
+        scheduledDate: notificationForm.scheduledDate || undefined
+      })
+
+      toast({
+        title: 'Success',
+        description: 'Notification sent successfully'
+      })
+
+      // Reset form
+      setNotificationForm({
+        title: '',
+        message: '',
+        type: 'info',
+        recipients: 'all',
+        category: 'general',
+        scheduledDate: ''
+      })
+      setShowComposer(false)
+      fetchNotifications()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to send notification',
+        variant: 'destructive'
+      })
+    } finally {
+      setSendingNotification(false)
+    }
+  }
 
   useEffect(() => {
     const elements = document.querySelectorAll('.admin-notifs-item')
@@ -256,6 +319,8 @@ export default function AdminNotificationsPage() {
               <Input
                 type="text"
                 placeholder="Notification title..."
+                value={notificationForm.title}
+                onChange={(e) => setNotificationForm({ ...notificationForm, title: e.target.value })}
                 className="glass-effect border-2 border-primary/30 focus:border-primary font-medium"
               />
             </div>
@@ -264,6 +329,8 @@ export default function AdminNotificationsPage() {
               <label className="text-sm font-bold text-neutral-700 mb-2 block">MESSAGE</label>
               <Textarea
                 placeholder="Write your notification message..."
+                value={notificationForm.message}
+                onChange={(e) => setNotificationForm({ ...notificationForm, message: e.target.value })}
                 className="glass-effect border-2 border-primary/30 focus:border-primary font-medium min-h-[120px]"
               />
             </div>
@@ -271,21 +338,29 @@ export default function AdminNotificationsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="text-sm font-bold text-neutral-700 mb-2 block">TYPE</label>
-                <select className="w-full h-12 px-4 glass-effect border-2 border-primary/30 rounded-lg font-medium">
-                  <option>Info</option>
-                  <option>Warning</option>
-                  <option>Success</option>
-                  <option>Urgent</option>
+                <select
+                  value={notificationForm.type}
+                  onChange={(e) => setNotificationForm({ ...notificationForm, type: e.target.value as any })}
+                  className="w-full h-12 px-4 glass-effect border-2 border-primary/30 rounded-lg font-medium"
+                >
+                  <option value="info">Info</option>
+                  <option value="warning">Warning</option>
+                  <option value="success">Success</option>
+                  <option value="error">Urgent</option>
                 </select>
               </div>
 
               <div>
                 <label className="text-sm font-bold text-neutral-700 mb-2 block">RECIPIENTS</label>
-                <select className="w-full h-12 px-4 glass-effect border-2 border-primary/30 rounded-lg font-medium">
-                  <option>All Users</option>
-                  <option>Instructors</option>
-                  <option>Learners</option>
-                  <option>Admins</option>
+                <select
+                  value={notificationForm.recipients}
+                  onChange={(e) => setNotificationForm({ ...notificationForm, recipients: e.target.value as any })}
+                  className="w-full h-12 px-4 glass-effect border-2 border-primary/30 rounded-lg font-medium"
+                >
+                  <option value="all">All Users</option>
+                  <option value="instructors">Instructors</option>
+                  <option value="learners">Learners</option>
+                  <option value="admins">Admins</option>
                 </select>
               </div>
 
@@ -293,17 +368,27 @@ export default function AdminNotificationsPage() {
                 <label className="text-sm font-bold text-neutral-700 mb-2 block">SCHEDULE (OPTIONAL)</label>
                 <Input
                   type="datetime-local"
+                  value={notificationForm.scheduledDate}
+                  onChange={(e) => setNotificationForm({ ...notificationForm, scheduledDate: e.target.value })}
                   className="glass-effect border-2 border-primary/30 focus:border-primary font-medium"
                 />
               </div>
             </div>
 
             <div className="flex gap-2">
-              <MagneticButton className="bg-gradient-to-r from-success to-green-600 text-white font-black">
+              <MagneticButton
+                onClick={handleSendNotification}
+                disabled={sendingNotification}
+                className="bg-gradient-to-r from-success to-green-600 text-white font-black"
+              >
                 <Send className="mr-2" size={16} />
-                SEND NOW
+                {sendingNotification ? 'SENDING...' : 'SEND NOW'}
               </MagneticButton>
-              <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
+              <MagneticButton
+                onClick={handleSendNotification}
+                disabled={sendingNotification}
+                className="bg-gradient-to-r from-warning to-orange-600 text-white font-black"
+              >
                 <Calendar className="mr-2" size={16} />
                 SCHEDULE
               </MagneticButton>

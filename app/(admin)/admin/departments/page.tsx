@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
+import { departmentsService } from '@/lib/services'
 import {
   Building2,
   Search,
@@ -35,47 +40,165 @@ export default function DepartmentsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null)
+  const [formLoading, setFormLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    parentId: ''
+  })
+
+  const { toast } = useToast()
+
   // Fetch departments from API
   useEffect(() => {
-    const fetchDepartments = async () => {
-      try {
-        setLoading(true)
-        setError(null)
+    loadDepartments()
+  }, [])
 
-        const token = localStorage.getItem('token')
-        const response = await fetch('/api/departments', {
-          headers: {
-            ...(token && { Authorization: `Bearer ${token}` })
-          }
-        })
+  const loadDepartments = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await departmentsService.getDepartments()
 
-        const data = await response.json()
+      // Transform API data to match UI interface
+      const transformedDepts: Department[] = data.map((dept: any) => ({
+        id: dept.id,
+        name: dept.name,
+        parentDepartment: dept.parent?.name || null,
+        userCount: dept._count?.users || 0,
+        description: dept.description,
+        createdDate: new Date(dept.createdAt).toISOString().split('T')[0],
+        children: dept.children,
+      }))
+      setDepartments(transformedDepts)
+    } catch (err) {
+      console.error('Error fetching departments:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch departments')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-        if (data.success) {
-          // Transform API data to match UI interface
-          const transformedDepts: Department[] = data.data.map((dept: any) => ({
-            id: dept.id,
-            name: dept.name,
-            parentDepartment: dept.parent?.name || null,
-            userCount: dept._count?.users || 0,
-            description: dept.description,
-            createdDate: new Date(dept.createdAt).toISOString().split('T')[0],
-            children: dept.children,
-          }))
-          setDepartments(transformedDepts)
-        } else {
-          setError(data.message || 'Failed to fetch departments')
-        }
-      } catch (err) {
-        console.error('Error fetching departments:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch departments')
-      } finally {
-        setLoading(false)
-      }
+  const handleCreateDepartment = () => {
+    setFormData({ name: '', description: '', parentId: '' })
+    setIsCreateModalOpen(true)
+  }
+
+  const handleEditDepartment = (dept: Department) => {
+    setSelectedDepartment(dept)
+    setFormData({
+      name: dept.name,
+      description: dept.description || '',
+      parentId: ''
+    })
+    setIsEditModalOpen(true)
+  }
+
+  const handleDeleteDepartment = (dept: Department) => {
+    setSelectedDepartment(dept)
+    setIsDeleteModalOpen(true)
+  }
+
+  const submitCreateDepartment = async () => {
+    if (!formData.name) {
+      toast({
+        title: 'Validation Error',
+        description: 'Department name is required',
+        variant: 'destructive'
+      })
+      return
     }
 
-    fetchDepartments()
-  }, [])
+    try {
+      setFormLoading(true)
+      await departmentsService.createDepartment({
+        name: formData.name,
+        description: formData.description || undefined,
+        parentId: formData.parentId || undefined
+      })
+
+      toast({
+        title: 'Success',
+        description: 'Department created successfully'
+      })
+      setIsCreateModalOpen(false)
+      setFormData({ name: '', description: '', parentId: '' })
+      loadDepartments()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create department',
+        variant: 'destructive'
+      })
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  const submitEditDepartment = async () => {
+    if (!selectedDepartment || !formData.name) {
+      toast({
+        title: 'Validation Error',
+        description: 'Department name is required',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      setFormLoading(true)
+      await departmentsService.updateDepartment(selectedDepartment.id, {
+        name: formData.name,
+        description: formData.description || undefined
+      })
+
+      toast({
+        title: 'Success',
+        description: 'Department updated successfully'
+      })
+      setIsEditModalOpen(false)
+      setSelectedDepartment(null)
+      setFormData({ name: '', description: '', parentId: '' })
+      loadDepartments()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update department',
+        variant: 'destructive'
+      })
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  const submitDeleteDepartment = async () => {
+    if (!selectedDepartment) return
+
+    try {
+      setFormLoading(true)
+      await departmentsService.deleteDepartment(selectedDepartment.id)
+
+      toast({
+        title: 'Success',
+        description: 'Department deleted successfully'
+      })
+      setIsDeleteModalOpen(false)
+      setSelectedDepartment(null)
+      loadDepartments()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to delete department',
+        variant: 'destructive'
+      })
+    } finally {
+      setFormLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (!loading) {
@@ -154,7 +277,10 @@ export default function DepartmentsPage() {
                 </p>
               </div>
 
-              <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
+              <MagneticButton
+                onClick={handleCreateDepartment}
+                className="bg-gradient-to-r from-warning to-orange-600 text-white font-black"
+              >
                 <Plus className="mr-2" size={20} />
                 ADD DEPARTMENT
               </MagneticButton>
@@ -332,7 +458,10 @@ export default function DepartmentsPage() {
 
                   {/* Actions */}
                   <div className="flex gap-2">
-                    <button className="flex-1 h-10 glass-effect border-2 border-warning/30 rounded-lg flex items-center justify-center gap-2 hover:border-warning/60 hover:bg-warning/10 transition-all font-bold text-sm">
+                    <button
+                      onClick={() => handleEditDepartment(dept)}
+                      className="flex-1 h-10 glass-effect border-2 border-warning/30 rounded-lg flex items-center justify-center gap-2 hover:border-warning/60 hover:bg-warning/10 transition-all font-bold text-sm"
+                    >
                       <Edit size={16} className="text-warning" />
                       EDIT
                     </button>
@@ -340,7 +469,10 @@ export default function DepartmentsPage() {
                       <Users size={16} className="text-primary" />
                       MANAGE
                     </button>
-                    <button className="w-10 h-10 glass-effect border-2 border-danger/30 rounded-lg flex items-center justify-center hover:border-danger/60 hover:bg-danger/10 transition-all">
+                    <button
+                      onClick={() => handleDeleteDepartment(dept)}
+                      className="w-10 h-10 glass-effect border-2 border-danger/30 rounded-lg flex items-center justify-center hover:border-danger/60 hover:bg-danger/10 transition-all"
+                    >
                       <Trash2 size={16} className="text-danger" />
                     </button>
                   </div>
@@ -355,6 +487,128 @@ export default function DepartmentsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Create Department Modal */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="glass-effect border-warning/30">
+          <DialogHeader>
+            <DialogTitle className="text-warning">Create New Department</DialogTitle>
+            <DialogDescription>Add a new department to organize your teams</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Department Name *</label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Enter department name"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Description</label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Enter department description"
+                rows={3}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Parent Department (Optional)</label>
+              <select
+                value={formData.parentId}
+                onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
+                className="w-full px-3 py-2 rounded-md bg-background border border-input text-foreground font-medium"
+              >
+                <option value="">None (Top-level)</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>{dept.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateModalOpen(false)} disabled={formLoading}>
+              Cancel
+            </Button>
+            <Button onClick={submitCreateDepartment} disabled={formLoading} className="bg-warning hover:bg-warning/80">
+              {formLoading ? 'Creating...' : 'Create Department'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Department Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="glass-effect border-warning/30">
+          <DialogHeader>
+            <DialogTitle className="text-warning">Edit Department</DialogTitle>
+            <DialogDescription>Update department information</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Department Name *</label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Enter department name"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Description</label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Enter department description"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)} disabled={formLoading}>
+              Cancel
+            </Button>
+            <Button onClick={submitEditDepartment} disabled={formLoading} className="bg-warning hover:bg-warning/80">
+              {formLoading ? 'Updating...' : 'Update Department'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Department Modal */}
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent className="glass-effect border-danger/30">
+          <DialogHeader>
+            <DialogTitle className="text-danger">Delete Department</DialogTitle>
+            <DialogDescription>Are you sure you want to delete this department?</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm font-medium mb-2">
+              Department: <span className="font-bold">{selectedDepartment?.name}</span>
+            </p>
+            {selectedDepartment && selectedDepartment.userCount > 0 && (
+              <p className="text-sm text-warning font-semibold mb-2">
+                Warning: This department has {selectedDepartment.userCount} user(s).
+              </p>
+            )}
+            <p className="text-sm text-danger font-semibold mt-4">
+              This action cannot be undone.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)} disabled={formLoading}>
+              Cancel
+            </Button>
+            <Button
+              onClick={submitDeleteDepartment}
+              disabled={formLoading}
+              variant="destructive"
+            >
+              {formLoading ? 'Deleting...' : 'Delete Department'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
