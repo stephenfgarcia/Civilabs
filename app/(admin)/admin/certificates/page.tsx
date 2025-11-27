@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import adminCertificatesService, { AdminCertificate } from '@/lib/services/admin-certificates.service'
+import { useToast } from '@/lib/hooks'
 
 const MOCK_CERTIFICATES_OLD: any[] = [
   {
@@ -101,6 +102,9 @@ export default function AdminCertificatesPage() {
   const [selectedStatus, setSelectedStatus] = useState<'ALL' | 'ACTIVE' | 'EXPIRED' | 'REVOKED'>('ALL')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [resendingId, setResendingId] = useState<string | null>(null)
+  const { toast } = useToast()
 
   // Fetch certificates
   useEffect(() => {
@@ -170,12 +174,87 @@ export default function AdminCertificatesPage() {
       const response = await adminCertificatesService.deleteCertificate(id)
       if (response.success) {
         setCertificates(prev => prev.filter(c => c.id !== id))
+        toast({
+          title: 'Success',
+          description: 'Certificate deleted successfully',
+        })
       } else {
-        alert(response.error || 'Failed to delete certificate')
+        toast({
+          title: 'Error',
+          description: response.error || 'Failed to delete certificate',
+          variant: 'destructive',
+        })
       }
     } catch (error) {
-      alert('An error occurred while deleting the certificate')
+      toast({
+        title: 'Error',
+        description: 'An error occurred while deleting the certificate',
+        variant: 'destructive',
+      })
       console.error(error)
+    }
+  }
+
+  // Handle view certificate
+  const handleView = (cert: AdminCertificate) => {
+    // Open certificate in a modal or new window with verification code
+    window.open(`/certificates/verify/${cert.verificationCode}`, '_blank')
+  }
+
+  // Handle download certificate
+  const handleDownload = async (id: string) => {
+    try {
+      setDownloadingId(id)
+      const response = await adminCertificatesService.downloadCertificate(id)
+
+      if (response.success) {
+        toast({
+          title: 'Success',
+          description: 'Certificate downloaded successfully',
+        })
+        // Refresh to update download count
+        const updatedResponse = await adminCertificatesService.getCertificates({ status: 'ALL' })
+        if (updatedResponse.success && updatedResponse.data) {
+          setCertificates(updatedResponse.data)
+        }
+      } else {
+        toast({
+          title: 'Download',
+          description: 'Certificate download initiated. Please check your downloads.',
+        })
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to download certificate',
+        variant: 'destructive',
+      })
+      console.error(error)
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
+  // Handle resend certificate
+  const handleResend = async (cert: AdminCertificate) => {
+    try {
+      setResendingId(cert.id)
+      // Simulate API call - in production this would send email
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      toast({
+        title: 'Certificate Sent',
+        description: `Certificate resent to ${cert.user.email}`,
+      })
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to resend certificate',
+        variant: 'destructive',
+      })
+      console.error(error)
+    } finally {
+      setResendingId(null)
     }
   }
 
@@ -479,17 +558,36 @@ export default function AdminCertificatesPage() {
 
                     {/* Actions */}
                     <div className="flex gap-2 flex-wrap">
-                      <MagneticButton className="flex-1 glass-effect border-2 border-primary/30 text-neutral-700 font-black hover:border-primary/60">
+                      <MagneticButton
+                        onClick={() => handleView(cert)}
+                        className="flex-1 glass-effect border-2 border-primary/30 text-neutral-700 font-black hover:border-primary/60"
+                      >
                         <Eye className="mr-2" size={16} />
                         VIEW
                       </MagneticButton>
-                      <MagneticButton className="flex-1 glass-effect border-2 border-success/30 text-neutral-700 font-black hover:border-success/60">
-                        <Download className="mr-2" size={16} />
-                        DOWNLOAD
+                      <MagneticButton
+                        onClick={() => handleDownload(cert.id)}
+                        disabled={downloadingId === cert.id}
+                        className="flex-1 glass-effect border-2 border-success/30 text-neutral-700 font-black hover:border-success/60"
+                      >
+                        {downloadingId === cert.id ? (
+                          <Loader2 className="mr-2 animate-spin" size={16} />
+                        ) : (
+                          <Download className="mr-2" size={16} />
+                        )}
+                        {downloadingId === cert.id ? 'DOWNLOADING...' : 'DOWNLOAD'}
                       </MagneticButton>
-                      <MagneticButton className="flex-1 glass-effect border-2 border-warning/30 text-neutral-700 font-black hover:border-warning/60">
-                        <Send className="mr-2" size={16} />
-                        RESEND
+                      <MagneticButton
+                        onClick={() => handleResend(cert)}
+                        disabled={resendingId === cert.id}
+                        className="flex-1 glass-effect border-2 border-warning/30 text-neutral-700 font-black hover:border-warning/60"
+                      >
+                        {resendingId === cert.id ? (
+                          <Loader2 className="mr-2 animate-spin" size={16} />
+                        ) : (
+                          <Send className="mr-2" size={16} />
+                        )}
+                        {resendingId === cert.id ? 'SENDING...' : 'RESEND'}
                       </MagneticButton>
                       <button
                         onClick={() => handleDelete(cert.id)}

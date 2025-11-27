@@ -371,6 +371,8 @@ export default function SettingsPage() {
                 <Input
                   type={showCurrentPassword ? 'text' : 'password'}
                   placeholder="Enter current password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                   className="h-12 glass-effect border-2 border-danger/30 focus:border-danger font-medium pr-12"
                 />
                 <button
@@ -389,6 +391,8 @@ export default function SettingsPage() {
                 <Input
                   type={showNewPassword ? 'text' : 'password'}
                   placeholder="Enter new password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                   className="h-12 glass-effect border-2 border-danger/30 focus:border-danger font-medium pr-12"
                 />
                 <button
@@ -407,6 +411,8 @@ export default function SettingsPage() {
                 <Input
                   type={showConfirmPassword ? 'text' : 'password'}
                   placeholder="Confirm new password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                   className="h-12 glass-effect border-2 border-danger/30 focus:border-danger font-medium pr-12"
                 />
                 <button
@@ -429,9 +435,13 @@ export default function SettingsPage() {
               </ul>
             </div>
 
-            <MagneticButton className="w-full md:w-auto bg-gradient-to-r from-danger to-red-600 text-white font-black flex items-center justify-center gap-2">
-              <Lock size={18} />
-              UPDATE PASSWORD
+            <MagneticButton
+              onClick={handleUpdatePassword}
+              disabled={updatingPassword}
+              className="w-full md:w-auto bg-gradient-to-r from-danger to-red-600 text-white font-black flex items-center justify-center gap-2"
+            >
+              {updatingPassword ? <Loader2 className="animate-spin" size={18} /> : <Lock size={18} />}
+              {updatingPassword ? 'UPDATING...' : 'UPDATE PASSWORD'}
             </MagneticButton>
           </CardContent>
         </Card>
@@ -586,9 +596,13 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <MagneticButton className="w-full md:w-auto bg-gradient-to-r from-primary to-blue-600 text-white font-black flex items-center justify-center gap-2">
-              <Save size={18} />
-              SAVE PREFERENCES
+            <MagneticButton
+              onClick={handleSaveNotifications}
+              disabled={savingNotifications}
+              className="w-full md:w-auto bg-gradient-to-r from-primary to-blue-600 text-white font-black flex items-center justify-center gap-2"
+            >
+              {savingNotifications ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+              {savingNotifications ? 'SAVING...' : 'SAVE PREFERENCES'}
             </MagneticButton>
           </CardContent>
         </Card>

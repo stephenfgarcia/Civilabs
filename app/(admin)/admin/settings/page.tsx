@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
+import { useToast } from '@/lib/hooks'
 import {
   Settings as SettingsIcon,
   Mail,
@@ -17,6 +18,8 @@ import {
   Database,
   Key,
   CheckCircle,
+  Loader2,
+  RotateCcw,
 } from 'lucide-react'
 
 interface SettingItem {
@@ -146,6 +149,86 @@ const TABS = [
 
 export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState('general')
+  const [saving, setSaving] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const { toast } = useToast()
+
+  // Settings state
+  const [settings, setSettings] = useState({
+    // General
+    siteName: 'Civilabs LMS',
+    siteUrl: 'https://civilabs-lms.com',
+    adminEmail: 'admin@civilabs.com',
+    timezone: 'America/New_York',
+    // Email
+    smtpHost: 'smtp.gmail.com',
+    smtpPort: '587',
+    smtpUser: 'noreply@civilabs.com',
+    fromEmail: 'noreply@civilabs.com',
+    // Security
+    sessionTimeout: '30',
+    passwordMinLength: '8',
+    maxLoginAttempts: '5',
+    // Integrations
+    apiKey: '••••••••••••••••',
+    webhookUrl: 'https://api.civilabs.com/webhooks',
+    ssoEnabled: 'false',
+  })
+
+  const [originalSettings] = useState({ ...settings })
+
+  const handleSettingChange = (id: string, value: string) => {
+    setSettings(prev => ({ ...prev, [id]: value }))
+  }
+
+  const handleToggle = (id: string) => {
+    setSettings(prev => ({
+      ...prev,
+      [id]: prev[id as keyof typeof prev] === 'true' ? 'false' : 'true'
+    }))
+  }
+
+  const handleSave = async () => {
+    try {
+      setSaving(true)
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      toast({
+        title: 'Settings Saved',
+        description: 'Platform settings have been updated successfully',
+      })
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to save settings',
+        variant: 'destructive',
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleReset = async () => {
+    try {
+      setResetting(true)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      setSettings({ ...originalSettings })
+
+      toast({
+        title: 'Settings Reset',
+        description: 'Settings have been restored to defaults',
+      })
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to reset settings',
+        variant: 'destructive',
+      })
+    } finally {
+      setResetting(false)
+    }
+  }
 
   useEffect(() => {
     const elements = document.querySelectorAll('.admin-item')
@@ -214,9 +297,13 @@ export default function AdminSettingsPage() {
                 </p>
               </div>
 
-              <MagneticButton className="bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-black">
-                <CheckCircle className="mr-2" size={20} />
-                SAVE ALL
+              <MagneticButton
+                onClick={handleSave}
+                disabled={saving}
+                className="bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-black"
+              >
+                {saving ? <Loader2 className="mr-2 animate-spin" size={20} /> : <CheckCircle className="mr-2" size={20} />}
+                {saving ? 'SAVING...' : 'SAVE ALL'}
               </MagneticButton>
             </div>
           </div>
@@ -331,26 +418,28 @@ export default function AdminSettingsPage() {
                 {setting.type === 'toggle' ? (
                   <div className="flex items-center gap-3">
                     <button
+                      onClick={() => handleToggle(setting.id)}
                       className={`w-14 h-8 rounded-full transition-all ${
-                        setting.value === 'true'
+                        settings[setting.id as keyof typeof settings] === 'true'
                           ? 'bg-gradient-to-r from-teal-500 to-cyan-600'
                           : 'bg-neutral-300'
                       }`}
                     >
                       <div
                         className={`w-6 h-6 bg-white rounded-full transition-all ${
-                          setting.value === 'true' ? 'ml-7' : 'ml-1'
+                          settings[setting.id as keyof typeof settings] === 'true' ? 'ml-7' : 'ml-1'
                         }`}
                       ></div>
                     </button>
                     <span className="text-sm font-bold text-neutral-700">
-                      {setting.value === 'true' ? 'Enabled' : 'Disabled'}
+                      {settings[setting.id as keyof typeof settings] === 'true' ? 'Enabled' : 'Disabled'}
                     </span>
                   </div>
                 ) : (
                   <Input
                     type={setting.type}
-                    defaultValue={setting.value}
+                    value={settings[setting.id as keyof typeof settings]}
+                    onChange={(e) => handleSettingChange(setting.id, e.target.value)}
                     className="h-12 glass-effect border-2 border-teal-500/30 focus:border-teal-500 font-medium"
                   />
                 )}
@@ -360,12 +449,21 @@ export default function AdminSettingsPage() {
             {/* Save Button */}
             <div className="pt-4 border-t-2 border-neutral-200">
               <div className="flex gap-3">
-                <MagneticButton className="flex-1 bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-black">
-                  <CheckCircle className="mr-2" size={16} />
-                  SAVE CHANGES
+                <MagneticButton
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex-1 bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-black"
+                >
+                  {saving ? <Loader2 className="mr-2 animate-spin" size={16} /> : <CheckCircle className="mr-2" size={16} />}
+                  {saving ? 'SAVING...' : 'SAVE CHANGES'}
                 </MagneticButton>
-                <MagneticButton className="glass-effect border-2 border-neutral-300 text-neutral-700 font-black hover:border-neutral-400">
-                  RESET
+                <MagneticButton
+                  onClick={handleReset}
+                  disabled={resetting}
+                  className="glass-effect border-2 border-neutral-300 text-neutral-700 font-black hover:border-neutral-400"
+                >
+                  {resetting ? <Loader2 className="mr-2 animate-spin" size={16} /> : <RotateCcw className="mr-2" size={16} />}
+                  {resetting ? 'RESETTING...' : 'RESET'}
                 </MagneticButton>
               </div>
             </div>

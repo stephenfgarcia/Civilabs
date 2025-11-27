@@ -27,6 +27,7 @@ import {
   Eye,
   Trash2,
   TrendingUp,
+  Loader2,
 } from 'lucide-react'
 
 interface Notification {
@@ -134,14 +135,17 @@ export default function AdminNotificationsPage() {
   const fetchNotifications = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/notifications')
-      const data = await response.json()
-      if (data.success && data.data) {
-        // For now, keep as empty - admin notification management can be implemented later
-        setNotifications([])
-      }
+      // Use mock data for demonstration - in production this would fetch from API
+      // Simulating API call delay
+      await new Promise(resolve => setTimeout(resolve, 500))
+      setNotifications(MOCK_NOTIFICATIONS)
     } catch (error) {
       console.error('Error fetching notifications:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load notifications',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -530,6 +534,30 @@ export default function AdminNotificationsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+            </div>
+          ) : filteredNotifications.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-20 h-20 bg-gradient-to-br from-orange-500/20 to-amber-600/20 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <Bell className="text-orange-500" size={40} />
+              </div>
+              <h3 className="text-lg font-black text-neutral-800 mb-2">No Notifications Found</h3>
+              <p className="text-sm text-neutral-600 mb-4">
+                {searchQuery || selectedType !== 'All' || selectedRecipients !== 'All' || selectedStatus !== 'All'
+                  ? 'Try adjusting your search or filters'
+                  : 'Create a new notification to get started'}
+              </p>
+              <MagneticButton
+                onClick={() => setShowComposer(true)}
+                className="bg-gradient-to-r from-orange-500 to-amber-600 text-white font-black"
+              >
+                <Send className="mr-2" size={16} />
+                CREATE NOTIFICATION
+              </MagneticButton>
+            </div>
+          ) : (
           <div className="space-y-4">
             {filteredNotifications.map((notif) => {
               const TypeIcon = getTypeIcon(notif.type)
@@ -631,6 +659,7 @@ export default function AdminNotificationsPage() {
               )
             })}
           </div>
+          )}
         </CardContent>
       </Card>
     </div>

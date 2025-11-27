@@ -26,15 +26,13 @@ import {
 } from 'lucide-react'
 
 interface ContentFile {
-  id: number
+  id: string
   name: string
   type: 'video' | 'document' | 'image' | 'other'
   size: string
+  sizeBytes: number
   uploadDate: string
-  uploadedBy: string
-  downloads: number
-  status: 'active' | 'archived'
-  thumbnailUrl?: string
+  path: string
 }
 
 const FILE_TYPES = ['All', 'Videos', 'Documents', 'Images', 'Other']
@@ -66,17 +64,20 @@ export default function ContentPage() {
   const fetchMediaData = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/media')
+      const response = await fetch('/api/media/files')
       const data = await response.json()
 
       if (data.success && data.data) {
-        setMediaStats(data.data)
-        // Transform storage data to files list if needed
-        // For now, keep empty as we're showing stats
-        setFiles([])
+        setFiles(data.data.files || [])
+        setMediaStats(data.data.stats)
       }
     } catch (error) {
       console.error('Error fetching media:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load media files',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -123,8 +124,7 @@ export default function ContentPage() {
 
   const filteredFiles = files.filter(file => {
     const matchesSearch = !searchQuery ||
-      file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      file.uploadedBy.toLowerCase().includes(searchQuery.toLowerCase())
+      file.name.toLowerCase().includes(searchQuery.toLowerCase())
 
     let matchesType = selectedType === 'All'
     if (selectedType === 'Videos') matchesType = file.type === 'video'
@@ -162,8 +162,9 @@ export default function ContentPage() {
   }
 
   const totalSize = '1.2 TB'
-  const usedSize = '487 GB'
-  const usagePercentage = 39
+  const usedSize = mediaStats?.totalSize || '0 Bytes'
+  const totalFiles = mediaStats?.totalFiles || files.length
+  const usagePercentage = Math.min(Math.round((files.reduce((acc, f) => acc + (f.sizeBytes || 0), 0) / (1.2 * 1024 * 1024 * 1024 * 1024)) * 100), 100)
 
   return (
     <div className="space-y-6">
@@ -224,7 +225,7 @@ export default function ContentPage() {
         <Card className="admin-item opacity-0 glass-effect concrete-texture border-4 border-indigo-500/40">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-black bg-gradient-to-r from-indigo-500 to-blue-600 bg-clip-text text-transparent mb-2">
-              {files.length}
+              {totalFiles}
             </div>
             <p className="text-sm font-bold text-neutral-600">TOTAL FILES</p>
           </CardContent>
@@ -242,23 +243,18 @@ export default function ContentPage() {
         <Card className="admin-item opacity-0 glass-effect concrete-texture border-4 border-warning/40">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-black bg-gradient-to-r from-warning to-orange-600 bg-clip-text text-transparent mb-2">
-              {files.reduce((acc, f) => acc + f.downloads, 0)}
+              {mediaStats?.byType?.image || 0}
             </div>
-            <p className="text-sm font-bold text-neutral-600">TOTAL DOWNLOADS</p>
+            <p className="text-sm font-bold text-neutral-600">IMAGES</p>
           </CardContent>
         </Card>
 
         <Card className="admin-item opacity-0 glass-effect concrete-texture border-4 border-secondary/40">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-black bg-gradient-to-r from-secondary to-purple-600 bg-clip-text text-transparent mb-2">
-              {files.filter(f => {
-                const uploadDate = new Date(f.uploadDate)
-                const weekAgo = new Date()
-                weekAgo.setDate(weekAgo.getDate() - 7)
-                return uploadDate > weekAgo
-              }).length}
+              {mediaStats?.byType?.video || 0}
             </div>
-            <p className="text-sm font-bold text-neutral-600">RECENT UPLOADS</p>
+            <p className="text-sm font-bold text-neutral-600">VIDEOS</p>
           </CardContent>
         </Card>
       </div>
@@ -345,71 +341,111 @@ export default function ContentPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredFiles.map((file) => {
-              const FileIcon = getFileIcon(file.type)
-              const fileColor = getFileColor(file.type)
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            </div>
+          ) : filteredFiles.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-20 h-20 bg-gradient-to-br from-indigo-500/20 to-blue-600/20 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <Files className="text-indigo-500" size={40} />
+              </div>
+              <h3 className="text-lg font-black text-neutral-800 mb-2">No Files Found</h3>
+              <p className="text-sm text-neutral-600 mb-4">
+                {searchQuery || selectedType !== 'All'
+                  ? 'Try adjusting your search or filter'
+                  : 'Upload some files to get started'}
+              </p>
+              <MagneticButton
+                onClick={handleUploadClick}
+                className="bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-black"
+              >
+                <Upload className="mr-2" size={16} />
+                UPLOAD FILES
+              </MagneticButton>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredFiles.map((file) => {
+                const FileIcon = getFileIcon(file.type)
+                const fileColor = getFileColor(file.type)
 
-              return (
-                <div
-                  key={file.id}
-                  className="glass-effect rounded-lg p-6 hover:bg-white/50 transition-all border-2 border-transparent hover:border-indigo-500/30"
-                >
-                  <div className="space-y-4">
-                    {/* File Icon */}
-                    <div className={`w-16 h-16 bg-gradient-to-br ${fileColor} rounded-lg flex items-center justify-center mx-auto`}>
-                      <FileIcon className="text-white" size={32} />
-                    </div>
-
-                    {/* File Info */}
-                    <div className="text-center">
-                      <h3 className="text-base font-black text-neutral-800 mb-2 truncate" title={file.name}>
-                        {file.name}
-                      </h3>
-                      <div className="flex items-center justify-center gap-2 text-xs text-neutral-600 mb-1">
-                        <HardDrive size={12} />
-                        <span>{file.size}</span>
+                return (
+                  <div
+                    key={file.id}
+                    className="glass-effect rounded-lg p-6 hover:bg-white/50 transition-all border-2 border-transparent hover:border-indigo-500/30"
+                  >
+                    <div className="space-y-4">
+                      {/* File Icon */}
+                      <div className={`w-16 h-16 bg-gradient-to-br ${fileColor} rounded-lg flex items-center justify-center mx-auto`}>
+                        <FileIcon className="text-white" size={32} />
                       </div>
-                      <div className="flex items-center justify-center gap-2 text-xs text-neutral-600">
-                        <Download size={12} />
-                        <span>{file.downloads} downloads</span>
+
+                      {/* File Info */}
+                      <div className="text-center">
+                        <h3 className="text-base font-black text-neutral-800 mb-2 truncate" title={file.name}>
+                          {file.name}
+                        </h3>
+                        <div className="flex items-center justify-center gap-2 text-xs text-neutral-600 mb-1">
+                          <HardDrive size={12} />
+                          <span>{file.size}</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-2 text-xs text-neutral-600">
+                          <Clock size={12} />
+                          <span>{new Date(file.uploadDate).toLocaleDateString()}</span>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Type Badge */}
-                    <div className="text-center">
-                      <span className={`inline-block px-3 py-1 rounded-full bg-gradient-to-r ${fileColor} text-white font-black text-xs uppercase`}>
-                        {file.type}
-                      </span>
-                    </div>
+                      {/* Type Badge */}
+                      <div className="text-center">
+                        <span className={`inline-block px-3 py-1 rounded-full bg-gradient-to-r ${fileColor} text-white font-black text-xs uppercase`}>
+                          {file.type}
+                        </span>
+                      </div>
 
-                    {/* Actions */}
-                    <div className="grid grid-cols-3 gap-2">
-                      <button className="h-10 glass-effect border-2 border-primary/30 rounded-lg flex items-center justify-center hover:border-primary/60 hover:bg-primary/10 transition-all">
-                        <Eye size={16} className="text-primary" />
-                      </button>
-                      <button className="h-10 glass-effect border-2 border-success/30 rounded-lg flex items-center justify-center hover:border-success/60 hover:bg-success/10 transition-all">
-                        <Download size={16} className="text-success" />
-                      </button>
-                      <button className="h-10 glass-effect border-2 border-danger/30 rounded-lg flex items-center justify-center hover:border-danger/60 hover:bg-danger/10 transition-all">
-                        <Trash2 size={16} className="text-danger" />
-                      </button>
-                    </div>
+                      {/* Actions */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          onClick={() => window.open(file.path, '_blank')}
+                          className="h-10 glass-effect border-2 border-primary/30 rounded-lg flex items-center justify-center hover:border-primary/60 hover:bg-primary/10 transition-all"
+                          title="View file"
+                        >
+                          <Eye size={16} className="text-primary" />
+                        </button>
+                        <a
+                          href={file.path}
+                          download={file.name}
+                          className="h-10 glass-effect border-2 border-success/30 rounded-lg flex items-center justify-center hover:border-success/60 hover:bg-success/10 transition-all"
+                          title="Download file"
+                        >
+                          <Download size={16} className="text-success" />
+                        </a>
+                        <button
+                          onClick={() => {
+                            toast({
+                              title: 'Delete',
+                              description: 'File deletion requires server-side implementation',
+                            })
+                          }}
+                          className="h-10 glass-effect border-2 border-danger/30 rounded-lg flex items-center justify-center hover:border-danger/60 hover:bg-danger/10 transition-all"
+                          title="Delete file"
+                        >
+                          <Trash2 size={16} className="text-danger" />
+                        </button>
+                      </div>
 
-                    {/* Footer */}
-                    <div className="text-center pt-3 border-t-2 border-neutral-200">
-                      <p className="text-xs text-neutral-500">
-                        Uploaded by <span className="font-bold">{file.uploadedBy}</span>
-                      </p>
-                      <p className="text-xs text-neutral-500">
-                        {new Date(file.uploadDate).toLocaleDateString()}
-                      </p>
+                      {/* Footer */}
+                      <div className="text-center pt-3 border-t-2 border-neutral-200">
+                        <p className="text-xs text-neutral-500 truncate" title={file.path}>
+                          {file.path}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
