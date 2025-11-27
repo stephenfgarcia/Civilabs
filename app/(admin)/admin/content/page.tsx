@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/lib/hooks'
 import { mediaService } from '@/lib/services'
 import {
   Files,

@@ -6,7 +6,7 @@ import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/lib/hooks'
 import {
   GraduationCap,
   Search,

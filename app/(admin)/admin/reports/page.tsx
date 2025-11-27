@@ -8,7 +8,7 @@ import { DistributionChart } from '@/components/charts/DistributionChart'
 import { TrendChart } from '@/components/charts/TrendChart'
 import { ComparisonChart } from '@/components/charts/ComparisonChart'
 import { ActivityChart } from '@/components/charts/ActivityChart'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/lib/hooks'
 import { usersService, coursesService, adminEnrollmentsService, certificatesService } from '@/lib/services'
 import {
   BarChart3,

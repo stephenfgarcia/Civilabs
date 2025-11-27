@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/lib/hooks'
 import { usersService, notificationsService } from '@/lib/services'
 import {
   Settings as SettingsIcon,

@@ -32,3 +32,6 @@ export {
   useNotificationPreferences,
   useUnreadCount,
 } from './use-notifications'
+
+// Toast hook
+export { useToast } from './use-toast'

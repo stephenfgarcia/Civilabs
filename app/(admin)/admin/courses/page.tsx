@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConstructionLoader } from '@/components/ui/construction-loader'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/lib/hooks'
 import {
   BookOpen,
   Search,

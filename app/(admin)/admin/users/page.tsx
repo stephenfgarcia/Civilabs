@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { ConstructionLoader } from '@/components/ui/construction-loader'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { adminUsersService, type AdminUser } from '@/lib/services/admin-users.service'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/lib/hooks'
 import {
   Users,
   Search,
