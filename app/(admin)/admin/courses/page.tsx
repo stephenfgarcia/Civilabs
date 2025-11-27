@@ -29,12 +29,22 @@ interface Course {
   id: string
   title: string
   description?: string
-  category: string
+  category?: {
+    id: string
+    name: string
+    slug: string
+  } | null
+  categoryId?: string | null
   difficulty?: string
-  duration: number
-  price: number
+  difficultyLevel?: string
+  duration?: number
+  durationMinutes?: number
+  price?: number
+  metadata?: {
+    price?: number
+  }
   thumbnail?: string
-  published: boolean
+  published?: boolean
   publishedAt?: string | null
   tags?: string[]
   instructor?: {
@@ -49,6 +59,34 @@ interface Course {
   }
   createdAt?: string
   updatedAt?: string
+}
+
+// Helper function to get category name
+const getCategoryName = (course: Course): string => {
+  if (course.category && typeof course.category === 'object') {
+    return course.category.name
+  }
+  return 'Uncategorized'
+}
+
+// Helper function to get difficulty
+const getDifficulty = (course: Course): string => {
+  return course.difficulty || course.difficultyLevel || 'beginner'
+}
+
+// Helper function to get duration
+const getDuration = (course: Course): number => {
+  return course.duration || course.durationMinutes || 0
+}
+
+// Helper function to get price
+const getPrice = (course: Course): number => {
+  return course.price ?? course.metadata?.price ?? 0
+}
+
+// Helper function to check if published
+const isPublished = (course: Course): boolean => {
+  return course.published || course.publishedAt !== null
 }
 
 const STATUSES = ['All', 'Published', 'Draft']
@@ -138,14 +176,14 @@ export default function CoursesPage() {
 
     if (selectedStatus !== 'All') {
       if (selectedStatus === 'Published') {
-        filtered = filtered.filter(course => course.published)
+        filtered = filtered.filter(course => isPublished(course))
       } else if (selectedStatus === 'Draft') {
-        filtered = filtered.filter(course => !course.published)
+        filtered = filtered.filter(course => !isPublished(course))
       }
     }
 
     if (selectedCategory !== 'All') {
-      filtered = filtered.filter(course => course.category === selectedCategory)
+      filtered = filtered.filter(course => getCategoryName(course) === selectedCategory)
     }
 
     setFilteredCourses(filtered)
@@ -174,10 +212,10 @@ export default function CoursesPage() {
     setFormData({
       title: course.title,
       description: course.description || '',
-      category: course.category,
-      difficulty: course.difficulty || 'Beginner',
-      duration: course.duration,
-      price: course.price,
+      category: getCategoryName(course),
+      difficulty: getDifficulty(course),
+      duration: getDuration(course),
+      price: getPrice(course),
       thumbnail: course.thumbnail || '',
       tags: course.tags || []
     })
@@ -190,13 +228,14 @@ export default function CoursesPage() {
   }
 
   const handleTogglePublish = async (course: Course) => {
+    const currentlyPublished = isPublished(course)
     try {
       const response = await fetch(`/api/courses/${course.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          published: !course.published,
-          publishedAt: !course.published ? new Date().toISOString() : null
+          published: !currentlyPublished,
+          publishedAt: !currentlyPublished ? new Date().toISOString() : null
         })
       })
 
@@ -205,7 +244,7 @@ export default function CoursesPage() {
       if (result.success) {
         toast({
           title: 'Success',
-          description: `Course ${!course.published ? 'published' : 'unpublished'} successfully`
+          description: `Course ${!currentlyPublished ? 'published' : 'unpublished'} successfully`
         })
         loadCourses()
       } else {
@@ -442,7 +481,7 @@ export default function CoursesPage() {
         <Card className="courses-item opacity-0 glass-effect concrete-texture border-4 border-success/40">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-black bg-gradient-to-r from-success to-green-600 bg-clip-text text-transparent mb-2">
-              {courses.filter(c => c.published).length}
+              {courses.filter(c => isPublished(c)).length}
             </div>
             <p className="text-sm font-bold text-neutral-600">PUBLISHED</p>
           </CardContent>
@@ -460,7 +499,7 @@ export default function CoursesPage() {
         <Card className="courses-item opacity-0 glass-effect concrete-texture border-4 border-secondary/40">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-black bg-gradient-to-r from-secondary to-purple-600 bg-clip-text text-transparent mb-2">
-              {courses.filter(c => !c.published).length}
+              {courses.filter(c => !isPublished(c)).length}
             </div>
             <p className="text-sm font-bold text-neutral-600">DRAFTS</p>
           </CardContent>
@@ -544,15 +583,15 @@ export default function CoursesPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={`px-3 py-1 rounded-full bg-gradient-to-r ${getStatusColor(course.published)} text-white font-black text-xs uppercase`}>
-                        {course.published ? 'PUBLISHED' : 'DRAFT'}
+                      <span className={`px-3 py-1 rounded-full bg-gradient-to-r ${getStatusColor(isPublished(course))} text-white font-black text-xs uppercase`}>
+                        {isPublished(course) ? 'PUBLISHED' : 'DRAFT'}
                       </span>
                       <span className="text-xs font-bold px-3 py-1 rounded-full bg-primary/20 text-primary">
-                        {course.category}
+                        {getCategoryName(course)}
                       </span>
-                      {course.difficulty && (
+                      {getDifficulty(course) && (
                         <span className="text-xs font-bold px-3 py-1 rounded-full bg-secondary/20 text-secondary">
-                          {course.difficulty.toUpperCase()}
+                          {getDifficulty(course).toUpperCase()}
                         </span>
                       )}
                     </div>
@@ -588,7 +627,7 @@ export default function CoursesPage() {
                   </div>
                   <div className="text-center">
                     <Clock className="mx-auto mb-1 text-warning" size={20} />
-                    <p className="font-black text-neutral-800">{formatDuration(course.duration)}</p>
+                    <p className="font-black text-neutral-800">{formatDuration(getDuration(course))}</p>
                     <p className="text-xs text-neutral-600">Duration</p>
                   </div>
                 </div>
@@ -596,7 +635,7 @@ export default function CoursesPage() {
                 {/* Price & Tags */}
                 <div className="flex items-center justify-between text-sm">
                   <div className="font-black text-success">
-                    {course.price === 0 ? 'FREE' : `$${course.price}`}
+                    {getPrice(course) === 0 ? 'FREE' : `$${getPrice(course)}`}
                   </div>
                   {course.tags && course.tags.length > 0 && (
                     <div className="flex gap-1 flex-wrap">
@@ -619,12 +658,12 @@ export default function CoursesPage() {
                   <MagneticButton
                     onClick={() => handleTogglePublish(course)}
                     className={`flex-1 glass-effect border-2 font-black ${
-                      course.published
+                      isPublished(course)
                         ? 'border-warning/30 text-neutral-700 hover:border-warning/60'
                         : 'border-success/30 text-neutral-700 hover:border-success/60'
                     }`}
                   >
-                    {course.published ? (
+                    {isPublished(course) ? (
                       <>
                         <XCircle className="mr-2" size={16} />
                         UNPUBLISH

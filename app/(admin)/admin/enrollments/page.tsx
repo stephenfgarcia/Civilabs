@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useToast } from '@/hooks/use-toast'
 import {
   GraduationCap,
   Search,
@@ -24,6 +27,20 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import adminEnrollmentsService, { AdminEnrollment } from '@/lib/services/admin-enrollments.service'
+import { usersService } from '@/lib/services/users.service'
+import { coursesService } from '@/lib/services/courses.service'
+
+interface SelectUser {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+}
+
+interface SelectCourse {
+  id: string
+  title: string
+}
 
 const MOCK_ENROLLMENTS_OLD: any[] = [
   {
@@ -100,6 +117,7 @@ const MOCK_ENROLLMENTS_OLD: any[] = [
 const STATUSES = ['All', 'ENROLLED', 'IN_PROGRESS', 'COMPLETED', 'DROPPED', 'SUSPENDED']
 
 export default function EnrollmentsPage() {
+  const { toast } = useToast()
   const [enrollments, setEnrollments] = useState<AdminEnrollment[]>([])
   const [filteredEnrollments, setFilteredEnrollments] = useState<AdminEnrollment[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -108,6 +126,16 @@ export default function EnrollmentsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [courses, setCourses] = useState<string[]>(['All'])
+
+  // Enroll User Modal State
+  const [enrollModalOpen, setEnrollModalOpen] = useState(false)
+  const [enrollLoading, setEnrollLoading] = useState(false)
+  const [availableUsers, setAvailableUsers] = useState<SelectUser[]>([])
+  const [availableCourses, setAvailableCourses] = useState<SelectCourse[]>([])
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [selectedCourseId, setSelectedCourseId] = useState('')
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [loadingCourses, setLoadingCourses] = useState(false)
 
   // Fetch enrollments
   useEffect(() => {
@@ -184,12 +212,112 @@ export default function EnrollmentsPage() {
       const response = await adminEnrollmentsService.deleteEnrollment(id)
       if (response.success) {
         setEnrollments(prev => prev.filter(e => e.id !== id))
+        toast({
+          title: 'Success',
+          description: 'User has been unenrolled successfully',
+        })
       } else {
-        alert(response.error || 'Failed to delete enrollment')
+        toast({
+          title: 'Error',
+          description: response.error || 'Failed to delete enrollment',
+          variant: 'destructive',
+        })
       }
     } catch (error) {
-      alert('An error occurred while deleting the enrollment')
+      toast({
+        title: 'Error',
+        description: 'An error occurred while deleting the enrollment',
+        variant: 'destructive',
+      })
       console.error(error)
+    }
+  }
+
+  // Open enroll modal and fetch users/courses
+  const openEnrollModal = async () => {
+    setEnrollModalOpen(true)
+    setSelectedUserId('')
+    setSelectedCourseId('')
+
+    // Fetch users
+    setLoadingUsers(true)
+    try {
+      const response = await usersService.getUsers()
+      if (response.data) {
+        const users = Array.isArray(response.data) ? response.data : (response.data as any).data || []
+        setAvailableUsers(users.map((u: any) => ({
+          id: String(u.id),
+          firstName: u.firstName,
+          lastName: u.lastName,
+          email: u.email,
+        })))
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err)
+    } finally {
+      setLoadingUsers(false)
+    }
+
+    // Fetch courses
+    setLoadingCourses(true)
+    try {
+      const response = await coursesService.getCourses()
+      if (response.data) {
+        const coursesList = Array.isArray(response.data) ? response.data : (response.data as any).data || []
+        setAvailableCourses(coursesList.map((c: any) => ({
+          id: String(c.id),
+          title: c.title,
+        })))
+      }
+    } catch (err) {
+      console.error('Error fetching courses:', err)
+    } finally {
+      setLoadingCourses(false)
+    }
+  }
+
+  // Handle enroll user
+  const handleEnrollUser = async () => {
+    if (!selectedUserId || !selectedCourseId) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please select both a user and a course',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setEnrollLoading(true)
+    try {
+      const response = await adminEnrollmentsService.enrollUser({
+        userId: selectedUserId,
+        courseId: selectedCourseId,
+        enrollmentType: 'ASSIGNED',
+      })
+
+      if (response.success && response.data) {
+        setEnrollments(prev => [response.data!, ...prev])
+        setEnrollModalOpen(false)
+        toast({
+          title: 'Success',
+          description: 'User enrolled successfully',
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: response.error || 'Failed to enroll user',
+          variant: 'destructive',
+        })
+      }
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'An error occurred while enrolling user',
+        variant: 'destructive',
+      })
+      console.error(err)
+    } finally {
+      setEnrollLoading(false)
     }
   }
 
@@ -239,7 +367,10 @@ export default function EnrollmentsPage() {
                 </p>
               </div>
 
-              <MagneticButton className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black">
+              <MagneticButton
+                onClick={openEnrollModal}
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black"
+              >
                 <UserPlus className="mr-2" size={20} />
                 ENROLL USER
               </MagneticButton>
@@ -495,6 +626,95 @@ export default function EnrollmentsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Enroll User Modal */}
+      <Dialog open={enrollModalOpen} onOpenChange={setEnrollModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black bg-gradient-to-r from-cyan-500 to-blue-600 bg-clip-text text-transparent">
+              Enroll User
+            </DialogTitle>
+            <DialogDescription>
+              Select a user and a course to create a new enrollment.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* User Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-neutral-700">Select User</label>
+              {loadingUsers ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="animate-spin text-primary" size={24} />
+                </div>
+              ) : (
+                <select
+                  value={selectedUserId}
+                  onChange={(e) => setSelectedUserId(e.target.value)}
+                  className="w-full h-12 px-4 rounded-lg border-2 border-neutral-200 focus:border-cyan-500 focus:outline-none font-medium bg-white"
+                >
+                  <option value="">-- Select a User --</option>
+                  {availableUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.firstName} {user.lastName} ({user.email})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Course Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-neutral-700">Select Course</label>
+              {loadingCourses ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="animate-spin text-primary" size={24} />
+                </div>
+              ) : (
+                <select
+                  value={selectedCourseId}
+                  onChange={(e) => setSelectedCourseId(e.target.value)}
+                  className="w-full h-12 px-4 rounded-lg border-2 border-neutral-200 focus:border-cyan-500 focus:outline-none font-medium bg-white"
+                >
+                  <option value="">-- Select a Course --</option>
+                  {availableCourses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setEnrollModalOpen(false)}
+              disabled={enrollLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEnrollUser}
+              disabled={enrollLoading || !selectedUserId || !selectedCourseId}
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold"
+            >
+              {enrollLoading ? (
+                <>
+                  <Loader2 className="mr-2 animate-spin" size={16} />
+                  Enrolling...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="mr-2" size={16} />
+                  Enroll User
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
