@@ -15,7 +15,7 @@ export const GET = withRole(['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'], async (reque
   try {
     const instructorId = String(user.userId)
 
-    // Get instructor's courses
+    // Get instructor's courses with reviews
     const courses = await prisma.course.findMany({
       where: {
         instructorId,
@@ -25,6 +25,11 @@ export const GET = withRole(['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'], async (reque
         enrollments: {
           include: {
             user: true,
+          },
+        },
+        reviews: {
+          select: {
+            rating: true,
           },
         },
         _count: {
@@ -47,8 +52,11 @@ export const GET = withRole(['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'], async (reque
     )
     const uniqueStudents = uniqueStudentIds.size
 
-    // Calculate average rating (placeholder - implement when review system is ready)
-    const avgRating = 4.8
+    // Calculate average rating from actual reviews
+    const allReviews = courses.flatMap(course => course.reviews)
+    const avgRating = allReviews.length > 0
+      ? Math.round((allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length) * 10) / 10
+      : 0
 
     // Calculate completion rate
     const completedEnrollments = courses.reduce(
@@ -90,12 +98,37 @@ export const GET = withRole(['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'], async (reque
       take: 10,
     })
 
-    // Get pending tasks (assignments to grade, discussions to respond to, etc.)
-    // This is a placeholder - implement when assignment system is ready
+    // Get pending tasks - count actual submissions needing grading and discussions needing response
+    const courseIds = courses.map(c => c.id)
+
+    // Count assignments with submitted but ungraded submissions
+    const assignmentsToGrade = await prisma.assignmentSubmission.count({
+      where: {
+        assignment: {
+          courseId: { in: courseIds },
+          instructorId,
+        },
+        status: 'SUBMITTED',
+        grade: null,
+      },
+    })
+
+    // Count discussions in instructor's courses that need responses (threads with no replies)
+    const discussionsToRespond = await prisma.discussionThread.count({
+      where: {
+        courseId: { in: courseIds },
+        isLocked: false,
+        isSolved: false,
+        replies: {
+          none: {},
+        },
+      },
+    })
+
     const pendingTasks = {
-      assignmentsToGrade: 0,
-      discussionsToRespond: 0,
-      quizzesToReview: 0,
+      assignmentsToGrade,
+      discussionsToRespond,
+      quizzesToReview: 0, // Quiz reviews handled automatically
     }
 
     // Get top performing courses

@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
-import { discussionsService } from '@/lib/services'
 import {
   MessageSquare,
   Search,
@@ -28,7 +27,7 @@ import {
 import Link from 'next/link'
 
 interface Discussion {
-  id: number
+  id: string
   title: string
   author: string
   authorEmail: string
@@ -45,92 +44,7 @@ interface Discussion {
   flagReason?: string
 }
 
-const MOCK_DISCUSSIONS: Discussion[] = [
-  {
-    id: 1,
-    title: 'Best practices for fall protection systems?',
-    author: 'John Doe',
-    authorEmail: 'john.doe@civilabs.com',
-    category: 'Safety',
-    isPinned: true,
-    isLocked: false,
-    isSolved: true,
-    isFlagged: false,
-    replies: 18,
-    likes: 34,
-    views: 245,
-    createdDate: '2024-02-01',
-    lastActivity: '2 hours ago',
-  },
-  {
-    id: 2,
-    title: 'How to operate excavator safely on slopes?',
-    author: 'Mike Chen',
-    authorEmail: 'mike.chen@civilabs.com',
-    category: 'Equipment',
-    isPinned: false,
-    isLocked: false,
-    isSolved: false,
-    isFlagged: true,
-    replies: 12,
-    likes: 23,
-    views: 189,
-    createdDate: '2024-02-15',
-    lastActivity: '1 day ago',
-    flagReason: 'Spam content reported by users',
-  },
-  {
-    id: 3,
-    title: 'Certification renewal process',
-    author: 'Sarah Johnson',
-    authorEmail: 'sarah.j@civilabs.com',
-    category: 'Questions',
-    isPinned: false,
-    isLocked: true,
-    isSolved: true,
-    isFlagged: false,
-    replies: 8,
-    likes: 15,
-    views: 123,
-    createdDate: '2024-01-20',
-    lastActivity: '3 days ago',
-  },
-  {
-    id: 4,
-    title: 'Safety tips for working at heights',
-    author: 'Tom Wilson',
-    authorEmail: 'tom.w@civilabs.com',
-    category: 'Tips & Tricks',
-    isPinned: false,
-    isLocked: false,
-    isSolved: false,
-    isFlagged: false,
-    replies: 25,
-    likes: 48,
-    views: 356,
-    createdDate: '2024-02-10',
-    lastActivity: '5 hours ago',
-  },
-  {
-    id: 5,
-    title: 'SPAM: Buy cheap equipment here!!!',
-    author: 'Spammer User',
-    authorEmail: 'spam@example.com',
-    category: 'Questions',
-    isPinned: false,
-    isLocked: false,
-    isSolved: false,
-    isFlagged: true,
-    replies: 2,
-    likes: 0,
-    views: 45,
-    createdDate: '2024-03-01',
-    lastActivity: '1 hour ago',
-    flagReason: 'Spam and promotional content',
-  },
-]
-
-const CATEGORIES = ['All', 'Safety', 'Equipment', 'Questions', 'Tips & Tricks', 'Announcements']
+const CATEGORIES = ['All', 'Safety', 'Equipment', 'Questions', 'Tips & Tricks', 'Announcements', 'General']
 const STATUSES = ['All', 'Active', 'Solved', 'Locked', 'Flagged']
 
 export default function AdminDiscussionsPage() {
@@ -163,28 +77,48 @@ export default function AdminDiscussionsPage() {
       if (data.success && data.data) {
         // Transform API data to match UI interface
         const transformed = data.data.map((d: any) => ({
-          id: parseInt(d.id),
+          id: d.id,
           title: d.title,
-          author: `${d.author?.firstName || ''} ${d.author?.lastName || ''}`.trim(),
-          authorEmail: d.author?.email || '',
+          author: `${d.author?.firstName || ''} ${d.author?.lastName || ''}`.trim() || d.user?.firstName ? `${d.user.firstName} ${d.user.lastName}` : 'Unknown',
+          authorEmail: d.author?.email || d.user?.email || '',
           category: d.category || 'General',
           isPinned: d.isPinned || false,
           isLocked: d.isLocked || false,
           isSolved: d.isSolved || false,
-          isFlagged: false,
+          isFlagged: d.isFlagged || false,
           replies: d._count?.replies || 0,
           likes: d._count?.likes || 0,
-          views: d.views || 0,
+          views: d.viewCount || d.views || 0,
           createdDate: new Date(d.createdAt).toISOString().split('T')[0],
-          lastActivity: new Date(d.updatedAt).toLocaleDateString(),
+          lastActivity: formatRelativeTime(d.updatedAt),
         }))
         setDiscussions(transformed)
       }
     } catch (error) {
       console.error('Error fetching discussions:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load discussions',
+        variant: 'destructive'
+      })
     } finally {
       setLoading(false)
     }
+  }
+
+  const formatRelativeTime = (dateString: string): string => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins} min ago`
+    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
+    if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
+    return date.toLocaleDateString()
   }
 
   const filteredDiscussions = discussions.filter(discussion => {
@@ -202,16 +136,30 @@ export default function AdminDiscussionsPage() {
     return matchesSearch && matchesCategory && matchesStatus
   })
 
-  const togglePin = async (id: number) => {
+  const moderateDiscussion = async (id: string, action: string) => {
+    try {
+      const response = await fetch(`/api/discussions/${id}/moderate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      })
+      const data = await response.json()
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to moderate discussion')
+      }
+      return data
+    } catch (error) {
+      throw error
+    }
+  }
+
+  const togglePin = async (id: string) => {
     const discussion = discussions.find(d => d.id === id)
     if (!discussion) return
 
     try {
-      if (discussion.isPinned) {
-        await discussionsService.unpinDiscussion(id)
-      } else {
-        await discussionsService.pinDiscussion(id)
-      }
+      const action = discussion.isPinned ? 'unpin' : 'pin'
+      await moderateDiscussion(id, action)
 
       toast({
         title: 'Success',
@@ -231,13 +179,14 @@ export default function AdminDiscussionsPage() {
     }
   }
 
-  const toggleLock = async (id: number) => {
+  const toggleLock = async (id: string) => {
     const discussion = discussions.find(d => d.id === id)
     if (!discussion) return
 
     try {
-      // Note: Lock/unlock would need backend support
-      // For now, just update locally
+      const action = discussion.isLocked ? 'unlock' : 'lock'
+      await moderateDiscussion(id, action)
+
       toast({
         title: 'Success',
         description: `Discussion ${discussion.isLocked ? 'unlocked' : 'locked'} successfully`
@@ -255,25 +204,17 @@ export default function AdminDiscussionsPage() {
     }
   }
 
-  const markSolved = async (id: number, replyId?: string) => {
+  const markSolved = async (id: string) => {
     const discussion = discussions.find(d => d.id === id)
     if (!discussion) return
 
     try {
-      if (replyId) {
-        await discussionsService.markAsSolution(id, Number(replyId))
-      } else {
-        // Marking as solved through solution feature
-        toast({
-          title: 'Info',
-          description: 'Please mark a specific reply as the solution'
-        })
-        return
-      }
+      const action = discussion.isSolved ? 'unsolve' : 'solve'
+      await moderateDiscussion(id, action)
 
       toast({
         title: 'Success',
-        description: 'Discussion marked as solved'
+        description: `Discussion ${discussion.isSolved ? 'unmarked' : 'marked'} as solved`
       })
 
       setDiscussions(discussions.map(d =>
@@ -282,15 +223,26 @@ export default function AdminDiscussionsPage() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to mark as solved',
+        description: error instanceof Error ? error.message : 'Failed to update discussion',
         variant: 'destructive'
       })
     }
   }
 
-  const deleteDiscussion = async (id: number) => {
+  const deleteDiscussion = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this discussion? This action cannot be undone.')) {
+      return
+    }
+
     try {
-      await discussionsService.deleteDiscussion(id)
+      const response = await fetch(`/api/discussions/${id}`, {
+        method: 'DELETE'
+      })
+      const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to delete discussion')
+      }
 
       toast({
         title: 'Success',

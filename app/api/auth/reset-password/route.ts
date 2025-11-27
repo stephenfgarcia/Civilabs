@@ -16,38 +16,21 @@ export async function POST(request: NextRequest) {
     // Validate password length
     if (password.length < 8) {
       return NextResponse.json(
-        { error: 'Security code must be at least 8 characters long for site protection.' },
+        { error: 'Password must be at least 8 characters long.' },
         { status: 400 }
       )
     }
 
-    // TODO: Find user by reset token and check expiry
-    // Note: You'll need to add resetToken and resetTokenExpiry fields to your User model
-    // const user = await prisma.user.findFirst({
-    //   where: {
-    //     resetToken: token,
-    //     resetTokenExpiry: {
-    //       gte: new Date(), // Token must not be expired
-    //     },
-    //   },
-    // })
-
-    // TEMPORARY: For demo purposes, we'll skip token validation
-    // In production, you MUST implement proper token validation
-    console.warn('⚠️  WARNING: Password reset token validation is not fully implemented!')
-    console.warn('⚠️  You need to add resetToken and resetTokenExpiry fields to your Prisma User model')
-
-    // For now, just return an error message asking to implement this feature
-    return NextResponse.json(
-      {
-        error: 'Password reset feature requires database schema update. Please contact administrator.',
-        details: 'Add resetToken and resetTokenExpiry fields to User model in Prisma schema'
+    // Find user by reset token and check expiry
+    const user = await prisma.user.findFirst({
+      where: {
+        resetToken: token,
+        resetTokenExpiry: {
+          gte: new Date(), // Token must not be expired
+        },
       },
-      { status: 501 } // 501 Not Implemented
-    )
+    })
 
-    // PRODUCTION CODE (uncomment after adding fields to schema):
-    /*
     if (!user) {
       return NextResponse.json(
         { error: 'Invalid or expired reset token. Please request a new password reset.' },
@@ -72,7 +55,6 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Password has been reset successfully. You can now login with your new password.',
     })
-    */
   } catch (error) {
     console.error('Reset password error:', error)
     return NextResponse.json(

@@ -142,11 +142,25 @@ export default function SettingsPage() {
 
     try {
       setUpdatingPassword(true)
-      // Password update would need a separate endpoint
-      // For now, just show success
+
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update password')
+      }
+
       toast({
-        title: 'Info',
-        description: 'Password update would require a separate API endpoint'
+        title: 'Success',
+        description: 'Password updated successfully'
       })
 
       setPasswordForm({

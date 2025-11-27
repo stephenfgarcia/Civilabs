@@ -3,6 +3,42 @@ import { prisma } from '@/lib/utils/prisma'
 import crypto from 'crypto'
 import { checkRateLimit, createRateLimitResponse, RATE_LIMITS } from '@/lib/utils/rate-limit'
 
+// Email sending function - uses console in development, can be extended for production
+async function sendPasswordResetEmail(
+  email: string,
+  firstName: string,
+  resetUrl: string
+): Promise<boolean> {
+  // In production, integrate with email service (SendGrid, Nodemailer, AWS SES, etc.)
+  // For now, log to console for development/testing
+  const isProduction = process.env.NODE_ENV === 'production'
+
+  if (isProduction && process.env.SMTP_HOST) {
+    // Production email sending would go here
+    // Example: await sendWithNodemailer({ to: email, subject: '...', html: '...' })
+    console.log(`[EMAIL] Would send password reset email to: ${email}`)
+  }
+
+  // Always log for development/debugging
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+  console.log('📧 PASSWORD RESET EMAIL')
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+  console.log(`To: ${email}`)
+  console.log(`Name: ${firstName}`)
+  console.log(`Subject: Password Reset - Civilabs LMS`)
+  console.log('')
+  console.log(`Hi ${firstName},`)
+  console.log('')
+  console.log('You requested to reset your password. Click the link below:')
+  console.log(`🔗 ${resetUrl}`)
+  console.log('')
+  console.log('This link expires in 1 hour.')
+  console.log('If you did not request this, please ignore this email.')
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+
+  return true
+}
+
 export async function POST(request: NextRequest) {
   // Apply strict rate limiting (3 attempts per hour)
   const rateLimit = checkRateLimit(request, RATE_LIMITS.STRICT)
@@ -35,38 +71,27 @@ export async function POST(request: NextRequest) {
     })
 
     // Always return success to prevent user enumeration
-    // Only send email if user actually exists
+    // Only process if user actually exists
     if (user) {
       // Generate password reset token (valid for 1 hour)
       const resetToken = crypto.randomBytes(32).toString('hex')
       const resetTokenExpiry = new Date(Date.now() + 3600000) // 1 hour from now
 
       // Store the reset token in the database
-      // Note: You'll need to add resetToken and resetTokenExpiry fields to your User model
       await prisma.user.update({
         where: { id: user.id },
         data: {
-          // TODO: Add these fields to your Prisma schema:
-          // resetToken: resetToken,
-          // resetTokenExpiry: resetTokenExpiry,
+          resetToken: resetToken,
+          resetTokenExpiry: resetTokenExpiry,
         },
       })
 
-      // TODO: Implement email sending here
-      // Example with a hypothetical email service:
-      // await sendEmail({
-      //   to: email,
-      //   subject: 'Password Reset - Civilabs LMS',
-      //   template: 'password-reset',
-      //   data: {
-      //     resetUrl: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`,
-      //     firstName: user.firstName,
-      //   },
-      // })
+      // Build reset URL
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`
 
-      console.log(`Password reset requested for: ${email}`)
-      console.log(`Reset token (for testing): ${resetToken}`)
-      console.log(`Reset URL: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`)
+      // Send password reset email
+      await sendPasswordResetEmail(email, user.firstName, resetUrl)
     }
 
     // Always return success (don't reveal whether user exists)

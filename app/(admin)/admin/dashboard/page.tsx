@@ -13,106 +13,69 @@ import {
   Activity,
   DollarSign,
   UserPlus,
-  BookMarked,
   CheckCircle,
   AlertTriangle,
   Clock,
   BarChart3,
 } from 'lucide-react'
 
-// Mock admin dashboard data
-const ADMIN_STATS = {
-  totalUsers: 1247,
-  usersChange: 12.5,
-  activeCourses: 43,
-  coursesChange: 8.3,
-  totalEnrollments: 5823,
-  enrollmentsChange: 15.2,
-  certificatesIssued: 892,
-  certificatesChange: 22.1,
-  revenue: 45280,
-  revenueChange: 18.7,
-  activeUsers: 834,
-  activeUsersChange: 5.4,
-  completionRate: 68.5,
-  completionRateChange: -2.3,
-  avgCourseRating: 4.6,
-  ratingChange: 0.2,
+// Initial state for stats
+const INITIAL_STATS = {
+  totalUsers: 0,
+  usersChange: 0,
+  activeCourses: 0,
+  coursesChange: 0,
+  totalEnrollments: 0,
+  enrollmentsChange: 0,
+  certificatesIssued: 0,
+  certificatesChange: 0,
+  revenue: 0,
+  revenueChange: 0,
+  activeUsers: 0,
+  activeUsersChange: 0,
+  completionRate: 0,
+  completionRateChange: 0,
+  avgCourseRating: 0,
+  ratingChange: 0,
 }
 
-const RECENT_ACTIVITIES = [
-  {
-    id: 1,
-    type: 'user',
-    action: 'New user registered',
-    details: 'john.doe@example.com',
-    time: '5 minutes ago',
-    icon: UserPlus,
-    color: 'from-success to-green-600'
-  },
-  {
-    id: 2,
-    type: 'course',
-    action: 'Course published',
-    details: 'Advanced Welding Techniques',
-    time: '23 minutes ago',
-    icon: BookMarked,
-    color: 'from-primary to-blue-600'
-  },
-  {
-    id: 3,
-    type: 'certificate',
-    action: 'Certificate issued',
-    details: 'Sarah Johnson - Construction Safety',
-    time: '1 hour ago',
-    icon: Award,
-    color: 'from-warning to-orange-600'
-  },
-  {
-    id: 4,
-    type: 'enrollment',
-    action: 'Course enrollment',
-    details: '15 new enrollments today',
-    time: '2 hours ago',
-    icon: GraduationCap,
-    color: 'from-secondary to-purple-600'
-  },
-  {
-    id: 5,
-    type: 'completion',
-    action: 'Course completed',
-    details: 'Mike Chen - Heavy Equipment Operation',
-    time: '3 hours ago',
-    icon: CheckCircle,
-    color: 'from-success to-green-600'
-  },
-]
+interface ActivityItem {
+  id: string | number
+  type: string
+  action: string
+  details: string
+  time: string
+  icon: any
+  color: string
+}
 
-const SYSTEM_ALERTS = [
-  {
-    id: 1,
-    severity: 'warning',
-    message: 'Database backup pending - scheduled for tonight',
-    time: '1 hour ago',
-  },
-  {
-    id: 2,
-    severity: 'info',
-    message: 'New feature: Discussion forums now live',
-    time: '3 hours ago',
-  },
-  {
-    id: 3,
-    severity: 'warning',
-    message: '3 courses pending approval',
-    time: '5 hours ago',
-  },
-]
+interface AlertItem {
+  id: string | number
+  severity: string
+  message: string
+  time: string
+}
 
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState(ADMIN_STATS)
-  const [recentActivity, setRecentActivity] = useState(RECENT_ACTIVITIES)
+  const [stats, setStats] = useState(INITIAL_STATS)
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
+  const [systemAlerts, setSystemAlerts] = useState<AlertItem[]>([])
   const [loading, setLoading] = useState(true)
+
+  const formatRelativeTime = (dateString: string): string => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins} min ago`
+    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
+    if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
+    return date.toLocaleDateString()
+  }
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -124,39 +87,75 @@ export default function AdminDashboardPage() {
         if (data.success) {
           // Map API data to component structure
           setStats({
-            totalUsers: data.data.overview.totalUsers,
-            usersChange: 0, // API doesn't provide change percentage yet
-            activeCourses: data.data.overview.publishedCourses,
+            totalUsers: data.data.overview.totalUsers || 0,
+            usersChange: 0,
+            activeCourses: data.data.overview.publishedCourses || 0,
             coursesChange: 0,
-            totalEnrollments: data.data.overview.totalEnrollments,
+            totalEnrollments: data.data.overview.totalEnrollments || 0,
             enrollmentsChange: 0,
-            certificatesIssued: data.data.overview.totalCertificates,
+            certificatesIssued: data.data.overview.totalCertificates || 0,
             certificatesChange: 0,
-            revenue: 0, // Not implemented in API
+            revenue: 0,
             revenueChange: 0,
-            activeUsers: data.data.overview.activeEnrollments,
+            activeUsers: data.data.overview.activeEnrollments || 0,
             activeUsersChange: 0,
-            completionRate: data.data.overview.completionRate,
+            completionRate: data.data.overview.completionRate || 0,
             completionRateChange: 0,
-            avgCourseRating: 0, // Not in current API response
+            avgCourseRating: 0,
             ratingChange: 0,
           })
 
-          // Map recent activity
-          setRecentActivity(
-            data.data.recentActivity.map((activity: any, index: number) => ({
-              id: activity.id,
-              type: 'enrollment',
-              action: `${activity.userName} enrolled in`,
-              details: activity.courseName,
-              time: new Date(activity.createdAt).toLocaleString(),
-              icon: GraduationCap,
-              color: 'from-primary to-blue-600',
-            }))
-          )
+          // Map recent activity with appropriate icons
+          if (data.data.recentActivity && Array.isArray(data.data.recentActivity)) {
+            setRecentActivity(
+              data.data.recentActivity.slice(0, 5).map((activity: any) => ({
+                id: activity.id,
+                type: 'enrollment',
+                action: `${activity.userName || 'User'} enrolled in`,
+                details: activity.courseName || 'a course',
+                time: formatRelativeTime(activity.createdAt),
+                icon: GraduationCap,
+                color: 'from-primary to-blue-600',
+              }))
+            )
+          }
+
+          // Set system alerts based on pending items
+          const alerts: AlertItem[] = []
+          if (data.data.overview.draftCourses > 0) {
+            alerts.push({
+              id: 'draft-courses',
+              severity: 'warning',
+              message: `${data.data.overview.draftCourses} courses pending review/publish`,
+              time: 'Current'
+            })
+          }
+          if (data.data.overview.pendingEnrollments > 0) {
+            alerts.push({
+              id: 'pending-enrollments',
+              severity: 'info',
+              message: `${data.data.overview.pendingEnrollments} enrollments pending approval`,
+              time: 'Current'
+            })
+          }
+          if (alerts.length === 0) {
+            alerts.push({
+              id: 'all-clear',
+              severity: 'info',
+              message: 'All systems operational - no pending actions',
+              time: 'Current'
+            })
+          }
+          setSystemAlerts(alerts)
         }
       } catch (error) {
         console.error('Error fetching admin stats:', error)
+        setSystemAlerts([{
+          id: 'error',
+          severity: 'warning',
+          message: 'Unable to fetch system stats - please refresh',
+          time: 'Current'
+        }])
       } finally {
         setLoading(false)
       }
@@ -213,31 +212,35 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Users"
-          value={ADMIN_STATS.totalUsers.toLocaleString()}
-          change={ADMIN_STATS.usersChange}
+          value={stats.totalUsers.toLocaleString()}
+          change={stats.usersChange}
           icon={Users}
           color="from-secondary to-purple-600"
+          loading={loading}
         />
         <StatCard
           title="Active Courses"
-          value={ADMIN_STATS.activeCourses}
-          change={ADMIN_STATS.coursesChange}
+          value={stats.activeCourses}
+          change={stats.coursesChange}
           icon={BookOpen}
           color="from-success to-green-600"
+          loading={loading}
         />
         <StatCard
           title="Total Enrollments"
-          value={ADMIN_STATS.totalEnrollments.toLocaleString()}
-          change={ADMIN_STATS.enrollmentsChange}
+          value={stats.totalEnrollments.toLocaleString()}
+          change={stats.enrollmentsChange}
           icon={GraduationCap}
           color="from-primary to-blue-600"
+          loading={loading}
         />
         <StatCard
           title="Certificates"
-          value={ADMIN_STATS.certificatesIssued}
-          change={ADMIN_STATS.certificatesChange}
+          value={stats.certificatesIssued}
+          change={stats.certificatesChange}
           icon={Award}
           color="from-warning to-orange-600"
+          loading={loading}
         />
       </div>
 
@@ -245,31 +248,35 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Revenue"
-          value={`$${ADMIN_STATS.revenue.toLocaleString()}`}
-          change={ADMIN_STATS.revenueChange}
+          value={`$${stats.revenue.toLocaleString()}`}
+          change={stats.revenueChange}
           icon={DollarSign}
           color="from-success to-green-600"
+          loading={loading}
         />
         <StatCard
-          title="Active Users (30d)"
-          value={ADMIN_STATS.activeUsers}
-          change={ADMIN_STATS.activeUsersChange}
+          title="Active Enrollments"
+          value={stats.activeUsers}
+          change={stats.activeUsersChange}
           icon={Activity}
           color="from-cyan-500 to-blue-500"
+          loading={loading}
         />
         <StatCard
           title="Completion Rate"
-          value={`${ADMIN_STATS.completionRate}%`}
-          change={ADMIN_STATS.completionRateChange}
+          value={`${stats.completionRate.toFixed(1)}%`}
+          change={stats.completionRateChange}
           icon={CheckCircle}
           color="from-purple-500 to-pink-500"
+          loading={loading}
         />
         <StatCard
           title="Avg Rating"
-          value={ADMIN_STATS.avgCourseRating.toFixed(1)}
-          change={ADMIN_STATS.ratingChange}
+          value={stats.avgCourseRating.toFixed(1)}
+          change={stats.ratingChange}
           icon={TrendingUp}
           color="from-yellow-500 to-orange-500"
+          loading={loading}
         />
       </div>
 
@@ -286,24 +293,30 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {RECENT_ACTIVITIES.map((activity) => {
-                const Icon = activity.icon
-                return (
-                  <div key={activity.id} className="flex items-start gap-3 p-3 glass-effect rounded-lg hover:bg-white/50 transition-colors">
-                    <div className={`w-10 h-10 bg-gradient-to-br ${activity.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                      <Icon className="text-white" size={18} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-neutral-800">{activity.action}</p>
-                      <p className="text-sm text-neutral-600 truncate">{activity.details}</p>
-                      <div className="flex items-center gap-1 text-xs text-neutral-500 mt-1">
-                        <Clock size={12} />
-                        {activity.time}
+              {loading ? (
+                <div className="text-center py-8 text-neutral-500">Loading activity...</div>
+              ) : recentActivity.length === 0 ? (
+                <div className="text-center py-8 text-neutral-500">No recent activity</div>
+              ) : (
+                recentActivity.map((activity) => {
+                  const Icon = activity.icon
+                  return (
+                    <div key={activity.id} className="flex items-start gap-3 p-3 glass-effect rounded-lg hover:bg-white/50 transition-colors">
+                      <div className={`w-10 h-10 bg-gradient-to-br ${activity.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                        <Icon className="text-white" size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-neutral-800">{activity.action}</p>
+                        <p className="text-sm text-neutral-600 truncate">{activity.details}</p>
+                        <div className="flex items-center gap-1 text-xs text-neutral-500 mt-1">
+                          <Clock size={12} />
+                          {activity.time}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })
+              )}
             </div>
           </CardContent>
         </Card>
@@ -320,30 +333,36 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {SYSTEM_ALERTS.map((alert) => (
-                <div
-                  key={alert.id}
-                  className={`p-4 rounded-lg border-2 ${
-                    alert.severity === 'warning'
-                      ? 'border-warning/40 bg-warning/5'
-                      : 'border-primary/40 bg-primary/5'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <p className="font-bold text-neutral-800">{alert.message}</p>
-                      <div className="flex items-center gap-1 text-xs text-neutral-500 mt-2">
-                        <Clock size={12} />
-                        {alert.time}
+              {loading ? (
+                <div className="text-center py-8 text-neutral-500">Loading alerts...</div>
+              ) : systemAlerts.length === 0 ? (
+                <div className="text-center py-8 text-neutral-500">No alerts</div>
+              ) : (
+                systemAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className={`p-4 rounded-lg border-2 ${
+                      alert.severity === 'warning'
+                        ? 'border-warning/40 bg-warning/5'
+                        : 'border-primary/40 bg-primary/5'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="font-bold text-neutral-800">{alert.message}</p>
+                        <div className="flex items-center gap-1 text-xs text-neutral-500 mt-2">
+                          <Clock size={12} />
+                          {alert.time}
+                        </div>
                       </div>
+                      <AlertTriangle
+                        className={alert.severity === 'warning' ? 'text-warning' : 'text-primary'}
+                        size={20}
+                      />
                     </div>
-                    <AlertTriangle
-                      className={alert.severity === 'warning' ? 'text-warning' : 'text-primary'}
-                      size={20}
-                    />
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
             <div className="mt-4">
@@ -391,12 +410,14 @@ function StatCard({
   change,
   icon: Icon,
   color,
+  loading = false,
 }: {
   title: string
   value: string | number
   change: number
   icon: any
   color: string
+  loading?: boolean
 }) {
   const isPositive = change >= 0
 
@@ -411,13 +432,19 @@ function StatCard({
         </div>
 
         <div className="space-y-2">
-          <p className="text-3xl font-black text-neutral-800">{value}</p>
+          {loading ? (
+            <div className="h-9 bg-neutral-200 animate-pulse rounded w-24"></div>
+          ) : (
+            <p className="text-3xl font-black text-neutral-800">{value}</p>
+          )}
 
-          <div className={`flex items-center gap-1 text-sm font-bold ${isPositive ? 'text-success' : 'text-danger'}`}>
-            {isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-            <span>{isPositive ? '+' : ''}{change}%</span>
-            <span className="text-neutral-500 font-medium">vs last month</span>
-          </div>
+          {change !== 0 && (
+            <div className={`flex items-center gap-1 text-sm font-bold ${isPositive ? 'text-success' : 'text-danger'}`}>
+              {isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+              <span>{isPositive ? '+' : ''}{change}%</span>
+              <span className="text-neutral-500 font-medium">vs last month</span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -171,8 +171,13 @@ export default function DiscussionDetailPage() {
 
   const handleLike = async () => {
     try {
-      // TODO: Implement like API call
-      setIsLiked(!isLiked)
+      const response = await apiClient.post(`/discussions/${discussionId}/like`, {})
+      if (response.status >= 200 && response.status < 300) {
+        const data = response.data as { liked: boolean }
+        setIsLiked(data.liked)
+        // Refresh to update like count
+        fetchDiscussion()
+      }
     } catch (err) {
       console.error('Error liking discussion:', err)
     }
@@ -180,8 +185,11 @@ export default function DiscussionDetailPage() {
 
   const handleReplyLike = async (replyId: string) => {
     try {
-      // TODO: Implement reply like API call
-      console.log('Like reply:', replyId)
+      const response = await apiClient.post(`/discussions/${discussionId}/like`, { replyId })
+      if (response.status >= 200 && response.status < 300) {
+        // Refresh to update like count
+        fetchDiscussion()
+      }
     } catch (err) {
       console.error('Error liking reply:', err)
     }
@@ -191,10 +199,17 @@ export default function DiscussionDetailPage() {
     if (!replyText.trim()) return
 
     try {
-      // TODO: Implement reply submission API call
-      alert(`Reply submitted: ${replyText}`)
-      setReplyText('')
-      fetchDiscussion() // Refresh to show new reply
+      const response = await apiClient.post(`/discussions/${discussionId}/replies`, {
+        content: replyText.trim()
+      })
+
+      if (response.status >= 200 && response.status < 300) {
+        setReplyText('')
+        fetchDiscussion() // Refresh to show new reply
+      } else {
+        const errorData = response.data as { message?: string }
+        alert(errorData?.message || 'Failed to submit reply. Please try again.')
+      }
     } catch (err) {
       console.error('Error submitting reply:', err)
       alert('Failed to submit reply. Please try again.')

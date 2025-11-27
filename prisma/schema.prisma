@@ -108,20 +108,22 @@ enum SubmissionStatus {
 }
 
 model User {
-  id            String     @id @default(uuid())
-  email         String     @unique
-  passwordHash  String?
-  firstName     String
-  lastName      String
-  avatarUrl     String?
-  role          UserRole   @default(LEARNER)
-  status        UserStatus @default(ACTIVE)
-  departmentId  String?
-  managerId     String?
-  lastLogin     DateTime?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  metadata      Json?
+  id                String     @id @default(uuid())
+  email             String     @unique
+  passwordHash      String?
+  firstName         String
+  lastName          String
+  avatarUrl         String?
+  role              UserRole   @default(LEARNER)
+  status            UserStatus @default(ACTIVE)
+  departmentId      String?
+  managerId         String?
+  lastLogin         DateTime?
+  resetToken        String?    @unique
+  resetTokenExpiry  DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  metadata          Json?
 
   department           Department?          @relation("DepartmentUsers", fields: [departmentId], references: [id])
   manager              User?                @relation("UserManager", fields: [managerId], references: [id])
