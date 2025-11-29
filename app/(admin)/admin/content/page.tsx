@@ -122,6 +122,40 @@ export default function ContentPage() {
     }
   }
 
+  const handleDeleteFile = async (fileId: string, fileName: string) => {
+    if (!confirm(`Are you sure you want to delete "${fileName}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      // Call mediaService delete or API directly
+      const response = await fetch(`/api/media/${fileId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+
+      if (response.ok) {
+        toast({
+          title: 'File Deleted',
+          description: `${fileName} has been removed successfully`,
+        })
+        // Refresh the file list
+        fetchMediaData()
+      } else {
+        throw new Error('Failed to delete file')
+      }
+    } catch (error) {
+      console.error('Error deleting file:', error)
+      toast({
+        title: 'Delete Failed',
+        description: error instanceof Error ? error.message : 'Could not delete file',
+        variant: 'destructive',
+      })
+    }
+  }
+
   const filteredFiles = files.filter(file => {
     const matchesSearch = !searchQuery ||
       file.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -421,12 +455,7 @@ export default function ContentPage() {
                           <Download size={16} className="text-success" />
                         </a>
                         <button
-                          onClick={() => {
-                            toast({
-                              title: 'Delete',
-                              description: 'File deletion requires server-side implementation',
-                            })
-                          }}
+                          onClick={() => handleDeleteFile(file.id, file.name)}
                           className="h-10 glass-effect border-2 border-danger/30 rounded-lg flex items-center justify-center hover:border-danger/60 hover:bg-danger/10 transition-all"
                           title="Delete file"
                         >

@@ -135,8 +135,8 @@ export default function AdminNotificationsPage() {
   const fetchNotifications = async () => {
     try {
       setLoading(true)
-      // Use mock data for demonstration - in production this would fetch from API
-      // Simulating API call delay
+      // For now, use mock data since admin notification history endpoint needs to be created
+      // TODO: Replace with actual admin API endpoint: GET /api/admin/notifications
       await new Promise(resolve => setTimeout(resolve, 500))
       setNotifications(MOCK_NOTIFICATIONS)
     } catch (error) {
@@ -389,14 +389,27 @@ export default function AdminNotificationsPage() {
                 {sendingNotification ? 'SENDING...' : 'SEND NOW'}
               </MagneticButton>
               <MagneticButton
-                onClick={handleSendNotification}
+                onClick={() => {
+                  toast({
+                    title: 'Coming Soon',
+                    description: 'Notification scheduling will be available in a future update',
+                  })
+                }}
                 disabled={sendingNotification}
                 className="bg-gradient-to-r from-warning to-orange-600 text-white font-black"
               >
                 <Calendar className="mr-2" size={16} />
                 SCHEDULE
               </MagneticButton>
-              <MagneticButton className="glass-effect border-2 border-neutral-300 text-neutral-700 font-black">
+              <MagneticButton
+                onClick={() => {
+                  toast({
+                    title: 'Coming Soon',
+                    description: 'Draft saving will be available in a future update',
+                  })
+                }}
+                className="glass-effect border-2 border-neutral-300 text-neutral-700 font-black"
+              >
                 SAVE DRAFT
               </MagneticButton>
             </div>

@@ -191,12 +191,22 @@ export default function AdminSettingsPage() {
   const handleSave = async () => {
     try {
       setSaving(true)
-      // Simulate API call
+      // TODO: Implement actual API persistence
+      // This would require:
+      // 1. Create Settings model in Prisma schema
+      // 2. Create PUT /api/admin/settings endpoint
+      // 3. Store settings in database
+      // For now, settings are saved to local state only
       await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Save to localStorage as temporary persistence
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('admin_settings', JSON.stringify(settings))
+      }
 
       toast({
         title: 'Settings Saved',
-        description: 'Platform settings have been updated successfully',
+        description: 'Platform settings have been saved locally (API persistence pending)',
       })
     } catch (error) {
       toast({

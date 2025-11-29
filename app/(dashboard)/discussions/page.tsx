@@ -211,10 +211,12 @@ export default function DiscussionsPage() {
                 </div>
               </div>
 
-              <MagneticButton className="bg-gradient-to-r from-success to-green-600 text-white font-black">
-                <Plus className="mr-2" size={20} />
-                NEW DISCUSSION
-              </MagneticButton>
+              <Link href="/discussions/new">
+                <MagneticButton className="bg-gradient-to-r from-success to-green-600 text-white font-black">
+                  <Plus className="mr-2" size={20} />
+                  NEW DISCUSSION
+                </MagneticButton>
+              </Link>
             </div>
 
             {/* Stats */}
