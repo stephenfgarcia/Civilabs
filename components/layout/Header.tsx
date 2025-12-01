@@ -14,6 +14,15 @@ export function Header() {
   const [showProfile, setShowProfile] = useState(false)
   const [showSearchModal, setShowSearchModal] = useState(false)
 
+  // Determine notifications path based on user role
+  const getNotificationsPath = () => {
+    if (!user) return '/notifications'
+    const role = user.role?.toUpperCase()
+    if (role === 'SUPER_ADMIN' || role === 'ADMIN') return '/admin/notifications'
+    if (role === 'INSTRUCTOR') return '/notifications'
+    return '/notifications'
+  }
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('user')
@@ -98,10 +107,12 @@ export function Header() {
         {/* Right Side */}
         <div className="flex items-center gap-4 ml-6">
           {/* Notifications */}
-          <button className="header-item opacity-0 relative p-3 hover:bg-white/50 rounded-xl transition-all duration-300 group">
-            <Bell size={20} className="text-neutral-600 group-hover:text-primary transition-colors" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-danger rounded-full animate-pulse"></span>
-          </button>
+          <Link href={getNotificationsPath()}>
+            <button className="header-item opacity-0 relative p-3 hover:bg-white/50 rounded-xl transition-all duration-300 group">
+              <Bell size={20} className="text-neutral-600 group-hover:text-primary transition-colors" />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-danger rounded-full animate-pulse"></span>
+            </button>
+          </Link>
 
           {/* Profile Dropdown */}
           <div className="header-item opacity-0 relative">
