@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
+import { useToast } from '@/lib/hooks'
 import {
   Users,
   BookOpen,
@@ -57,6 +59,7 @@ interface AlertItem {
 }
 
 export default function AdminDashboardPage() {
+  const { toast } = useToast()
   const [stats, setStats] = useState(INITIAL_STATS)
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
   const [systemAlerts, setSystemAlerts] = useState<AlertItem[]>([])
@@ -198,10 +201,12 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="flex gap-3">
-                <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
-                  <BarChart3 className="mr-2" size={20} />
-                  GENERATE REPORT
-                </MagneticButton>
+                <Link href="/admin/reports">
+                  <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
+                    <BarChart3 className="mr-2" size={20} />
+                    GENERATE REPORT
+                  </MagneticButton>
+                </Link>
               </div>
             </div>
           </div>
@@ -366,7 +371,15 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="mt-4">
-              <MagneticButton className="w-full bg-gradient-to-r from-warning to-orange-600 text-white font-black">
+              <MagneticButton
+                onClick={() => {
+                  toast({
+                    title: 'System Alerts',
+                    description: 'Viewing all system alerts and notifications',
+                  })
+                }}
+                className="w-full bg-gradient-to-r from-warning to-orange-600 text-white font-black"
+              >
                 VIEW ALL ALERTS
               </MagneticButton>
             </div>
@@ -381,22 +394,30 @@ export default function AdminDashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <MagneticButton className="bg-gradient-to-r from-secondary to-purple-600 text-white font-black h-20">
-              <UserPlus className="mr-2" size={20} />
-              ADD USER
-            </MagneticButton>
-            <MagneticButton className="bg-gradient-to-r from-success to-green-600 text-white font-black h-20">
-              <BookOpen className="mr-2" size={20} />
-              CREATE COURSE
-            </MagneticButton>
-            <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black h-20">
-              <GraduationCap className="mr-2" size={20} />
-              MANAGE ENROLLMENTS
-            </MagneticButton>
-            <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black h-20">
-              <Award className="mr-2" size={20} />
-              ISSUE CERTIFICATE
-            </MagneticButton>
+            <Link href="/admin/users" className="block">
+              <MagneticButton className="w-full bg-gradient-to-r from-secondary to-purple-600 text-white font-black h-20">
+                <UserPlus className="mr-2" size={20} />
+                ADD USER
+              </MagneticButton>
+            </Link>
+            <Link href="/admin/courses" className="block">
+              <MagneticButton className="w-full bg-gradient-to-r from-success to-green-600 text-white font-black h-20">
+                <BookOpen className="mr-2" size={20} />
+                CREATE COURSE
+              </MagneticButton>
+            </Link>
+            <Link href="/admin/enrollments" className="block">
+              <MagneticButton className="w-full bg-gradient-to-r from-primary to-blue-600 text-white font-black h-20">
+                <GraduationCap className="mr-2" size={20} />
+                MANAGE ENROLLMENTS
+              </MagneticButton>
+            </Link>
+            <Link href="/admin/certificates" className="block">
+              <MagneticButton className="w-full bg-gradient-to-r from-warning to-orange-600 text-white font-black h-20">
+                <Award className="mr-2" size={20} />
+                ISSUE CERTIFICATE
+              </MagneticButton>
+            </Link>
           </div>
         </CardContent>
       </Card>

@@ -380,9 +380,11 @@ export default function CertificatesPage() {
             <p className="text-neutral-500 mb-6">
               Complete courses to earn certificates
             </p>
-            <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
-              BROWSE COURSES
-            </MagneticButton>
+            <Link href="/courses">
+              <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
+                BROWSE COURSES
+              </MagneticButton>
+            </Link>
           </CardContent>
         </Card>
       )}

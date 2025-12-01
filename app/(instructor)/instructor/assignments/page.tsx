@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { apiClient } from '@/lib/services'
+import { useToast } from '@/lib/hooks'
 
 interface Assignment {
   id: string
@@ -28,6 +29,7 @@ interface Stats {
 
 export default function InstructorAssignmentsPage() {
   useAuth(['INSTRUCTOR'])
+  const { toast } = useToast()
 
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [stats, setStats] = useState<Stats>({
@@ -117,11 +119,19 @@ export default function InstructorAssignmentsPage() {
         })
         fetchAssignments()
       } else {
-        alert(response.error || 'Failed to create assignment')
+        toast({
+          title: 'Error',
+          description: response.error || 'Failed to create assignment',
+          variant: 'destructive',
+        })
       }
     } catch (error) {
       console.error('Error creating assignment:', error)
-      alert('Failed to create assignment')
+      toast({
+        title: 'Error',
+        description: 'Failed to create assignment',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -136,11 +146,19 @@ export default function InstructorAssignmentsPage() {
       if (response.status >= 200 && response.status < 300) {
         fetchAssignments()
       } else {
-        alert(response.error || 'Failed to publish assignment')
+        toast({
+          title: 'Error',
+          description: response.error || 'Failed to publish assignment',
+          variant: 'destructive',
+        })
       }
     } catch (error) {
       console.error('Error publishing assignment:', error)
-      alert('Failed to publish assignment')
+      toast({
+        title: 'Error',
+        description: 'Failed to publish assignment',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -155,11 +173,19 @@ export default function InstructorAssignmentsPage() {
       if (response.status >= 200 && response.status < 300) {
         fetchAssignments()
       } else {
-        alert(response.error || 'Failed to close assignment')
+        toast({
+          title: 'Error',
+          description: response.error || 'Failed to close assignment',
+          variant: 'destructive',
+        })
       }
     } catch (error) {
       console.error('Error closing assignment:', error)
-      alert('Failed to close assignment')
+      toast({
+        title: 'Error',
+        description: 'Failed to close assignment',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -178,11 +204,19 @@ export default function InstructorAssignmentsPage() {
         setAssignments(assignments.filter((a) => a.id !== id))
         setStats((prev) => ({ ...prev, total: prev.total - 1 }))
       } else {
-        alert(response.error || 'Failed to delete assignment')
+        toast({
+          title: 'Error',
+          description: response.error || 'Failed to delete assignment',
+          variant: 'destructive',
+        })
       }
     } catch (error) {
       console.error('Error deleting assignment:', error)
-      alert('Failed to delete assignment')
+      toast({
+        title: 'Error',
+        description: 'Failed to delete assignment',
+        variant: 'destructive',
+      })
     }
   }
 

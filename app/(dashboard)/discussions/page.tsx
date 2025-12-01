@@ -360,10 +360,12 @@ export default function DiscussionsPage() {
               <p className="text-neutral-600 font-semibold mb-6">
                 {searchQuery ? `No discussions match "${searchQuery}"` : 'No discussions available'}
               </p>
-              <MagneticButton className="bg-gradient-to-r from-success to-green-600 text-white font-black">
-                <Plus className="mr-2" size={20} />
-                START A DISCUSSION
-              </MagneticButton>
+              <Link href="/discussions/new">
+                <MagneticButton className="bg-gradient-to-r from-success to-green-600 text-white font-black">
+                  <Plus className="mr-2" size={20} />
+                  START A DISCUSSION
+                </MagneticButton>
+              </Link>
             </CardContent>
           </Card>
         )}
