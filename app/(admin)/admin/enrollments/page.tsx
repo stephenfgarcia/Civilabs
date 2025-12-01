@@ -601,10 +601,12 @@ export default function EnrollmentsPage() {
 
                   {/* Actions */}
                   <div className="flex gap-2">
-                    <MagneticButton className="flex-1 glass-effect border-2 border-primary/30 text-neutral-700 font-black hover:border-primary/60">
-                      <Eye className="mr-2" size={16} />
-                      VIEW DETAILS
-                    </MagneticButton>
+                    <Link href={`/admin/enrollments/${enrollment.id}`} className="flex-1">
+                      <MagneticButton className="w-full glass-effect border-2 border-primary/30 text-neutral-700 font-black hover:border-primary/60">
+                        <Eye className="mr-2" size={16} />
+                        VIEW DETAILS
+                      </MagneticButton>
+                    </Link>
                     {hasCertificate && (
                       <MagneticButton className="flex-1 glass-effect border-2 border-warning/30 text-neutral-700 font-black hover:border-warning/60">
                         <Download className="mr-2" size={16} />

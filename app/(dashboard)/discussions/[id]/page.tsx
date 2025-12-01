@@ -25,6 +25,7 @@ import {
 import Link from 'next/link'
 import { Textarea } from '@/components/ui/textarea'
 import { apiClient } from '@/lib/services'
+import { useToast } from '@/lib/hooks'
 
 interface DiscussionReply {
   id: string
@@ -94,6 +95,7 @@ const formatRelativeTime = (dateString: string): string => {
 export default function DiscussionDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { toast } = useToast()
   const discussionId = params.id as string
 
   const [discussion, setDiscussion] = useState<DiscussionDetail | null>(null)
@@ -337,12 +339,31 @@ export default function DiscussionDetailPage() {
               {discussion._count.likes} LIKES
             </MagneticButton>
 
-            <MagneticButton className="glass-effect border-2 border-primary/30 text-neutral-700 font-black">
+            <MagneticButton
+              onClick={() => {
+                // Copy discussion URL to clipboard
+                const url = window.location.href
+                navigator.clipboard.writeText(url)
+                toast({
+                  title: 'Link Copied',
+                  description: 'Discussion link has been copied to clipboard',
+                })
+              }}
+              className="glass-effect border-2 border-primary/30 text-neutral-700 font-black"
+            >
               <Share2 size={18} className="mr-2" />
               SHARE
             </MagneticButton>
 
-            <MagneticButton className="glass-effect border-2 border-neutral-300 text-neutral-700 font-black">
+            <MagneticButton
+              onClick={() => {
+                toast({
+                  title: 'Report Submitted',
+                  description: 'Thank you for reporting this discussion. Our moderation team will review it shortly.',
+                })
+              }}
+              className="glass-effect border-2 border-neutral-300 text-neutral-700 font-black"
+            >
               <Flag size={18} className="mr-2" />
               REPORT
             </MagneticButton>

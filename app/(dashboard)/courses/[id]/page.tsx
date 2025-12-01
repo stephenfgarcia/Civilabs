@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { coursesService } from '@/lib/services'
+import { useToast } from '@/lib/hooks'
 
 // Icon mapping for categories
 const CATEGORY_ICONS: Record<string, any> = {
@@ -56,6 +57,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default function CourseDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { toast } = useToast()
   const courseId = params.id as string
   const [course, setCourse] = useState<any>(null)
   const [enrollment, setEnrollment] = useState<any>(null)
@@ -460,7 +462,15 @@ export default function CourseDetailPage() {
                       </>
                     )}
                   </MagneticButton>
-                  <MagneticButton className="glass-effect border-2 border-neutral-400 text-neutral-700 font-black">
+                  <MagneticButton
+                    onClick={() => {
+                      toast({
+                        title: 'Coming Soon',
+                        description: 'Syllabus download will be available in a future update',
+                      })
+                    }}
+                    className="glass-effect border-2 border-neutral-400 text-neutral-700 font-black"
+                  >
                     <Download className="mr-2" size={20} />
                     DOWNLOAD SYLLABUS
                   </MagneticButton>

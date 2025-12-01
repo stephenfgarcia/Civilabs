@@ -49,6 +49,7 @@ export default function InstructorCertificatesPage() {
     uniqueStudents: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
@@ -59,6 +60,7 @@ export default function InstructorCertificatesPage() {
   const fetchCertificates = async () => {
     try {
       setLoading(true)
+      setError(null)
       const params = new URLSearchParams()
       if (statusFilter !== 'all') params.append('status', statusFilter)
       if (searchTerm) params.append('search', searchTerm)
@@ -78,9 +80,12 @@ export default function InstructorCertificatesPage() {
             uniqueStudents: 0,
           }
         )
+      } else {
+        throw new Error(response.error || 'Failed to fetch certificates')
       }
-    } catch (error) {
-      console.error('Error fetching certificates:', error)
+    } catch (err) {
+      console.error('Error fetching certificates:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load certificates')
     } finally {
       setLoading(false)
     }
@@ -124,6 +129,28 @@ export default function InstructorCertificatesPage() {
       <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
         Expired
       </span>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">⚠️</span>
+            </div>
+            <h2 className="text-2xl font-bold text-neutral-900 mb-2">Error Loading Certificates</h2>
+            <p className="text-neutral-600 mb-6">{error}</p>
+            <button
+              onClick={fetchCertificates}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
     )
   }
 

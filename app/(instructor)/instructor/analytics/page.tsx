@@ -46,6 +46,36 @@ export default function InstructorAnalyticsPage() {
     }
   }
 
+  const exportReport = () => {
+    if (!analytics) return
+
+    // Create CSV content
+    const csvData = [
+      ['Instructor Analytics Report'],
+      ['Period', `Last ${selectedPeriod} Days`],
+      ['Generated', new Date().toLocaleString()],
+      [''],
+      ['Overview'],
+      ['Total Courses', analytics.summary?.totalCourses?.toString() || '0'],
+      ['Total Enrollments', analytics.summary?.totalEnrollments?.toString() || '0'],
+      ['Total Completions', analytics.summary?.totalCompletions?.toString() || '0'],
+      ['Completion Rate', `${analytics.summary?.overallCompletionRate?.toFixed(2) || '0'}%`],
+      ['Unique Students', analytics.summary?.uniqueStudents?.toString() || '0'],
+      ['Retention Rate', `${analytics.summary?.retentionRate?.toFixed(2) || '0'}%`],
+    ].map(row => row.join(',')).join('\n')
+
+    // Create blob and download
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `instructor-analytics-${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -108,7 +138,10 @@ export default function InstructorAnalyticsPage() {
             <option value="90">Last 90 Days</option>
             <option value="365">Last Year</option>
           </select>
-          <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
+          <MagneticButton
+            onClick={exportReport}
+            className="bg-gradient-to-r from-warning to-orange-600 text-white font-black"
+          >
             <Download className="mr-2" size={20} />
             EXPORT REPORT
           </MagneticButton>
