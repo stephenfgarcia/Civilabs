@@ -139,8 +139,8 @@ export default function MessagesPage() {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-yellow-400 to-orange-500 text-white font-bold">
-                        {conversation.participant.firstName[0]}
-                        {conversation.participant.lastName[0]}
+                        {conversation.participant.firstName?.[0] || '?'}
+                        {conversation.participant.lastName?.[0] || ''}
                       </div>
                     )}
                   </div>
@@ -191,8 +191,8 @@ export default function MessagesPage() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-yellow-400 to-orange-500 text-white font-bold text-sm">
-                    {selectedConversation.participant.firstName[0]}
-                    {selectedConversation.participant.lastName[0]}
+                    {selectedConversation.participant.firstName?.[0] || '?'}
+                    {selectedConversation.participant.lastName?.[0] || ''}
                   </div>
                 )}
               </div>

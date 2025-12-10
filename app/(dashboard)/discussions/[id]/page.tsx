@@ -180,9 +180,16 @@ export default function DiscussionDetailPage() {
         setIsLiked(data.liked)
         // Refresh to update like count
         fetchDiscussion()
+      } else {
+        throw new Error('Failed to like discussion')
       }
     } catch (err) {
       console.error('Error liking discussion:', err)
+      toast({
+        title: 'Error',
+        description: 'Failed to like discussion. Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -192,9 +199,16 @@ export default function DiscussionDetailPage() {
       if (response.status >= 200 && response.status < 300) {
         // Refresh to update like count
         fetchDiscussion()
+      } else {
+        throw new Error('Failed to like reply')
       }
     } catch (err) {
       console.error('Error liking reply:', err)
+      toast({
+        title: 'Error',
+        description: 'Failed to like reply. Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -282,17 +296,19 @@ export default function DiscussionDetailPage() {
           </h1>
 
           {/* Tags */}
-          <div className="flex items-center gap-2 flex-wrap mb-4">
-            {discussion.tags.map((tag, index) => (
-              <span
-                key={index}
-                className="text-xs font-bold px-3 py-1 rounded-full bg-neutral-100 text-neutral-700 flex items-center gap-1"
-              >
-                <Tag size={12} />
-                {tag}
-              </span>
-            ))}
-          </div>
+          {Array.isArray(discussion.tags) && discussion.tags.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap mb-4">
+              {discussion.tags.map((tag, index) => (
+                <span
+                  key={index}
+                  className="text-xs font-bold px-3 py-1 rounded-full bg-neutral-100 text-neutral-700 flex items-center gap-1"
+                >
+                  <Tag size={12} />
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Author Info */}
           <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b-2 border-neutral-200">

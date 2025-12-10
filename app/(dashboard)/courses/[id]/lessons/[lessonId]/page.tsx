@@ -17,6 +17,7 @@ import {
   FileText,
 } from 'lucide-react'
 import Link from 'next/link'
+import DOMPurify from 'dompurify'
 
 export default function LessonViewerPage() {
   const params = useParams()
@@ -229,7 +230,7 @@ export default function LessonViewerPage() {
           {lessonData.contentData?.html && (
             <div
               className="prose prose-lg max-w-none"
-              dangerouslySetInnerHTML={{ __html: lessonData.contentData.html }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(lessonData.contentData.html) }}
             />
           )}
 

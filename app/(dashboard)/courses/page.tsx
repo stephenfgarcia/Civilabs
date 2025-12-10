@@ -192,6 +192,8 @@ export default function CoursesPage() {
             title: 'Bookmark Added',
             description: 'Course has been added to your bookmarks',
           })
+        } else {
+          throw new Error('Failed to add bookmark')
         }
       }
     } catch (error) {

@@ -71,7 +71,8 @@ export default function LeaderboardPage() {
 
       if (data.success && data.data) {
         // Mark current user's entry
-        const enrichedData = data.data.map((entry: any) => ({
+        const leaderboardData = Array.isArray(data.data) ? data.data : []
+        const enrichedData = leaderboardData.map((entry: any) => ({
           ...entry,
           isCurrentUser: entry.userId === currentUserId
         }))

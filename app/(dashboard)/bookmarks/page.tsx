@@ -34,6 +34,9 @@ export default function BookmarksPage() {
   }
 
   const handleRemove = async (bookmarkId: string) => {
+    const confirmed = window.confirm('Are you sure you want to remove this bookmark?')
+    if (!confirmed) return
+
     try {
       await bookmarksService.removeBookmark(bookmarkId)
       setBookmarks(bookmarks.filter((b) => b.id !== bookmarkId))
@@ -50,6 +53,9 @@ export default function BookmarksPage() {
       })
     }
   }
+
+  // Also used for deleted courses
+  const handleRemoveBookmark = handleRemove
 
   if (isLoading) {
     return (
@@ -89,39 +95,53 @@ export default function BookmarksPage() {
               key={bookmark.id}
               className="bg-white rounded-lg border-2 border-gray-200 overflow-hidden hover:border-yellow-500 hover:shadow-lg transition-all"
             >
-              {/* Course Thumbnail */}
-              <Link href={`/courses/${bookmark.courseId}`}>
-                <div className="relative h-48 bg-gray-200">
-                  {bookmark.course.thumbnail ? (
-                    <Image
-                      src={bookmark.course.thumbnail}
-                      alt={bookmark.course.title}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
-                      <BookOpen className="w-16 h-16 text-white opacity-50" />
-                    </div>
-                  )}
+              {!bookmark.course ? (
+                <div className="p-6 text-center">
+                  <AlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-2" />
+                  <p className="text-gray-600 font-semibold">Course Unavailable</p>
+                  <p className="text-sm text-gray-500 mt-1">This course has been deleted</p>
+                  <button
+                    onClick={() => handleRemoveBookmark(bookmark.id)}
+                    className="mt-3 text-sm text-red-600 hover:text-red-700 font-semibold"
+                  >
+                    Remove Bookmark
+                  </button>
                 </div>
-              </Link>
+              ) : (
+                <>
+                  {/* Course Thumbnail */}
+                  <Link href={`/courses/${bookmark.courseId}`}>
+                    <div className="relative h-48 bg-gray-200">
+                      {bookmark.course.thumbnail ? (
+                        <Image
+                          src={bookmark.course.thumbnail}
+                          alt={bookmark.course.title}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
+                          <BookOpen className="w-16 h-16 text-white opacity-50" />
+                        </div>
+                      )}
+                    </div>
+                  </Link>
 
-              {/* Course Info */}
-              <div className="p-4">
-                <Link href={`/courses/${bookmark.courseId}`}>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 hover:text-yellow-600 transition-colors line-clamp-2">
-                    {bookmark.course.title}
-                  </h3>
-                </Link>
+                  {/* Course Info */}
+                  <div className="p-4">
+                    <Link href={`/courses/${bookmark.courseId}`}>
+                      <h3 className="text-lg font-bold text-gray-900 mb-2 hover:text-yellow-600 transition-colors line-clamp-2">
+                        {bookmark.course.title}
+                      </h3>
+                    </Link>
 
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                  {bookmark.course.description}
-                </p>
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                      {bookmark.course.description}
+                    </p>
 
-                {/* Metadata */}
-                <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
-                  {bookmark.course.duration && (
+                    {/* Metadata */}
+                    <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                      {bookmark.course.duration && (
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {bookmark.course.duration}
@@ -150,6 +170,8 @@ export default function BookmarksPage() {
                   </button>
                 </div>
               </div>
+                </>
+              )}
             </div>
           ))}
         </div>

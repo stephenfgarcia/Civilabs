@@ -100,6 +100,11 @@ export default function NotificationsPage() {
       )
     } catch (err) {
       console.error('Error marking notification as read:', err)
+      toast({
+        title: 'Error',
+        description: 'Failed to mark notification as read',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -113,8 +118,17 @@ export default function NotificationsPage() {
       setNotifications(prev =>
         prev.map(notif => ({ ...notif, isRead: true }))
       )
+      toast({
+        title: 'Success',
+        description: `Marked ${unreadNotifications.length} notifications as read`,
+      })
     } catch (err) {
       console.error('Error marking all as read:', err)
+      toast({
+        title: 'Error',
+        description: 'Failed to mark all notifications as read',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -123,13 +137,43 @@ export default function NotificationsPage() {
       await notificationsService.deleteNotification(id)
       // Update local state
       setNotifications(prev => prev.filter(notif => notif.id !== id))
+      toast({
+        title: 'Deleted',
+        description: 'Notification deleted successfully',
+      })
     } catch (err) {
       console.error('Error deleting notification:', err)
+      toast({
+        title: 'Error',
+        description: 'Failed to delete notification',
+        variant: 'destructive',
+      })
     }
   }
 
-  const clearAll = () => {
-    setNotifications([])
+  const clearAll = async () => {
+    const confirmed = window.confirm('Are you sure you want to clear all notifications? This action cannot be undone.')
+    if (!confirmed) return
+
+    try {
+      const response = await notificationsService.clearAll()
+      if (response.status >= 200 && response.status < 300) {
+        setNotifications([])
+        toast({
+          title: 'Success',
+          description: 'All notifications have been cleared.',
+        })
+      } else {
+        throw new Error(response.error || 'Failed to clear notifications')
+      }
+    } catch (err) {
+      console.error('Error clearing notifications:', err)
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to clear notifications',
+        variant: 'destructive',
+      })
+    }
   }
 
   const filteredNotifications = Array.isArray(notifications) ? notifications.filter(notif => {

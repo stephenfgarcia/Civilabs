@@ -554,7 +554,7 @@ export default function CourseDetailPage() {
                     <p className="text-neutral-600 font-semibold">No lessons available yet</p>
                   </div>
                 ) : (
-                  course.lessons.map((lesson: any, index: number) => {
+                  Array.isArray(course.lessons) && course.lessons.map((lesson: any, index: number) => {
                     const isCompleted = completedLessonIds.includes(lesson.id)
                     const isLocked = !isEnrolled
                     const hasQuiz = !!lesson.quiz
