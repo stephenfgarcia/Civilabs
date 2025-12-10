@@ -7,6 +7,7 @@ import { MagneticButton } from '@/components/ui/magnetic-button'
 import { BookOpen, Search, Filter, HardHat, Award, Clock, Users, ChevronRight, Zap, Shield, Wrench, Loader2, AlertCircle, Bookmark, BookmarkCheck } from 'lucide-react'
 import Link from 'next/link'
 import { coursesService } from '@/lib/services'
+import { useToast } from '@/lib/hooks'
 
 // Icon mapping for categories
 const CATEGORY_ICONS: Record<string, any> = {
@@ -33,6 +34,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 const LEVELS = ['All Levels', 'BEGINNER', 'INTERMEDIATE', 'ADVANCED']
 
 export default function CoursesPage() {
+  const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedLevel, setSelectedLevel] = useState('All Levels')
@@ -136,7 +138,11 @@ export default function CoursesPage() {
     try {
       const token = localStorage.getItem('token')
       if (!token) {
-        alert('Please login to bookmark courses')
+        toast({
+          title: 'Authentication Required',
+          description: 'Please login to bookmark courses',
+          variant: 'destructive',
+        })
         return
       }
 
@@ -163,6 +169,10 @@ export default function CoursesPage() {
           const newBookmarks = new Set(bookmarkedCourses)
           newBookmarks.delete(courseId)
           setBookmarkedCourses(newBookmarks)
+          toast({
+            title: 'Bookmark Removed',
+            description: 'Course has been removed from your bookmarks',
+          })
         }
       } else {
         // Add bookmark
@@ -179,11 +189,19 @@ export default function CoursesPage() {
           const newBookmarks = new Set(bookmarkedCourses)
           newBookmarks.add(courseId)
           setBookmarkedCourses(newBookmarks)
+          toast({
+            title: 'Bookmark Added',
+            description: 'Course has been added to your bookmarks',
+          })
         }
       }
     } catch (error) {
       console.error('Error toggling bookmark:', error)
-      alert('Failed to update bookmark. Please try again.')
+      toast({
+        title: 'Error',
+        description: 'Failed to update bookmark. Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 

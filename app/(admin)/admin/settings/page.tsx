@@ -151,6 +151,7 @@ export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState('general')
   const [saving, setSaving] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
   // Settings state
@@ -175,7 +176,60 @@ export default function AdminSettingsPage() {
     ssoEnabled: 'false',
   })
 
-  const [originalSettings] = useState({ ...settings })
+  const [originalSettings, setOriginalSettings] = useState({ ...settings })
+
+  // Fetch settings on mount
+  useEffect(() => {
+    fetchSettings()
+  }, [])
+
+  const fetchSettings = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/admin/settings', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data) {
+          const fetchedSettings = {
+            // General
+            siteName: data.data.siteName || settings.siteName,
+            siteUrl: data.data.siteUrl || settings.siteUrl,
+            adminEmail: data.data.adminEmail || settings.adminEmail,
+            timezone: data.data.timezone || settings.timezone,
+            // Email
+            smtpHost: data.data.smtpHost || settings.smtpHost,
+            smtpPort: data.data.smtpPort || settings.smtpPort,
+            smtpUser: data.data.smtpUser || settings.smtpUser,
+            fromEmail: data.data.fromEmail || settings.fromEmail,
+            // Security
+            sessionTimeout: data.data.sessionTimeout || settings.sessionTimeout,
+            passwordMinLength: data.data.passwordMinLength || settings.passwordMinLength,
+            maxLoginAttempts: settings.maxLoginAttempts, // Not in DB yet
+            // Integrations
+            apiKey: settings.apiKey, // Not in DB yet
+            webhookUrl: settings.webhookUrl, // Not in DB yet
+            ssoEnabled: settings.ssoEnabled, // Not in DB yet
+          }
+          setSettings(fetchedSettings)
+          setOriginalSettings(fetchedSettings)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load settings',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSettingChange = (id: string, value: string) => {
     setSettings(prev => ({ ...prev, [id]: value }))
@@ -191,27 +245,35 @@ export default function AdminSettingsPage() {
   const handleSave = async () => {
     try {
       setSaving(true)
-      // TODO: Implement actual API persistence
-      // This would require:
-      // 1. Create Settings model in Prisma schema
-      // 2. Create PUT /api/admin/settings endpoint
-      // 3. Store settings in database
-      // For now, settings are saved to local state only
-      await new Promise(resolve => setTimeout(resolve, 1000))
 
-      // Save to localStorage as temporary persistence
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('admin_settings', JSON.stringify(settings))
-      }
-
-      toast({
-        title: 'Settings Saved',
-        description: 'Platform settings have been saved locally (API persistence pending)',
+      const response = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(settings),
       })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setOriginalSettings({ ...settings })
+          toast({
+            title: 'Settings Saved',
+            description: 'Platform settings have been saved successfully',
+          })
+        } else {
+          throw new Error(data.error || 'Failed to save settings')
+        }
+      } else {
+        throw new Error('Failed to save settings')
+      }
     } catch (error) {
+      console.error('Error saving settings:', error)
       toast({
         title: 'Error',
-        description: 'Failed to save settings',
+        description: error instanceof Error ? error.message : 'Failed to save settings',
         variant: 'destructive',
       })
     } finally {

@@ -704,3 +704,32 @@ model AssignmentSubmission {
   @@index([status])
   @@index([submittedAt])
 }
+
+// Platform Settings (singleton pattern - only one row)
+model Settings {
+  id String @id @default("settings") // Singleton - only one settings record
+
+  // General Settings
+  siteName    String @default("Civilabs LMS")
+  siteUrl     String @default("https://civilabs-lms.com")
+  adminEmail  String @default("admin@civilabs.com")
+  timezone    String @default("America/New_York")
+
+  // Email Settings
+  smtpHost   String?
+  smtpPort   String?
+  smtpUser   String?
+  fromEmail  String?
+
+  // Security Settings
+  sessionTimeout   String @default("30")
+  passwordMinLength String @default("8")
+
+  // Notification Settings
+  emailNotifications  Boolean @default(true)
+  smsNotifications    Boolean @default(false)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

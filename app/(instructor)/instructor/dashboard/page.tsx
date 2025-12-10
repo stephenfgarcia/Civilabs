@@ -126,10 +126,10 @@ export default function InstructorDashboardPage() {
           </p>
         </div>
 
-        <Link href="/instructor/my-courses/create">
+        <Link href="/instructor/my-courses/request">
           <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
             <Plus className="mr-2" size={20} />
-            CREATE COURSE
+            REQUEST COURSE
           </MagneticButton>
         </Link>
       </div>

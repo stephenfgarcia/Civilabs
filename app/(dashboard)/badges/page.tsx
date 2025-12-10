@@ -16,6 +16,7 @@ import {
   TrendingUp
 } from 'lucide-react'
 import { apiClient } from '@/lib/services'
+import { useToast } from '@/lib/hooks'
 
 interface Badge {
   id: string
@@ -106,6 +107,7 @@ const getCriteriaText = (badge: Badge) => {
 }
 
 export default function BadgesPage() {
+  const { toast } = useToast()
   const [badges, setBadges] = useState<Badge[]>([])
   const [stats, setStats] = useState<Stats>({
     total: 0,
@@ -133,9 +135,16 @@ export default function BadgesPage() {
           totalPoints: 0,
           completionPercentage: 0,
         })
+      } else {
+        throw new Error(response.error || 'Failed to fetch badges')
       }
     } catch (error) {
       console.error('Error fetching badges:', error)
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to load badges',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }

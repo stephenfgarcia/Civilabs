@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Trophy, Medal, Award, Target, Zap, TrendingUp, Crown, Star, User, Loader2 } from 'lucide-react'
+import { useToast } from '@/lib/hooks'
 
 // Leaderboard types
 interface LeaderboardEntry {
@@ -28,6 +29,7 @@ const FILTER_TABS = [
 ]
 
 export default function LeaderboardPage() {
+  const { toast } = useToast()
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -74,10 +76,17 @@ export default function LeaderboardPage() {
           isCurrentUser: entry.userId === currentUserId
         }))
         setLeaderboard(enrichedData)
+      } else {
+        throw new Error(data.error || 'Failed to fetch leaderboard')
       }
     } catch (err) {
       console.error('Error fetching leaderboard:', err)
       setLeaderboard([])
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to load leaderboard',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }

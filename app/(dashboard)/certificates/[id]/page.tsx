@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { apiClient } from '@/lib/services'
+import { useToast } from '@/lib/hooks'
 
 interface Certificate {
   id: string
@@ -61,6 +62,7 @@ interface Certificate {
 }
 
 export default function CertificateDetailPage() {
+  const { toast } = useToast()
   const params = useParams()
   const router = useRouter()
   const certId = params.id as string
@@ -121,12 +123,19 @@ export default function CertificateDetailPage() {
         })
       } else {
         await navigator.clipboard.writeText(shareUrl)
-        alert('Certificate link copied to clipboard! You can now share it.')
+        toast({
+          title: 'Link Copied',
+          description: 'Certificate link copied to clipboard! You can now share it.',
+        })
       }
     } catch (error) {
       console.error('Error sharing certificate:', error)
       if (error instanceof Error && error.name !== 'AbortError') {
-        alert('Failed to share certificate. Please try again.')
+        toast({
+          title: 'Error',
+          description: 'Failed to share certificate. Please try again.',
+          variant: 'destructive',
+        })
       }
     }
   }

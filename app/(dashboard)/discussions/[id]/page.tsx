@@ -26,6 +26,7 @@ import Link from 'next/link'
 import { Textarea } from '@/components/ui/textarea'
 import { apiClient } from '@/lib/services'
 import { useToast } from '@/lib/hooks'
+import DOMPurify from 'dompurify'
 
 interface DiscussionReply {
   id: string
@@ -208,13 +209,25 @@ export default function DiscussionDetailPage() {
       if (response.status >= 200 && response.status < 300) {
         setReplyText('')
         fetchDiscussion() // Refresh to show new reply
+        toast({
+          title: 'Reply Posted',
+          description: 'Your reply has been posted successfully.',
+        })
       } else {
         const errorData = response.data as { message?: string }
-        alert(errorData?.message || 'Failed to submit reply. Please try again.')
+        toast({
+          title: 'Error',
+          description: errorData?.message || 'Failed to submit reply. Please try again.',
+          variant: 'destructive',
+        })
       }
     } catch (err) {
       console.error('Error submitting reply:', err)
-      alert('Failed to submit reply. Please try again.')
+      toast({
+        title: 'Error',
+        description: 'Failed to submit reply. Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -321,7 +334,11 @@ export default function DiscussionDetailPage() {
           <div className="prose prose-neutral max-w-none">
             <div
               className="text-neutral-700 leading-relaxed whitespace-pre-line"
-              dangerouslySetInnerHTML={{ __html: discussion.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(
+                  discussion.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                )
+              }}
             />
           </div>
 
@@ -422,10 +439,12 @@ export default function DiscussionDetailPage() {
               <div
                 className="text-neutral-700 leading-relaxed whitespace-pre-line"
                 dangerouslySetInnerHTML={{
-                  __html: reply.content
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/@(\w+)/g, '<span class="text-primary font-bold">@$1</span>')
-                    .replace(/❌/g, '<span class="text-danger">❌</span>')
+                  __html: DOMPurify.sanitize(
+                    reply.content
+                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                      .replace(/@(\w+)/g, '<span class="text-primary font-bold">@$1</span>')
+                      .replace(/❌/g, '<span class="text-danger">❌</span>')
+                  )
                 }}
               />
             </div>

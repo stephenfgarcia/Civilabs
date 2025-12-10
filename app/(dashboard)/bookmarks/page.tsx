@@ -5,8 +5,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Bookmark as BookmarkIcon, Trash2, BookOpen, Clock, Users } from 'lucide-react'
 import { bookmarksService, type Bookmark } from '@/lib/services'
+import { useToast } from '@/lib/hooks'
 
 export default function BookmarksPage() {
+  const { toast } = useToast()
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -21,6 +23,11 @@ export default function BookmarksPage() {
       setBookmarks(data)
     } catch (error) {
       console.error('Failed to load bookmarks:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load bookmarks',
+        variant: 'destructive',
+      })
     } finally {
       setIsLoading(false)
     }
@@ -30,8 +37,17 @@ export default function BookmarksPage() {
     try {
       await bookmarksService.removeBookmark(bookmarkId)
       setBookmarks(bookmarks.filter((b) => b.id !== bookmarkId))
+      toast({
+        title: 'Removed',
+        description: 'Bookmark removed successfully',
+      })
     } catch (error) {
       console.error('Failed to remove bookmark:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to remove bookmark',
+        variant: 'destructive',
+      })
     }
   }
 

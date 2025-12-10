@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { apiClient } from '@/lib/services'
+import { useToast } from '@/lib/hooks'
 
 interface Question {
   id: string
@@ -72,6 +73,7 @@ interface QuizResults {
 type QuizState = 'loading' | 'not-started' | 'in-progress' | 'completed'
 
 export default function QuizPage() {
+  const { toast } = useToast()
   const params = useParams()
   const router = useRouter()
   const quizId = params.quizId as string
@@ -150,14 +152,26 @@ export default function QuizPage() {
         setTimeRemaining((quiz?.timeLimitMinutes || 30) * 60)
         setCurrentQuestion(0)
         setAnswers({})
+        toast({
+          title: 'Quiz Started',
+          description: 'Good luck! Answer all questions carefully.',
+        })
       } else {
         setError(response.error || 'Failed to start quiz')
-        alert(response.error || 'Failed to start quiz. Please try again.')
+        toast({
+          title: 'Error',
+          description: response.error || 'Failed to start quiz. Please try again.',
+          variant: 'destructive',
+        })
       }
     } catch (err) {
       console.error('Error starting quiz:', err)
       setError(err instanceof Error ? err.message : 'Failed to start quiz')
-      alert('Failed to start quiz. Please try again.')
+      toast({
+        title: 'Error',
+        description: 'Failed to start quiz. Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -202,14 +216,26 @@ export default function QuizPage() {
         const apiData = response.data as any
         setResults(apiData.data.results)
         setQuizState('completed')
+        toast({
+          title: 'Quiz Submitted',
+          description: 'Your quiz has been submitted successfully!',
+        })
       } else {
         setError(response.error || 'Failed to submit quiz')
-        alert(response.error || 'Failed to submit quiz. Please try again.')
+        toast({
+          title: 'Error',
+          description: response.error || 'Failed to submit quiz. Please try again.',
+          variant: 'destructive',
+        })
       }
     } catch (err) {
       console.error('Error submitting quiz:', err)
       setError(err instanceof Error ? err.message : 'Failed to submit quiz')
-      alert('Failed to submit quiz. Please try again.')
+      toast({
+        title: 'Error',
+        description: 'Failed to submit quiz. Please try again.',
+        variant: 'destructive',
+      })
     } finally {
       setSubmitting(false)
     }

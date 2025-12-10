@@ -223,7 +223,11 @@ export default function CourseDetailPage() {
     try {
       const token = localStorage.getItem('token')
       if (!token) {
-        alert('Please login to bookmark courses')
+        toast({
+          title: 'Authentication Required',
+          description: 'Please login to bookmark courses',
+          variant: 'destructive',
+        })
         return
       }
 
@@ -239,6 +243,10 @@ export default function CourseDetailPage() {
         if (response.ok) {
           setIsBookmarked(false)
           setBookmarkId(null)
+          toast({
+            title: 'Bookmark Removed',
+            description: 'Course has been removed from your bookmarks',
+          })
         }
       } else {
         // Add bookmark
@@ -255,11 +263,19 @@ export default function CourseDetailPage() {
           const data = await response.json()
           setIsBookmarked(true)
           setBookmarkId(data.data.id)
+          toast({
+            title: 'Bookmark Added',
+            description: 'Course has been added to your bookmarks',
+          })
         }
       }
     } catch (error) {
       console.error('Error toggling bookmark:', error)
-      alert('Failed to update bookmark. Please try again.')
+      toast({
+        title: 'Error',
+        description: 'Failed to update bookmark. Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 

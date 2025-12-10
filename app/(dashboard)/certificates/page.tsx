@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Award, Download, Share2, Calendar, CheckCircle, Shield, HardHat, Zap, Eye, ExternalLink, Loader2, AlertCircle, BookOpen, Wrench } from 'lucide-react'
 import { certificatesService } from '@/lib/services'
+import { useToast } from '@/lib/hooks'
 
 // Icon mapping for certificate categories
 const CATEGORY_ICONS: Record<string, any> = {
@@ -31,6 +32,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 
 export default function CertificatesPage() {
+  const { toast } = useToast()
   const [certificates, setCertificates] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -75,9 +77,17 @@ export default function CertificatesPage() {
     try {
       // Open the certificate download URL in a new window
       window.open(`/api/certificates/${certificate.id}/download`, '_blank')
+      toast({
+        title: 'Download Started',
+        description: 'Your certificate download has been initiated.',
+      })
     } catch (error) {
       console.error('Error downloading certificate:', error)
-      alert('Failed to download certificate. Please try again.')
+      toast({
+        title: 'Error',
+        description: 'Failed to download certificate. Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -96,13 +106,20 @@ export default function CertificatesPage() {
       } else {
         // Fallback: copy link to clipboard
         await navigator.clipboard.writeText(shareUrl)
-        alert('Certificate link copied to clipboard! You can now share it.')
+        toast({
+          title: 'Link Copied',
+          description: 'Certificate link copied to clipboard! You can now share it.',
+        })
       }
     } catch (error) {
       console.error('Error sharing certificate:', error)
       // Only show error if it's not a user cancellation
       if (error instanceof Error && error.name !== 'AbortError') {
-        alert('Failed to share certificate. Please try again.')
+        toast({
+          title: 'Error',
+          description: 'Failed to share certificate. Please try again.',
+          variant: 'destructive',
+        })
       }
     }
   }

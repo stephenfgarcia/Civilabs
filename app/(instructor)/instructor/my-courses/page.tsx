@@ -146,10 +146,10 @@ export default function InstructorMyCoursesPage() {
           </p>
         </div>
 
-        <Link href="/instructor/courses/create">
+        <Link href="/instructor/my-courses/request">
           <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
             <Plus className="mr-2" size={20} />
-            CREATE COURSE
+            REQUEST COURSE
           </MagneticButton>
         </Link>
       </div>
@@ -243,10 +243,10 @@ export default function InstructorMyCoursesPage() {
               : 'No courses match the selected filter'}
           </p>
           {courses.length === 0 && (
-            <Link href="/instructor/courses/create" className="inline-block mt-4">
+            <Link href="/instructor/my-courses/request" className="inline-block mt-4">
               <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
                 <Plus className="mr-2" size={20} />
-                CREATE YOUR FIRST COURSE
+                REQUEST YOUR FIRST COURSE
               </MagneticButton>
             </Link>
           )}
@@ -341,12 +341,18 @@ export default function InstructorMyCoursesPage() {
                     VIEW
                   </MagneticButton>
                 </Link>
-                <Link href={`/admin/courses?edit=${course.id}`} className="flex-1">
-                  <MagneticButton className="w-full bg-gradient-to-r from-warning to-orange-600 text-white font-black text-sm py-2">
-                    <Edit className="mr-2" size={16} />
-                    EDIT
-                  </MagneticButton>
-                </Link>
+                <MagneticButton
+                  onClick={() => {
+                    // TODO: Implement instructor course editing
+                    // For now, instructors should contact admin to edit courses
+                  }}
+                  disabled
+                  className="flex-1 w-full bg-gradient-to-r from-neutral-400 to-neutral-600 text-white font-black text-sm py-2 opacity-50 cursor-not-allowed"
+                  title="Contact admin to edit course details"
+                >
+                  <Edit className="mr-2" size={16} />
+                  EDIT
+                </MagneticButton>
               </div>
             </Card>
           ))}
