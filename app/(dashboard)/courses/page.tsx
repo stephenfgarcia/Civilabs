@@ -89,17 +89,16 @@ export default function CoursesPage() {
       const response = await coursesService.getCourses()
 
       if (response.status >= 200 && response.status < 300 && response.data) {
-        setCourses(response.data)
-        setFilteredCourses(response.data)
+        const coursesData = Array.isArray(response.data) ? response.data : []
+        setCourses(coursesData)
+        setFilteredCourses(coursesData)
+
+        // Extract unique categories
+        const uniqueCategories = ['All', ...Array.from(new Set(coursesData.map((c: any) => c.category?.name).filter(Boolean)))]
+        setCategories(uniqueCategories)
       } else {
         throw new Error(response.error || 'Failed to load courses')
       }
-
-      const coursesData = response.data || []
-
-      // Extract unique categories
-      const uniqueCategories = ['All', ...Array.from(new Set(coursesData.map((c: any) => c.category?.name).filter(Boolean)))]
-      setCategories(uniqueCategories)
     } catch (err) {
       console.error('Error fetching courses:', err)
       setError(err instanceof Error ? err.message : 'Failed to load courses')

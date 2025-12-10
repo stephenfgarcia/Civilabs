@@ -64,7 +64,7 @@ export default function NotificationsPage() {
         throw new Error(response.error || 'Failed to fetch notifications')
       }
 
-      const notificationsData = response.data || []
+      const notificationsData = Array.isArray(response.data) ? response.data : []
       setNotifications(notificationsData)
     } catch (err) {
       console.error('Error fetching notifications:', err)
@@ -132,14 +132,14 @@ export default function NotificationsPage() {
     setNotifications([])
   }
 
-  const filteredNotifications = notifications.filter(notif => {
+  const filteredNotifications = Array.isArray(notifications) ? notifications.filter(notif => {
     if (filter === 'all') return true
     if (filter === 'UNREAD') return !notif.isRead
     if (filter === 'READ') return notif.isRead
     return true
-  })
+  }) : []
 
-  const unreadCount = notifications.filter(n => !n.isRead).length
+  const unreadCount = Array.isArray(notifications) ? notifications.filter(n => !n.isRead).length : 0
 
   // Loading state
   if (loading) {
