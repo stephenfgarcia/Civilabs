@@ -13,6 +13,7 @@ export default function MessagesPage() {
   const [messageText, setMessageText] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -22,10 +23,16 @@ export default function MessagesPage() {
   useEffect(() => {
     if (selectedConversation) {
       loadMessages(selectedConversation.id)
-      // Auto-refresh messages every 5 seconds (will be replaced with WebSocket)
+
+      // Auto-refresh messages every 15 seconds only when window is focused
+      // TODO: Replace with WebSocket for real-time updates
       const interval = setInterval(() => {
-        loadMessages(selectedConversation.id)
-      }, 5000)
+        // Only poll if window is focused to reduce unnecessary API calls
+        if (document.visibilityState === 'visible') {
+          loadMessages(selectedConversation.id)
+        }
+      }, 15000) // Reduced frequency from 5s to 15s
+
       return () => clearInterval(interval)
     }
   }, [selectedConversation])
@@ -40,6 +47,7 @@ export default function MessagesPage() {
 
   const loadConversations = async () => {
     setIsLoading(true)
+    setError(null)
     try {
       const data = await messagesService.getConversations()
       setConversations(data)
@@ -48,6 +56,7 @@ export default function MessagesPage() {
       }
     } catch (error) {
       console.error('Failed to load conversations:', error)
+      setError(error instanceof Error ? error.message : 'Failed to load conversations')
     } finally {
       setIsLoading(false)
     }
@@ -94,7 +103,27 @@ export default function MessagesPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500"></div>
+        <Loader2 className="animate-spin h-12 w-12 text-yellow-500" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MessageSquare className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Unable to Load Messages</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={loadConversations}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     )
   }

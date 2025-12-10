@@ -44,6 +44,7 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [bookmarkedCourses, setBookmarkedCourses] = useState<Set<string>>(new Set())
+  const [togglingBookmarks, setTogglingBookmarks] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     // Fetch courses and bookmarks on mount
@@ -134,7 +135,15 @@ export default function CoursesPage() {
     e.preventDefault()
     e.stopPropagation()
 
+    // Prevent race condition - if already toggling this bookmark, return
+    if (togglingBookmarks.has(courseId)) {
+      return
+    }
+
     try {
+      // Mark as toggling
+      setTogglingBookmarks(prev => new Set(prev).add(courseId))
+
       const token = localStorage.getItem('token')
       if (!token) {
         toast({
@@ -202,6 +211,13 @@ export default function CoursesPage() {
         title: 'Error',
         description: 'Failed to update bookmark. Please try again.',
         variant: 'destructive',
+      })
+    } finally {
+      // Remove from toggling set
+      setTogglingBookmarks(prev => {
+        const next = new Set(prev)
+        next.delete(courseId)
+        return next
       })
     }
   }
@@ -364,12 +380,21 @@ export default function CoursesPage() {
                         <div className="flex items-start gap-2">
                           <button
                             onClick={(e) => toggleBookmark(course.id, e)}
+                            disabled={togglingBookmarks.has(course.id)}
                             className={`p-2 rounded-lg transition-all ${
-                              isBookmarked
+                              togglingBookmarks.has(course.id)
+                                ? 'bg-neutral-100 text-neutral-300 cursor-not-allowed opacity-50'
+                                : isBookmarked
                                 ? 'bg-warning/20 text-warning hover:bg-warning/30'
                                 : 'bg-neutral-100 text-neutral-400 hover:bg-neutral-200'
                             }`}
-                            title={isBookmarked ? 'Remove bookmark' : 'Bookmark course'}
+                            title={
+                              togglingBookmarks.has(course.id)
+                                ? 'Processing...'
+                                : isBookmarked
+                                ? 'Remove bookmark'
+                                : 'Bookmark course'
+                            }
                           >
                             {isBookmarked ? (
                               <BookmarkCheck size={18} />

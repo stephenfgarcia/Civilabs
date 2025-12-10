@@ -116,6 +116,7 @@ export default function BadgesPage() {
     completionPercentage: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchBadges()
@@ -124,6 +125,7 @@ export default function BadgesPage() {
   const fetchBadges = async () => {
     try {
       setLoading(true)
+      setError(null)
       const response = await apiClient.get('/badges')
 
       if (response.status >= 200 && response.status < 300 && response.data) {
@@ -140,9 +142,11 @@ export default function BadgesPage() {
       }
     } catch (error) {
       console.error('Error fetching badges:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load badges'
+      setError(errorMessage)
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to load badges',
+        description: errorMessage,
         variant: 'destructive',
       })
     } finally {
@@ -174,6 +178,26 @@ export default function BadgesPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-neutral-600">Loading badges...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Award className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Unable to Load Badges</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={fetchBadges}
+            className="bg-warning hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     )
   }

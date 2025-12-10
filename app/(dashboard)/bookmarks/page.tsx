@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Bookmark as BookmarkIcon, Trash2, BookOpen, Clock, Users } from 'lucide-react'
+import { Bookmark as BookmarkIcon, Trash2, BookOpen, Clock, Users, AlertCircle } from 'lucide-react'
 import { bookmarksService, type Bookmark } from '@/lib/services'
 import { useToast } from '@/lib/hooks'
 
@@ -11,6 +11,7 @@ export default function BookmarksPage() {
   const { toast } = useToast()
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadBookmarks()
@@ -18,14 +19,17 @@ export default function BookmarksPage() {
 
   const loadBookmarks = async () => {
     setIsLoading(true)
+    setError(null)
     try {
       const data = await bookmarksService.getBookmarks()
       setBookmarks(data)
     } catch (error) {
       console.error('Failed to load bookmarks:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load bookmarks'
+      setError(errorMessage)
       toast({
         title: 'Error',
-        description: 'Failed to load bookmarks',
+        description: errorMessage,
         variant: 'destructive',
       })
     } finally {
@@ -61,6 +65,26 @@ export default function BookmarksPage() {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Unable to Load Bookmarks</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={loadBookmarks}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     )
   }

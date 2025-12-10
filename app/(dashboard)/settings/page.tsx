@@ -131,10 +131,49 @@ export default function SettingsPage() {
       return
     }
 
-    if (passwordForm.newPassword.length < 8) {
+    // Comprehensive password validation
+    const password = passwordForm.newPassword
+
+    if (password.length < 8) {
       toast({
         title: 'Validation Error',
-        description: 'Password must be at least 8 characters',
+        description: 'Password must be at least 8 characters long',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Password must contain at least one uppercase letter',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!/[a-z]/.test(password)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Password must contain at least one lowercase letter',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!/[0-9]/.test(password)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Password must contain at least one number',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Password must contain at least one special character (!@#$%^&*)',
         variant: 'destructive'
       })
       return
@@ -403,6 +442,28 @@ export default function SettingsPage() {
                   {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+              {passwordForm.newPassword && (
+                <div className="mt-3 space-y-2">
+                  <div className="text-xs font-semibold text-neutral-600 mb-2">Password Requirements:</div>
+                  <div className="space-y-1">
+                    <div className={`text-xs flex items-center gap-2 ${passwordForm.newPassword.length >= 8 ? 'text-success' : 'text-neutral-500'}`}>
+                      {passwordForm.newPassword.length >= 8 ? '✓' : '○'} At least 8 characters
+                    </div>
+                    <div className={`text-xs flex items-center gap-2 ${/[A-Z]/.test(passwordForm.newPassword) ? 'text-success' : 'text-neutral-500'}`}>
+                      {/[A-Z]/.test(passwordForm.newPassword) ? '✓' : '○'} One uppercase letter
+                    </div>
+                    <div className={`text-xs flex items-center gap-2 ${/[a-z]/.test(passwordForm.newPassword) ? 'text-success' : 'text-neutral-500'}`}>
+                      {/[a-z]/.test(passwordForm.newPassword) ? '✓' : '○'} One lowercase letter
+                    </div>
+                    <div className={`text-xs flex items-center gap-2 ${/[0-9]/.test(passwordForm.newPassword) ? 'text-success' : 'text-neutral-500'}`}>
+                      {/[0-9]/.test(passwordForm.newPassword) ? '✓' : '○'} One number
+                    </div>
+                    <div className={`text-xs flex items-center gap-2 ${/[!@#$%^&*(),.?":{}|<>]/.test(passwordForm.newPassword) ? 'text-success' : 'text-neutral-500'}`}>
+                      {/[!@#$%^&*(),.?":{}|<>]/.test(passwordForm.newPassword) ? '✓' : '○'} One special character (!@#$%^&*)
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
