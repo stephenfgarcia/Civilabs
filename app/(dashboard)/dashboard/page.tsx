@@ -56,7 +56,7 @@ export default function DashboardPage() {
         throw new Error(enrollmentsResponse.error || 'Failed to fetch enrollments')
       }
 
-      const enrollmentsData = (enrollmentsResponse.data as any)?.data || []
+      const enrollmentsData = Array.isArray(enrollmentsResponse.data) ? enrollmentsResponse.data : []
       setEnrollments(enrollmentsData.slice(0, 2)) // Get first 2 for display
 
       // Fetch certificates
@@ -66,7 +66,7 @@ export default function DashboardPage() {
         throw new Error(certificatesResponse.error || 'Failed to fetch certificates')
       }
 
-      const certificatesData = (certificatesResponse.data as any)?.data || []
+      const certificatesData = Array.isArray(certificatesResponse.data) ? certificatesResponse.data : []
 
       // Calculate stats from enrollments
       const enrolled = enrollmentsData.length

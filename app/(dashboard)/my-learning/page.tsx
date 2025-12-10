@@ -78,7 +78,7 @@ export default function MyLearningPage() {
         throw new Error(response.error || 'Failed to fetch enrollments')
       }
 
-      const enrollmentsData = (response.data as any)?.data || []
+      const enrollmentsData = Array.isArray(response.data) ? response.data : []
       setEnrollments(enrollmentsData)
       setFilteredCourses(enrollmentsData)
     } catch (err) {
