@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { use Params } from 'next/navigation'
+import { use } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useToast } from '@/lib/hooks'
