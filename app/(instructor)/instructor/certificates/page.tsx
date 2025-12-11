@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { apiClient } from '@/lib/services'
 
@@ -39,6 +40,7 @@ interface Stats {
 
 export default function InstructorCertificatesPage() {
   useAuth(['INSTRUCTOR'])
+  const router = useRouter()
 
   const [certificates, setCertificates] = useState<Certificate[]>([])
   const [stats, setStats] = useState<Stats>({
@@ -362,9 +364,7 @@ export default function InstructorCertificatesPage() {
                           Download
                         </button>
                         <button
-                          onClick={() =>
-                            (window.location.href = `/certificates/${cert.id}`)
-                          }
+                          onClick={() => router.push(`/certificates/${cert.id}`)}
                           className="text-green-600 hover:text-green-900 text-sm"
                         >
                           View

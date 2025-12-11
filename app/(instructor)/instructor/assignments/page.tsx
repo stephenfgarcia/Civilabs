@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { apiClient } from '@/lib/services'
 import { useToast } from '@/lib/hooks'
@@ -30,6 +31,7 @@ interface Stats {
 export default function InstructorAssignmentsPage() {
   useAuth(['INSTRUCTOR'])
   const { toast } = useToast()
+  const router = useRouter()
 
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [stats, setStats] = useState<Stats>({
@@ -445,9 +447,7 @@ export default function InstructorAssignmentsPage() {
                           </button>
                         )}
                         <button
-                          onClick={() =>
-                            (window.location.href = `/instructor/assignments/${assignment.id}`)
-                          }
+                          onClick={() => router.push(`/instructor/assignments/${assignment.id}`)}
                           className="text-blue-600 hover:text-blue-900 text-sm"
                         >
                           View
