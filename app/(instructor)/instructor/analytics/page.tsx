@@ -107,6 +107,21 @@ export default function InstructorAnalyticsPage() {
     )
   }
 
+  const getIconBgClass = (color: string) => {
+    switch (color) {
+      case 'warning':
+        return 'bg-gradient-to-br from-warning to-orange-600'
+      case 'primary':
+        return 'bg-gradient-to-br from-primary to-blue-600'
+      case 'success':
+        return 'bg-gradient-to-br from-success to-green-600'
+      case 'secondary':
+        return 'bg-gradient-to-br from-secondary to-purple-600'
+      default:
+        return 'bg-gradient-to-br from-neutral-500 to-neutral-600'
+    }
+  }
+
   const overviewStats = [
     { label: 'Total Courses', value: analytics.summary.totalCourses.toString(), change: '-', trend: 'up', icon: BarChart3, color: 'warning' },
     { label: 'Total Students', value: analytics.summary.uniqueStudents.toString(), change: '-', trend: 'up', icon: Users, color: 'primary' },
@@ -155,12 +170,7 @@ export default function InstructorAnalyticsPage() {
           return (
             <Card key={stat.label} className="p-6 border-4 border-neutral-200 hover:border-warning/40 transition-all">
               <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 bg-gradient-to-br from-${stat.color} to-${
-                  stat.color === 'success' ? 'green' :
-                  stat.color === 'primary' ? 'blue' :
-                  stat.color === 'warning' ? 'orange' :
-                  'purple'
-                }-600 rounded-lg flex items-center justify-center shadow-lg`}>
+                <div className={`w-12 h-12 ${getIconBgClass(stat.color)} rounded-lg flex items-center justify-center shadow-lg`}>
                   <Icon className="text-white" size={24} />
                 </div>
                 <span className={`text-xs font-black ${

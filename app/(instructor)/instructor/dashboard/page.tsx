@@ -78,6 +78,21 @@ export default function InstructorDashboardPage() {
     )
   }
 
+  const getIconBgClass = (color: string) => {
+    switch (color) {
+      case 'warning':
+        return 'bg-gradient-to-br from-warning to-orange-600'
+      case 'primary':
+        return 'bg-gradient-to-br from-primary to-blue-600'
+      case 'success':
+        return 'bg-gradient-to-br from-success to-green-600'
+      case 'secondary':
+        return 'bg-gradient-to-br from-secondary to-purple-600'
+      default:
+        return 'bg-gradient-to-br from-neutral-500 to-neutral-600'
+    }
+  }
+
   const stats = [
     {
       label: 'Active Courses',
@@ -145,15 +160,7 @@ export default function InstructorDashboardPage() {
             >
               <div className="flex items-start justify-between mb-4">
                 <div
-                  className={`w-12 h-12 bg-gradient-to-br from-${stat.color} to-${
-                    stat.color === 'warning'
-                      ? 'orange'
-                      : stat.color === 'primary'
-                      ? 'blue'
-                      : stat.color === 'success'
-                      ? 'green'
-                      : 'purple'
-                  }-600 rounded-lg flex items-center justify-center shadow-lg`}
+                  className={`w-12 h-12 ${getIconBgClass(stat.color)} rounded-lg flex items-center justify-center shadow-lg`}
                 >
                   <Icon className="text-white" size={24} />
                 </div>
