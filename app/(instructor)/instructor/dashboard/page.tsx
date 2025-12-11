@@ -97,32 +97,24 @@ export default function InstructorDashboardPage() {
     {
       label: 'Active Courses',
       value: data.stats.activeCourses.toString(),
-      change: '+' + data.stats.activeCourses,
-      trend: 'up',
       icon: BookOpen,
       color: 'warning',
     },
     {
       label: 'Total Students',
       value: data.stats.totalStudents.toString(),
-      change: '+' + data.stats.uniqueStudents,
-      trend: 'up',
       icon: Users,
       color: 'primary',
     },
     {
       label: 'Avg. Rating',
       value: data.stats.avgRating.toFixed(1),
-      change: '+0.2',
-      trend: 'up',
       icon: Star,
       color: 'success',
     },
     {
       label: 'Completion Rate',
       value: data.stats.completionRate + '%',
-      change: '+5%',
-      trend: 'up',
       icon: TrendingUp,
       color: 'secondary',
     },
@@ -158,15 +150,12 @@ export default function InstructorDashboardPage() {
               key={stat.label}
               className="p-6 border-4 border-neutral-200 hover:border-warning/40 transition-all"
             >
-              <div className="flex items-start justify-between mb-4">
+              <div className="mb-4">
                 <div
                   className={`w-12 h-12 ${getIconBgClass(stat.color)} rounded-lg flex items-center justify-center shadow-lg`}
                 >
                   <Icon className="text-white" size={24} />
                 </div>
-                <span className="text-xs font-black text-success bg-success/10 px-2 py-1 rounded">
-                  {stat.change}
-                </span>
               </div>
 
               <p className="text-sm font-bold text-neutral-600 mb-1">{stat.label}</p>
@@ -222,9 +211,11 @@ export default function InstructorDashboardPage() {
                         </span>
                       </div>
                     </div>
-                    <button className="text-warning hover:text-orange-600 font-bold">
-                      <ArrowRight size={20} />
-                    </button>
+                    <Link href="/instructor/assignments">
+                      <button className="text-warning hover:text-orange-600 font-bold">
+                        <ArrowRight size={20} />
+                      </button>
+                    </Link>
                   </div>
                 )}
 
@@ -245,9 +236,11 @@ export default function InstructorDashboardPage() {
                         </span>
                       </div>
                     </div>
-                    <button className="text-warning hover:text-orange-600 font-bold">
-                      <ArrowRight size={20} />
-                    </button>
+                    <Link href="/instructor/discussions">
+                      <button className="text-warning hover:text-orange-600 font-bold">
+                        <ArrowRight size={20} />
+                      </button>
+                    </Link>
                   </div>
                 )}
 
@@ -268,9 +261,11 @@ export default function InstructorDashboardPage() {
                         </span>
                       </div>
                     </div>
-                    <button className="text-warning hover:text-orange-600 font-bold">
-                      <ArrowRight size={20} />
-                    </button>
+                    <Link href="/instructor/assignments">
+                      <button className="text-warning hover:text-orange-600 font-bold">
+                        <ArrowRight size={20} />
+                      </button>
+                    </Link>
                   </div>
                 )}
               </div>

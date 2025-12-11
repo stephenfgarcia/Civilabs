@@ -16,12 +16,8 @@ import {
   TrendingUp,
   Eye,
   Edit,
-  Copy,
-  Archive,
   Search,
   Plus,
-  Filter,
-  MoreVertical,
   Loader2,
   AlertCircle,
 } from 'lucide-react'
@@ -262,14 +258,9 @@ export default function InstructorMyCoursesPage() {
                 <div className="w-16 h-16 bg-gradient-to-br from-warning to-orange-600 rounded-lg flex items-center justify-center text-3xl shadow-lg">
                   {course.category?.name.charAt(0) || '📚'}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-black px-2 py-1 rounded ${getStatusColor(course.status)}`}>
-                    {course.status}
-                  </span>
-                  <button className="text-neutral-600 hover:text-neutral-800">
-                    <MoreVertical size={20} />
-                  </button>
-                </div>
+                <span className={`text-xs font-black px-2 py-1 rounded ${getStatusColor(course.status)}`}>
+                  {course.status}
+                </span>
               </div>
 
               <h3 className="text-lg font-black text-neutral-800 mb-2 line-clamp-2">
@@ -341,7 +332,7 @@ export default function InstructorMyCoursesPage() {
                     VIEW
                   </MagneticButton>
                 </Link>
-                <Link href={`/admin/courses`} className="flex-1">
+                <Link href={`/admin/courses/${course.id}`} className="flex-1">
                   <MagneticButton
                     className="w-full bg-gradient-to-r from-secondary to-purple-600 text-white font-black text-sm py-2"
                   >
