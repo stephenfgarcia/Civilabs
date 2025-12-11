@@ -43,14 +43,36 @@ export default function RequestCoursePage() {
 
     setSubmitting(true)
 
-    // Simulate submitting request (in production, this would call an API)
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/instructor/course-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to submit request')
+      }
+
       toast({
         title: 'Request Submitted',
         description: 'Your course creation request has been submitted to the administrator for review.',
       })
+
       router.push('/instructor/my-courses')
-    }, 1000)
+    } catch (error) {
+      console.error('Error submitting course request:', error)
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to submit request. Please try again.',
+        variant: 'destructive',
+      })
+      setSubmitting(false)
+    }
   }
 
   return (

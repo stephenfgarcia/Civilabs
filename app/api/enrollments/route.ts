@@ -19,6 +19,8 @@ export const GET = withAuth(async (request, user) => {
     const userId = searchParams.get('userId')
     const status = searchParams.get('status')
 
+    console.log('[Enrollments API] User from token:', { userId: user.userId, role: user.role, email: user.email })
+
     // Learners can only see their own enrollments
     // Admins and instructors can see all enrollments (with filters)
     const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'INSTRUCTOR'
@@ -31,8 +33,10 @@ export const GET = withAuth(async (request, user) => {
 
     // If not admin OR admin specifically filtered by userId, add userId filter
     if (!isAdmin || userId) {
-      where.userId = userId || user.userId
+      where.userId = userId || String(user.userId)
     }
+
+    console.log('[Enrollments API] Where clause:', where)
 
     const enrollments = await prisma.enrollment.findMany({
       where,
@@ -83,6 +87,8 @@ export const GET = withAuth(async (request, user) => {
       },
     })
 
+    console.log('[Enrollments API] Found enrollments:', enrollments.length)
+
     // Enrich with progress information (optimized to avoid N+1 query)
     // Step 1: Get all unique course IDs
     const courseIds = [...new Set(enrollments.map(e => e.courseId))]
@@ -112,6 +118,8 @@ export const GET = withAuth(async (request, user) => {
         calculatedProgress: progress,
       }
     })
+
+    console.log('[Enrollments API] Returning enriched enrollments:', enrichedEnrollments.length)
 
     return NextResponse.json({
       success: true,

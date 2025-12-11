@@ -6,6 +6,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { PaginatedTable } from '@/components/ui/paginated-table'
 import type { Column } from '@/components/ui/data-table'
@@ -48,13 +49,14 @@ export default function InstructorStudentsPage() {
   const [messageModalOpen, setMessageModalOpen] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<{ id: string; name: string } | null>(null)
   const [emailComposerOpen, setEmailComposerOpen] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     fetchStudents()
   }, [])
 
   function handleViewProfile(studentId: string) {
-    window.location.href = `/instructor/students/${studentId}`
+    router.push(`/instructor/students/${studentId}`)
   }
 
   async function fetchStudents() {

@@ -341,18 +341,14 @@ export default function InstructorMyCoursesPage() {
                     VIEW
                   </MagneticButton>
                 </Link>
-                <MagneticButton
-                  onClick={() => {
-                    // TODO: Implement instructor course editing
-                    // For now, instructors should contact admin to edit courses
-                  }}
-                  disabled
-                  className="flex-1 w-full bg-gradient-to-r from-neutral-400 to-neutral-600 text-white font-black text-sm py-2 opacity-50 cursor-not-allowed"
-                  title="Contact admin to edit course details"
-                >
-                  <Edit className="mr-2" size={16} />
-                  EDIT
-                </MagneticButton>
+                <Link href={`/admin/courses`} className="flex-1">
+                  <MagneticButton
+                    className="w-full bg-gradient-to-r from-secondary to-purple-600 text-white font-black text-sm py-2"
+                  >
+                    <Edit className="mr-2" size={16} />
+                    EDIT
+                  </MagneticButton>
+                </Link>
               </div>
             </Card>
           ))}

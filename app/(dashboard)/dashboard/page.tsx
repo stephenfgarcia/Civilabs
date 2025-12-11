@@ -49,14 +49,18 @@ export default function DashboardPage() {
       setLoading(true)
       setError(null)
 
+      console.log('[Dashboard] Fetching enrollments...')
       // Fetch enrollments
       const enrollmentsResponse = await coursesService.getEnrollments()
+      console.log('[Dashboard] Enrollments Response:', enrollmentsResponse)
 
       if (enrollmentsResponse.status < 200 || enrollmentsResponse.status >= 300) {
         throw new Error(enrollmentsResponse.error || 'Failed to fetch enrollments')
       }
 
       const enrollmentsData = Array.isArray(enrollmentsResponse.data) ? enrollmentsResponse.data : []
+      console.log('[Dashboard] Enrollments Data:', enrollmentsData)
+      console.log('[Dashboard] Setting enrollments count:', enrollmentsData.length)
       setEnrollments(enrollmentsData.slice(0, 2)) // Get first 2 for display
 
       // Fetch certificates

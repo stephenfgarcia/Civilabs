@@ -1,5 +1,6 @@
 /**
  * Instructor Discussion Actions API
+ * GET /api/instructor/discussions/[id] - Get discussion details with replies
  * PATCH /api/instructor/discussions/[id] - Update discussion status (pin/lock/solve/flag)
  * DELETE /api/instructor/discussions/[id] - Delete a discussion
  */
@@ -7,6 +8,94 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/utils/prisma'
 import { withInstructor } from '@/lib/auth/api-auth'
+
+/**
+ * GET /api/instructor/discussions/[id]
+ * Get discussion details with replies
+ */
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return withInstructor(async (req, user) => {
+    try {
+      const params = await context.params
+      const { id } = params
+
+      const discussion = await prisma.discussionThread.findUnique({
+        where: { id },
+        include: {
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+            },
+          },
+          course: {
+            select: {
+              id: true,
+              title: true,
+              instructorId: true,
+            },
+          },
+          replies: {
+            include: {
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
+          _count: {
+            select: {
+              replies: true,
+            },
+          },
+        },
+      })
+
+      if (!discussion) {
+        return NextResponse.json(
+          { success: false, error: 'Discussion not found' },
+          { status: 404 }
+        )
+      }
+
+      // Verify instructor has access (owns the course)
+      if (!discussion.course || discussion.course.instructorId !== String(user.userId)) {
+        return NextResponse.json(
+          { success: false, error: 'Not authorized to view this discussion' },
+          { status: 403 }
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          ...discussion,
+          courseName: discussion.course.title,
+          courseId: discussion.course.id,
+          repliesCount: discussion._count.replies,
+        },
+      })
+    } catch (error) {
+      console.error('Error fetching discussion:', error)
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to fetch discussion',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+        { status: 500 }
+      )
+    }
+  })(request, context)
+}
 
 /**
  * PATCH /api/instructor/discussions/[id]
