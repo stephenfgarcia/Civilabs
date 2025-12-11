@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
+import { useToast } from '@/lib/hooks'
 import {
   Bell,
   Award,
@@ -34,6 +35,7 @@ const formatRelativeTime = (dateString: string): string => {
 }
 
 export default function NotificationsPage() {
+  const { toast } = useToast()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
