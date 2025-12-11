@@ -254,6 +254,40 @@ export default function SettingsPage() {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
+  // Helper function to get tab button classes
+  const getTabButtonClass = (isActive: boolean, tabColor: string) => {
+    if (isActive) {
+      switch (tabColor) {
+        case 'from-success to-green-600':
+          return 'bg-gradient-to-r from-success to-green-600 text-white shadow-lg scale-105'
+        case 'from-danger to-red-600':
+          return 'bg-gradient-to-r from-danger to-red-600 text-white shadow-lg scale-105'
+        case 'from-primary to-blue-600':
+          return 'bg-gradient-to-r from-primary to-blue-600 text-white shadow-lg scale-105'
+        case 'from-warning to-orange-600':
+          return 'bg-gradient-to-r from-warning to-orange-600 text-white shadow-lg scale-105'
+        default:
+          return 'bg-gradient-to-r from-primary to-blue-600 text-white shadow-lg scale-105'
+      }
+    }
+    return 'glass-effect border-2 border-warning/30 text-neutral-700 hover:border-warning/60 hover:scale-105'
+  }
+
+  // Helper function to get toggle switch background classes
+  const getToggleBgClass = (isEnabled: boolean, color: 'primary' | 'success') => {
+    if (isEnabled) {
+      return color === 'primary' ? 'bg-primary' : 'bg-success'
+    }
+    return 'bg-neutral-300'
+  }
+
+  // Helper function to get toggle knob position classes
+  const getToggleKnobClass = (isEnabled: boolean) => {
+    return isEnabled
+      ? 'absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform translate-x-6'
+      : 'absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform'
+  }
+
   const TABS = [
     { id: 'profile', label: 'PROFILE', icon: User, color: 'from-success to-green-600' },
     { id: 'security', label: 'SECURITY', icon: Lock, color: 'from-danger to-red-600' },
@@ -293,11 +327,7 @@ export default function SettingsPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${
-                    isActive
-                      ? `bg-gradient-to-r ${tab.color} text-white shadow-lg scale-105`
-                      : 'glass-effect border-2 border-warning/30 text-neutral-700 hover:border-warning/60 hover:scale-105'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${getTabButtonClass(isActive, tab.color)}`}
                 >
                   <IconComponent size={16} />
                   {tab.label}
@@ -534,13 +564,9 @@ export default function SettingsPage() {
                   </div>
                   <button
                     onClick={() => toggleNotification('emailCourseUpdates')}
-                    className={`relative w-14 h-8 rounded-full transition-colors ${
-                      notifications.emailCourseUpdates ? 'bg-primary' : 'bg-neutral-300'
-                    }`}
+                    className={`relative w-14 h-8 rounded-full transition-colors ${getToggleBgClass(notifications.emailCourseUpdates, 'primary')}`}
                   >
-                    <div className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      notifications.emailCourseUpdates ? 'translate-x-6' : ''
-                    }`} />
+                    <div className={getToggleKnobClass(notifications.emailCourseUpdates)} />
                   </button>
                 </div>
 
@@ -551,13 +577,9 @@ export default function SettingsPage() {
                   </div>
                   <button
                     onClick={() => toggleNotification('emailCertificates')}
-                    className={`relative w-14 h-8 rounded-full transition-colors ${
-                      notifications.emailCertificates ? 'bg-primary' : 'bg-neutral-300'
-                    }`}
+                    className={`relative w-14 h-8 rounded-full transition-colors ${getToggleBgClass(notifications.emailCertificates, 'primary')}`}
                   >
-                    <div className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      notifications.emailCertificates ? 'translate-x-6' : ''
-                    }`} />
+                    <div className={getToggleKnobClass(notifications.emailCertificates)} />
                   </button>
                 </div>
 
@@ -568,13 +590,9 @@ export default function SettingsPage() {
                   </div>
                   <button
                     onClick={() => toggleNotification('emailReminders')}
-                    className={`relative w-14 h-8 rounded-full transition-colors ${
-                      notifications.emailReminders ? 'bg-primary' : 'bg-neutral-300'
-                    }`}
+                    className={`relative w-14 h-8 rounded-full transition-colors ${getToggleBgClass(notifications.emailReminders, 'primary')}`}
                   >
-                    <div className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      notifications.emailReminders ? 'translate-x-6' : ''
-                    }`} />
+                    <div className={getToggleKnobClass(notifications.emailReminders)} />
                   </button>
                 </div>
 
@@ -585,13 +603,9 @@ export default function SettingsPage() {
                   </div>
                   <button
                     onClick={() => toggleNotification('weeklyDigest')}
-                    className={`relative w-14 h-8 rounded-full transition-colors ${
-                      notifications.weeklyDigest ? 'bg-primary' : 'bg-neutral-300'
-                    }`}
+                    className={`relative w-14 h-8 rounded-full transition-colors ${getToggleBgClass(notifications.weeklyDigest, 'primary')}`}
                   >
-                    <div className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      notifications.weeklyDigest ? 'translate-x-6' : ''
-                    }`} />
+                    <div className={getToggleKnobClass(notifications.weeklyDigest)} />
                   </button>
                 </div>
               </div>
@@ -611,13 +625,9 @@ export default function SettingsPage() {
                   </div>
                   <button
                     onClick={() => toggleNotification('pushCourseUpdates')}
-                    className={`relative w-14 h-8 rounded-full transition-colors ${
-                      notifications.pushCourseUpdates ? 'bg-success' : 'bg-neutral-300'
-                    }`}
+                    className={`relative w-14 h-8 rounded-full transition-colors ${getToggleBgClass(notifications.pushCourseUpdates, 'success')}`}
                   >
-                    <div className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      notifications.pushCourseUpdates ? 'translate-x-6' : ''
-                    }`} />
+                    <div className={getToggleKnobClass(notifications.pushCourseUpdates)} />
                   </button>
                 </div>
 
@@ -628,13 +638,9 @@ export default function SettingsPage() {
                   </div>
                   <button
                     onClick={() => toggleNotification('pushCertificates')}
-                    className={`relative w-14 h-8 rounded-full transition-colors ${
-                      notifications.pushCertificates ? 'bg-success' : 'bg-neutral-300'
-                    }`}
+                    className={`relative w-14 h-8 rounded-full transition-colors ${getToggleBgClass(notifications.pushCertificates, 'success')}`}
                   >
-                    <div className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      notifications.pushCertificates ? 'translate-x-6' : ''
-                    }`} />
+                    <div className={getToggleKnobClass(notifications.pushCertificates)} />
                   </button>
                 </div>
 
@@ -645,13 +651,9 @@ export default function SettingsPage() {
                   </div>
                   <button
                     onClick={() => toggleNotification('pushReminders')}
-                    className={`relative w-14 h-8 rounded-full transition-colors ${
-                      notifications.pushReminders ? 'bg-success' : 'bg-neutral-300'
-                    }`}
+                    className={`relative w-14 h-8 rounded-full transition-colors ${getToggleBgClass(notifications.pushReminders, 'success')}`}
                   >
-                    <div className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      notifications.pushReminders ? 'translate-x-6' : ''
-                    }`} />
+                    <div className={getToggleKnobClass(notifications.pushReminders)} />
                   </button>
                 </div>
               </div>

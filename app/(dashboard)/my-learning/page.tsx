@@ -18,15 +18,70 @@ const CATEGORY_ICONS: Record<string, any> = {
   Engineering: BookOpen,
 }
 
-// Color mapping for categories
-const CATEGORY_COLORS: Record<string, string> = {
-  Safety: 'from-danger to-red-600',
-  Equipment: 'from-warning to-orange-600',
-  Technical: 'from-primary to-blue-600',
-  Management: 'from-success to-green-600',
-  Quality: 'from-secondary to-purple-600',
-  Construction: 'from-warning to-orange-600',
-  Engineering: 'from-primary to-blue-600',
+// Helper function to get category color classes for accent bars
+const getCategoryAccentBarClass = (categoryName: string) => {
+  switch (categoryName) {
+    case 'Safety':
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-danger to-red-600'
+    case 'Equipment':
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-warning to-orange-600'
+    case 'Technical':
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-blue-600'
+    case 'Management':
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-success to-green-600'
+    case 'Quality':
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-secondary to-purple-600'
+    case 'Construction':
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-warning to-orange-600'
+    case 'Engineering':
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-blue-600'
+    default:
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-blue-600'
+  }
+}
+
+// Helper function to get category icon background classes
+const getCategoryIconBgClass = (categoryName: string) => {
+  switch (categoryName) {
+    case 'Safety':
+      return 'w-16 h-16 bg-gradient-to-br from-danger to-red-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform'
+    case 'Equipment':
+      return 'w-16 h-16 bg-gradient-to-br from-warning to-orange-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform'
+    case 'Technical':
+      return 'w-16 h-16 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform'
+    case 'Management':
+      return 'w-16 h-16 bg-gradient-to-br from-success to-green-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform'
+    case 'Quality':
+      return 'w-16 h-16 bg-gradient-to-br from-secondary to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform'
+    case 'Construction':
+      return 'w-16 h-16 bg-gradient-to-br from-warning to-orange-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform'
+    case 'Engineering':
+      return 'w-16 h-16 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform'
+    default:
+      return 'w-16 h-16 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform'
+  }
+}
+
+// Helper function to get category progress bar classes
+const getCategoryProgressBarClass = (categoryName: string) => {
+  switch (categoryName) {
+    case 'Safety':
+      return 'bg-gradient-to-r from-danger to-red-600 h-3 rounded-full transition-all'
+    case 'Equipment':
+      return 'bg-gradient-to-r from-warning to-orange-600 h-3 rounded-full transition-all'
+    case 'Technical':
+      return 'bg-gradient-to-r from-primary to-blue-600 h-3 rounded-full transition-all'
+    case 'Management':
+      return 'bg-gradient-to-r from-success to-green-600 h-3 rounded-full transition-all'
+    case 'Quality':
+      return 'bg-gradient-to-r from-secondary to-purple-600 h-3 rounded-full transition-all'
+    case 'Construction':
+      return 'bg-gradient-to-r from-warning to-orange-600 h-3 rounded-full transition-all'
+    case 'Engineering':
+      return 'bg-gradient-to-r from-primary to-blue-600 h-3 rounded-full transition-all'
+    default:
+      return 'bg-gradient-to-r from-primary to-blue-600 h-3 rounded-full transition-all'
+  }
 }
 
 const STATUS_FILTERS = [
@@ -258,7 +313,6 @@ export default function MyLearningPage() {
             const progress = enrollment.progressPercentage || 0
             const categoryName = course?.category?.name || 'General'
             const IconComponent = CATEGORY_ICONS[categoryName] || BookOpen
-            const color = CATEGORY_COLORS[categoryName] || 'from-primary to-blue-600'
             const lastAccessedDate = enrollment.updatedAt ? new Date(enrollment.updatedAt).toLocaleDateString() : 'Never'
 
             return (
@@ -267,14 +321,14 @@ export default function MyLearningPage() {
                 className="learning-item opacity-0 glass-effect concrete-texture border-4 border-primary/20 hover:border-primary/40 transition-all group relative overflow-hidden"
               >
                 {/* Accent Bar */}
-                <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${color}`}></div>
+                <div className={getCategoryAccentBarClass(categoryName)}></div>
 
                 <CardContent className="p-6">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Course Info */}
                     <div className="lg:col-span-7">
                       <div className="flex items-start gap-4">
-                        <div className={`w-16 h-16 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
+                        <div className={getCategoryIconBgClass(categoryName)}>
                           <IconComponent className="text-white" size={32} />
                         </div>
                         <div className="flex-1">
@@ -324,7 +378,7 @@ export default function MyLearningPage() {
                           </div>
                           <div className="w-full bg-neutral-200 rounded-full h-3 mb-3">
                             <div
-                              className={`bg-gradient-to-r ${color} h-3 rounded-full transition-all`}
+                              className={getCategoryProgressBarClass(categoryName)}
                               style={{ width: `${progress}%` }}
                             ></div>
                           </div>

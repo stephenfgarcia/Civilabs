@@ -20,15 +20,48 @@ const CATEGORY_ICONS: Record<string, any> = {
   Engineering: Zap,
 }
 
-// Color mapping for categories
-const CATEGORY_COLORS: Record<string, string> = {
-  Safety: 'from-danger to-red-600',
-  Equipment: 'from-warning to-orange-600',
-  Technical: 'from-primary to-blue-600',
-  Management: 'from-success to-green-600',
-  Quality: 'from-secondary to-purple-600',
-  Construction: 'from-warning to-orange-600',
-  Engineering: 'from-primary to-blue-600',
+// Helper function to get category accent bar classes
+const getCategoryAccentBarClass = (categoryName: string) => {
+  switch (categoryName) {
+    case 'Safety':
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-danger to-red-600'
+    case 'Equipment':
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-warning to-orange-600'
+    case 'Technical':
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-blue-600'
+    case 'Management':
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-success to-green-600'
+    case 'Quality':
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-secondary to-purple-600'
+    case 'Construction':
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-warning to-orange-600'
+    case 'Engineering':
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-blue-600'
+    default:
+      return 'absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-blue-600'
+  }
+}
+
+// Helper function to get category icon background classes
+const getCategoryIconBgClass = (categoryName: string) => {
+  switch (categoryName) {
+    case 'Safety':
+      return 'w-14 h-14 bg-gradient-to-br from-danger to-red-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform'
+    case 'Equipment':
+      return 'w-14 h-14 bg-gradient-to-br from-warning to-orange-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform'
+    case 'Technical':
+      return 'w-14 h-14 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform'
+    case 'Management':
+      return 'w-14 h-14 bg-gradient-to-br from-success to-green-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform'
+    case 'Quality':
+      return 'w-14 h-14 bg-gradient-to-br from-secondary to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform'
+    case 'Construction':
+      return 'w-14 h-14 bg-gradient-to-br from-warning to-orange-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform'
+    case 'Engineering':
+      return 'w-14 h-14 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform'
+    default:
+      return 'w-14 h-14 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform'
+  }
 }
 
 const LEVELS = ['All Levels', 'BEGINNER', 'INTERMEDIATE', 'ADVANCED']
@@ -358,7 +391,6 @@ export default function CoursesPage() {
           {filteredCourses.map((course, index) => {
             const categoryName = course.category?.name || 'General'
             const IconComponent = CATEGORY_ICONS[categoryName] || BookOpen
-            const colorClass = CATEGORY_COLORS[categoryName] || 'from-primary to-blue-600'
             const difficultyLevel = course.difficultyLevel || 'BEGINNER'
 
             const isBookmarked = bookmarkedCourses.has(course.id)
@@ -370,11 +402,11 @@ export default function CoursesPage() {
                     className="courses-item opacity-0 glass-effect concrete-texture border-4 border-primary/20 hover:border-primary/40 transition-all group relative overflow-hidden cursor-pointer"
                   >
                     {/* Accent Bar */}
-                    <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${colorClass}`}></div>
+                    <div className={getCategoryAccentBarClass(categoryName)}></div>
 
                     <CardHeader>
                       <div className="flex items-start justify-between">
-                        <div className={`w-14 h-14 bg-gradient-to-br ${colorClass} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                        <div className={getCategoryIconBgClass(categoryName)}>
                           <IconComponent className="text-white" size={28} />
                         </div>
                         <div className="flex items-start gap-2">

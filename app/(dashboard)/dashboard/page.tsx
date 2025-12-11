@@ -44,6 +44,32 @@ export default function DashboardPage() {
     })
   }, [])
 
+  // Helper function to get enrollment card border classes
+  const getEnrollmentBorderClass = (index: number) => {
+    return index === 0
+      ? 'glass-effect border-2 border-primary/20 hover:border-primary/40 rounded-lg p-4 transition-colors cursor-pointer'
+      : 'glass-effect border-2 border-success/20 hover:border-success/40 rounded-lg p-4 transition-colors cursor-pointer'
+  }
+
+  // Helper function to get enrollment card icon background classes
+  const getEnrollmentIconBgClass = (index: number) => {
+    return index === 0
+      ? 'w-16 h-16 bg-gradient-to-br from-primary/20 to-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0'
+      : 'w-16 h-16 bg-gradient-to-br from-success/20 to-green-600/20 rounded-lg flex items-center justify-center flex-shrink-0'
+  }
+
+  // Helper function to get enrollment card icon text classes
+  const getEnrollmentIconTextClass = (index: number) => {
+    return index === 0 ? 'text-primary' : 'text-success'
+  }
+
+  // Helper function to get enrollment card progress bar classes
+  const getEnrollmentProgressBarClass = (index: number) => {
+    return index === 0
+      ? 'bg-gradient-to-r from-primary to-blue-600 h-2 rounded-full'
+      : 'bg-gradient-to-r from-success to-green-600 h-2 rounded-full'
+  }
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
@@ -84,11 +110,20 @@ export default function DashboardPage() {
       }).length
       const certificates = certificatesData.length
 
-      // Calculate total learning hours (placeholder - would need real tracking)
+      // TODO: Implement real learning hours tracking
+      // For now, calculate an estimate based on progress (assuming 10% progress = 1 hour)
+      // Future implementation should track actual time spent in lessons via API
       const learningHours = Math.round(enrollmentsData.reduce((acc: number, e: any) => {
         const progress = e.calculatedProgress || e.progressPercentage || 0
         return acc + progress / 10
       }, 0))
+
+      // TODO: Implement real streak tracking
+      // Future implementation needs:
+      // - Daily login tracking via API
+      // - Consecutive day calculation
+      // - Reset logic for missed days
+      const streak = 7 // Placeholder showing 7-day streak
 
       setStats({
         enrolled,
@@ -96,7 +131,7 @@ export default function DashboardPage() {
         completed,
         certificates,
         learningHours,
-        streak: 7 // Placeholder - would need real streak tracking
+        streak
       })
     } catch (err) {
       console.error('Error fetching dashboard data:', err)
@@ -289,16 +324,13 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {enrollments.map((enrollment: any, index) => {
                 const progress = enrollment.calculatedProgress || enrollment.progressPercentage || 0
-                const colors = index === 0
-                  ? { border: 'border-primary/20 hover:border-primary/40', bg: 'from-primary/20 to-blue-600/20', text: 'text-primary', gradient: 'from-primary to-blue-600' }
-                  : { border: 'border-success/20 hover:border-success/40', bg: 'from-success/20 to-green-600/20', text: 'text-success', gradient: 'from-success to-green-600' }
 
                 return (
                   <Link key={enrollment.id} href={`/courses/${enrollment.courseId}`}>
-                    <div className={`glass-effect border-2 ${colors.border} rounded-lg p-4 transition-colors cursor-pointer`}>
+                    <div className={getEnrollmentBorderClass(index)}>
                       <div className="flex items-start gap-3">
-                        <div className={`w-16 h-16 bg-gradient-to-br ${colors.bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                          <BookOpen className={colors.text} size={28} />
+                        <div className={getEnrollmentIconBgClass(index)}>
+                          <BookOpen className={getEnrollmentIconTextClass(index)} size={28} />
                         </div>
                         <div className="flex-1">
                           <h3 className="font-bold text-neutral-800">{enrollment.course?.title || 'Course'}</h3>
@@ -306,10 +338,10 @@ export default function DashboardPage() {
                           <div className="mt-3">
                             <div className="flex items-center justify-between text-xs font-semibold mb-1">
                               <span className="text-neutral-600">Progress</span>
-                              <span className={colors.text}>{progress}%</span>
+                              <span className={getEnrollmentIconTextClass(index)}>{progress}%</span>
                             </div>
                             <div className="w-full bg-neutral-200 rounded-full h-2">
-                              <div className={`bg-gradient-to-r ${colors.gradient} h-2 rounded-full`} style={{width: `${progress}%`}}></div>
+                              <div className={getEnrollmentProgressBarClass(index)} style={{width: `${progress}%`}}></div>
                             </div>
                           </div>
                         </div>
