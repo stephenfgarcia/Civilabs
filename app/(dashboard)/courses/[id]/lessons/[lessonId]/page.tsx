@@ -18,10 +18,12 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import DOMPurify from 'dompurify'
+import { useToast } from '@/lib/hooks'
 
 export default function LessonViewerPage() {
   const params = useParams()
   const router = useRouter()
+  const { toast } = useToast()
   const courseId = params.id as string
   const lessonId = params.lessonId as string
 
@@ -73,6 +75,12 @@ export default function LessonViewerPage() {
         throw new Error(data.message || 'Failed to complete lesson')
       }
 
+      // Show success notification
+      toast({
+        title: 'Lesson Completed!',
+        description: 'Great job! Your progress has been saved.',
+      })
+
       // Refresh lesson data to update completion status
       await fetchLesson()
 
@@ -82,7 +90,15 @@ export default function LessonViewerPage() {
       }
     } catch (err) {
       console.error('Error completing lesson:', err)
-      setError(err instanceof Error ? err.message : 'Failed to complete lesson')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to complete lesson'
+      setError(errorMessage)
+
+      // Show error toast notification
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      })
     } finally {
       setCompleting(false)
     }

@@ -33,12 +33,20 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function CertificatesPage() {
   const { toast } = useToast()
+  const [user, setUser] = useState<any>(null)
   const [certificates, setCertificates] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedCertificate, setSelectedCertificate] = useState<any>(null)
 
   useEffect(() => {
+    // Load user from localStorage
+    if (typeof window !== 'undefined') {
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        setUser(JSON.parse(userData))
+      }
+    }
     fetchCertificates()
   }, [])
 
@@ -376,7 +384,9 @@ export default function CertificatesPage() {
                           <p className="text-sm font-black text-neutral-800">{certificate.title}</p>
                           <div className="mt-3 pt-3 border-t-2 border-neutral-200">
                             <p className="text-xs text-neutral-500">Awarded to</p>
-                            <p className="text-sm font-bold text-neutral-800 mt-1">Your Name</p>
+                            <p className="text-sm font-bold text-neutral-800 mt-1">
+                              {user ? `${user.firstName} ${user.lastName}` : 'Loading...'}
+                            </p>
                           </div>
                         </div>
                       </div>

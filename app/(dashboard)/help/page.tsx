@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { HelpCircle, Mail, Phone, MessageCircle, Book, Video, FileText, ChevronDown, ChevronUp, Search } from 'lucide-react'
@@ -115,6 +116,7 @@ const CONTACT_OPTIONS = [
 ]
 
 export default function HelpPage() {
+  const router = useRouter()
   const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null)
@@ -328,9 +330,7 @@ export default function HelpPage() {
             </div>
 
             <div
-              onClick={() => {
-                window.location.href = '/discussions'
-              }}
+              onClick={() => router.push('/discussions')}
               className="glass-effect border-2 border-warning/20 rounded-lg p-6 hover:border-warning/40 transition-all group cursor-pointer"
             >
               <div className="w-12 h-12 bg-gradient-to-br from-warning to-orange-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
