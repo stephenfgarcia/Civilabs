@@ -113,6 +113,21 @@ export default function DashboardPage() {
         // Continue with default value if streak fetch fails
       }
 
+      // Fetch learning hours from API
+      let learningHours = 0
+      try {
+        const hoursResponse = await fetch('/api/users/learning-hours')
+        if (hoursResponse.ok) {
+          const hoursData = await hoursResponse.json()
+          if (hoursData.success && hoursData.data) {
+            learningHours = Math.round(hoursData.data.totalHours)
+          }
+        }
+      } catch (hoursError) {
+        console.error('Error fetching learning hours:', hoursError)
+        // Continue with default value if hours fetch fails
+      }
+
       // Calculate stats from enrollments
       const enrolled = enrollmentsData.length
       const inProgress = enrollmentsData.filter((e: any) => {
@@ -124,14 +139,6 @@ export default function DashboardPage() {
         return e.status === 'COMPLETED' || progress === 100
       }).length
       const certificates = certificatesData.length
-
-      // TODO: Implement real learning hours tracking
-      // For now, calculate an estimate based on progress (assuming 10% progress = 1 hour)
-      // Future implementation should track actual time spent in lessons via API
-      const learningHours = Math.round(enrollmentsData.reduce((acc: number, e: any) => {
-        const progress = e.calculatedProgress || e.progressPercentage || 0
-        return acc + progress / 10
-      }, 0))
 
       setStats({
         enrolled,
