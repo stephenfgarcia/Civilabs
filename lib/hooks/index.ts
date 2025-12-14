@@ -35,3 +35,7 @@ export {
 
 // Toast hook
 export { useToast } from './use-toast'
+
+// Real-time messaging hooks
+export { useMessageStream } from './useMessageStream'
+export { useWebSocket } from './useWebSocket'

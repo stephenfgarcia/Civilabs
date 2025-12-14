@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import Image from 'next/image'
 import { Send, Search, MessageSquare, Loader2 } from 'lucide-react'
 import { messagesService, type Conversation, type Message } from '@/lib/services'
+import { useMessageStream } from '@/lib/hooks/useMessageStream'
 import { formatDistanceToNow } from 'date-fns'
 
 export default function MessagesPage() {
@@ -20,20 +21,26 @@ export default function MessagesPage() {
     loadConversations()
   }, [])
 
+  // Real-time message streaming using SSE
+  const { isConnected: isStreamConnected } = useMessageStream({
+    conversationId: selectedConversation?.id || null,
+    onNewMessages: (newMessages) => {
+      // Add new messages to the list
+      setMessages((prevMessages) => {
+        // Filter out duplicates based on message ID
+        const existingIds = new Set(prevMessages.map(m => m.id))
+        const uniqueNewMessages = newMessages.filter(m => !existingIds.has(m.id))
+        return [...prevMessages, ...uniqueNewMessages]
+      })
+    },
+    onError: (error) => {
+      console.error('[Messages] Stream error:', error)
+    },
+  })
+
   useEffect(() => {
     if (selectedConversation) {
       loadMessages(selectedConversation.id)
-
-      // Auto-refresh messages every 15 seconds only when window is focused
-      // TODO: Replace with WebSocket for real-time updates
-      const interval = setInterval(() => {
-        // Only poll if window is focused to reduce unnecessary API calls
-        if (document.visibilityState === 'visible') {
-          loadMessages(selectedConversation.id)
-        }
-      }, 15000) // Reduced frequency from 5s to 15s
-
-      return () => clearInterval(interval)
     }
   }, [selectedConversation])
 
