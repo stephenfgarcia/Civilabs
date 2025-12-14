@@ -733,3 +733,37 @@ model Settings {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// FAQ Category (for organizing help articles)
+model FaqCategory {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  icon        String?  // Icon name from lucide-react
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  faqs        Faq[]
+
+  @@index([slug])
+  @@index([order])
+}
+
+// FAQ Item
+model Faq {
+  id          String      @id @default(uuid())
+  categoryId  String
+  question    String
+  answer      String
+  order       Int         @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  category    FaqCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId])
+  @@index([order])
+}

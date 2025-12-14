@@ -88,6 +88,17 @@ const FAQ_CATEGORIES = [
   }
 ]
 
+// Helper function to map icon names to components
+const getIconComponent = (iconName: string | null) => {
+  const iconMap: { [key: string]: any } = {
+    'Book': Book,
+    'Video': Video,
+    'FileText': FileText,
+    'HelpCircle': HelpCircle,
+  }
+  return iconMap[iconName || 'HelpCircle'] || HelpCircle
+}
+
 // Contact options - using environment variables for easy configuration
 const CONTACT_OPTIONS = [
   {
@@ -121,9 +132,43 @@ export default function HelpPage() {
   const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null)
+  const [faqCategories, setFaqCategories] = useState(FAQ_CATEGORIES)
   const [filteredCategories, setFilteredCategories] = useState(FAQ_CATEGORIES)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Fetch FAQs from API
+    const fetchFaqs = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/faqs')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.data && data.data.length > 0) {
+            // Map API data to match the expected format
+            const mappedCategories = data.data.map((cat: any) => ({
+              id: cat.slug,
+              title: cat.title,
+              icon: getIconComponent(cat.icon),
+              faqs: cat.faqs.map((faq: any) => ({
+                question: faq.question,
+                answer: faq.answer
+              }))
+            }))
+            setFaqCategories(mappedCategories)
+            setFilteredCategories(mappedCategories)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching FAQs:', error)
+        // Continue with hardcoded FAQs as fallback
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchFaqs()
+
     // Simple CSS-only entrance animations
     const elements = document.querySelectorAll('.help-item')
     elements.forEach((el, index) => {
@@ -134,7 +179,7 @@ export default function HelpPage() {
 
   useEffect(() => {
     if (searchQuery) {
-      const filtered = FAQ_CATEGORIES.map(category => ({
+      const filtered = faqCategories.map(category => ({
         ...category,
         faqs: category.faqs.filter(
           faq =>
@@ -144,9 +189,9 @@ export default function HelpPage() {
       })).filter(category => category.faqs.length > 0)
       setFilteredCategories(filtered)
     } else {
-      setFilteredCategories(FAQ_CATEGORIES)
+      setFilteredCategories(faqCategories)
     }
-  }, [searchQuery])
+  }, [searchQuery, faqCategories])
 
   const toggleFaq = (categoryId: string, faqIndex: number) => {
     const faqId = `${categoryId}-${faqIndex}`
