@@ -88,13 +88,14 @@ const FAQ_CATEGORIES = [
   }
 ]
 
+// Contact options - using environment variables for easy configuration
 const CONTACT_OPTIONS = [
   {
     id: 'email',
     title: 'Email Support',
     description: 'Get help via email within 24 hours',
     icon: Mail,
-    contact: 'support@civilabs.com',
+    contact: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@civilabs.com',
     color: 'from-primary to-blue-600'
   },
   {
@@ -102,7 +103,7 @@ const CONTACT_OPTIONS = [
     title: 'Phone Support',
     description: 'Call us during business hours',
     icon: Phone,
-    contact: '+1 (555) 123-4567',
+    contact: process.env.NEXT_PUBLIC_SUPPORT_PHONE || '+1 (555) 123-4567',
     color: 'from-success to-green-600'
   },
   {
@@ -110,7 +111,7 @@ const CONTACT_OPTIONS = [
     title: 'Live Chat',
     description: 'Chat with our support team',
     icon: MessageCircle,
-    contact: 'Available Mon-Fri 9am-5pm',
+    contact: process.env.NEXT_PUBLIC_SUPPORT_HOURS || 'Available Mon-Fri 9am-5pm',
     color: 'from-warning to-orange-600'
   }
 ]
@@ -374,9 +375,10 @@ export default function HelpPage() {
           <div className="flex flex-wrap gap-3 justify-center">
             <MagneticButton
               onClick={() => {
+                const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@civilabs.com'
                 toast({
                   title: 'Email Support',
-                  description: 'Please send your questions to support@civilabs.com. Our team will respond within 24 hours.',
+                  description: `Please send your questions to ${supportEmail}. Our team will respond within 24 hours.`,
                 })
               }}
               className="bg-gradient-to-r from-primary to-blue-600 text-white font-black flex items-center gap-2"
