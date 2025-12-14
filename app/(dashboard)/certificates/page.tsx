@@ -369,7 +369,12 @@ export default function CertificatesPage() {
                         </MagneticButton>
 
                         <button
-                          className="w-full glass-effect border-2 border-secondary/30 hover:border-secondary/60 rounded-lg py-3 font-bold text-sm text-secondary flex items-center justify-center gap-2 transition-all"
+                          onClick={() => {
+                            // Open verification page in new tab
+                            const verifyUrl = `${window.location.origin}/verify/${certificate.verificationCode}`
+                            window.open(verifyUrl, '_blank')
+                          }}
+                          className="w-full glass-effect border-2 border-secondary/30 hover:border-secondary/60 rounded-lg py-3 font-bold text-sm text-secondary flex items-center justify-center gap-2 transition-all hover:scale-105"
                         >
                           <ExternalLink size={16} />
                           Verify Credential
