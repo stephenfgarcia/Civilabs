@@ -151,6 +151,8 @@ model User {
   messagesSent         Message[]
   assignmentsCreated   Assignment[]
   assignmentSubmissions AssignmentSubmission[]
+  reportsCreated       Report[]             @relation("ReportedBy")
+  reportsReviewed      Report[]             @relation("ReviewedBy")
 
   @@index([email])
   @@index([departmentId])
@@ -537,6 +539,7 @@ model DiscussionThread {
   course  Course?           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   replies DiscussionReply[]
   likes   DiscussionLike[]
+  reports Report[]
 
   @@index([userId])
   @@index([courseId])
@@ -558,6 +561,7 @@ model DiscussionReply {
   parent  DiscussionReply?  @relation("ReplyThread", fields: [parentId], references: [id], onDelete: Cascade)
   replies DiscussionReply[] @relation("ReplyThread")
   likes   DiscussionLike[]
+  reports Report[]
 
   @@index([threadId])
   @@index([userId])
@@ -766,4 +770,47 @@ model Faq {
 
   @@index([categoryId])
   @@index([order])
+}
+
+// Content Report System
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  INAPPROPRIATE_CONTENT
+  MISINFORMATION
+  OFF_TOPIC
+  OTHER
+}
+
+model Report {
+  id              String       @id @default(uuid())
+  reporterId      String
+  threadId        String?
+  replyId         String?
+  reason          ReportReason
+  description     String?
+  status          ReportStatus @default(PENDING)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  reviewNotes     String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  reporter        User              @relation("ReportedBy", fields: [reporterId], references: [id])
+  thread          DiscussionThread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  reply           DiscussionReply?  @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  reviewer        User?             @relation("ReviewedBy", fields: [reviewedBy], references: [id])
+
+  @@index([reporterId])
+  @@index([threadId])
+  @@index([replyId])
+  @@index([status])
+  @@index([createdAt])
 }
