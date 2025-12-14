@@ -63,10 +63,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLogin: new Date() },
-    })
+    // Update last login and create activity log for streak tracking
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { lastLogin: new Date() },
+      }),
+      prisma.activityLog.create({
+        data: {
+          userId: user.id,
+          action: 'LOGIN',
+          entityType: 'USER',
+          entityId: user.id,
+          ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+          userAgent: request.headers.get('user-agent') || 'unknown',
+        },
+      }),
+    ])
 
     if (!process.env.JWT_SECRET) {
       throw new Error('JWT_SECRET is not configured')

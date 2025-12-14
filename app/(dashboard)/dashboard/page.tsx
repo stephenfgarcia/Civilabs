@@ -98,6 +98,21 @@ export default function DashboardPage() {
 
       const certificatesData = Array.isArray(certificatesResponse.data) ? certificatesResponse.data : []
 
+      // Fetch streak data from API
+      let streak = 0
+      try {
+        const streakResponse = await fetch('/api/users/streak')
+        if (streakResponse.ok) {
+          const streakData = await streakResponse.json()
+          if (streakData.success && streakData.data) {
+            streak = streakData.data.currentStreak
+          }
+        }
+      } catch (streakError) {
+        console.error('Error fetching streak:', streakError)
+        // Continue with default value if streak fetch fails
+      }
+
       // Calculate stats from enrollments
       const enrolled = enrollmentsData.length
       const inProgress = enrollmentsData.filter((e: any) => {
@@ -117,13 +132,6 @@ export default function DashboardPage() {
         const progress = e.calculatedProgress || e.progressPercentage || 0
         return acc + progress / 10
       }, 0))
-
-      // TODO: Implement real streak tracking
-      // Future implementation needs:
-      // - Daily login tracking via API
-      // - Consecutive day calculation
-      // - Reset logic for missed days
-      const streak = 7 // Placeholder showing 7-day streak
 
       setStats({
         enrolled,

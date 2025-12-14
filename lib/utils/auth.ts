@@ -32,3 +32,31 @@ export function getUserFromRequest(request: NextRequest): JWTPayload | null {
   if (!token) return null
   return verifyToken(token)
 }
+
+export async function verifyAuth(request: NextRequest): Promise<{
+  authenticated: boolean
+  user: JWTPayload | null
+}> {
+  try {
+    // Try to get token from Authorization header first
+    let token = getTokenFromRequest(request)
+
+    // If not in header, try to get from cookie
+    if (!token) {
+      token = request.cookies.get('authToken')?.value || null
+    }
+
+    if (!token) {
+      return { authenticated: false, user: null }
+    }
+
+    const user = verifyToken(token)
+    if (!user) {
+      return { authenticated: false, user: null }
+    }
+
+    return { authenticated: true, user }
+  } catch (error) {
+    return { authenticated: false, user: null }
+  }
+}
