@@ -186,11 +186,8 @@ export default function AdminSettingsPage() {
   const fetchSettings = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/admin/settings', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      })
+      // Authentication handled by HTTP-only cookies, no need for Authorization header
+      const response = await fetch('/api/admin/settings')
 
       if (response.ok) {
         const data = await response.json()
@@ -246,11 +243,11 @@ export default function AdminSettingsPage() {
     try {
       setSaving(true)
 
+      // Authentication handled by HTTP-only cookies, no need for Authorization header
       const response = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify(settings),
       })

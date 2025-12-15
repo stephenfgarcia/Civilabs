@@ -242,7 +242,7 @@ export default function DepartmentsPage() {
             <h2 className="text-2xl font-black text-danger mb-2">ERROR</h2>
             <p className="text-neutral-700 mb-4">{error}</p>
             <MagneticButton
-              onClick={() => window.location.reload()}
+              onClick={() => loadDepartments()}
               className="bg-gradient-to-r from-danger to-red-600 text-white font-black"
             >
               RETRY

@@ -440,7 +440,11 @@ export default function ContentPage() {
                       {/* Actions */}
                       <div className="grid grid-cols-3 gap-2">
                         <button
-                          onClick={() => window.open(file.path, '_blank')}
+                          onClick={() => {
+                            if (typeof window !== 'undefined') {
+                              window.open(file.path, '_blank')
+                            }
+                          }}
                           className="h-10 glass-effect border-2 border-primary/30 rounded-lg flex items-center justify-center hover:border-primary/60 hover:bg-primary/10 transition-all"
                           title="View file"
                         >
