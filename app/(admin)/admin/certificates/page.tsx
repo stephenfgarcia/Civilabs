@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import {
   Award,
   Search,
@@ -104,6 +106,9 @@ export default function AdminCertificatesPage() {
   const [error, setError] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [resendingId, setResendingId] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [certificateToDelete, setCertificateToDelete] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const { toast } = useToast()
 
   // Fetch certificates
@@ -166,18 +171,28 @@ export default function AdminCertificatesPage() {
     })
   }, [loading])
 
-  // Handle delete
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this certificate?')) return
+  // Open delete confirmation dialog
+  const openDeleteDialog = (id: string) => {
+    setCertificateToDelete(id)
+    setDeleteDialogOpen(true)
+  }
+
+  // Handle delete confirmation
+  const confirmDelete = async () => {
+    if (!certificateToDelete) return
 
     try {
-      const response = await adminCertificatesService.deleteCertificate(id)
+      setDeleting(true)
+      const response = await adminCertificatesService.deleteCertificate(certificateToDelete)
       if (response.success) {
-        setCertificates(prev => prev.filter(c => c.id !== id))
+        setCertificates(prev => prev.filter(c => c.id !== certificateToDelete))
+        setFilteredCertificates(prev => prev.filter(c => c.id !== certificateToDelete))
         toast({
           title: 'Success',
           description: 'Certificate deleted successfully',
         })
+        setDeleteDialogOpen(false)
+        setCertificateToDelete(null)
       } else {
         toast({
           title: 'Error',
@@ -192,6 +207,8 @@ export default function AdminCertificatesPage() {
         variant: 'destructive',
       })
       console.error(error)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -590,7 +607,7 @@ export default function AdminCertificatesPage() {
                         {resendingId === cert.id ? 'SENDING...' : 'RESEND'}
                       </MagneticButton>
                       <button
-                        onClick={() => handleDelete(cert.id)}
+                        onClick={() => openDeleteDialog(cert.id)}
                         className="w-12 h-12 glass-effect border-2 border-danger/30 rounded-lg flex items-center justify-center hover:border-danger/60 hover:bg-danger/10 transition-all"
                       >
                         <Trash2 size={16} className="text-danger" />
@@ -604,6 +621,34 @@ export default function AdminCertificatesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Certificate</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this certificate? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
