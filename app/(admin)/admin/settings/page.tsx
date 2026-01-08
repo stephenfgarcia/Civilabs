@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/lib/hooks'
+import { z } from 'zod'
 import {
   Settings as SettingsIcon,
   Mail,
@@ -12,7 +13,6 @@ import {
   Link2,
   Server,
   Bell,
-  Palette,
   Globe,
   Lock,
   Database,
@@ -20,6 +20,11 @@ import {
   CheckCircle,
   Loader2,
   RotateCcw,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  RefreshCw,
+  Send,
 } from 'lucide-react'
 
 interface SettingItem {
@@ -147,11 +152,37 @@ const TABS = [
   { id: 'integrations', label: 'Integrations', icon: Link2, color: 'from-teal-500 to-cyan-600' },
 ]
 
+// Validation schema
+const settingsSchema = z.object({
+  // General
+  siteName: z.string().min(1, "Site name is required"),
+  siteUrl: z.string().url("Must be a valid URL"),
+  adminEmail: z.string().email("Must be a valid email"),
+  timezone: z.string().min(1, "Timezone is required"),
+  // Email
+  smtpHost: z.string().optional(),
+  smtpPort: z.string().regex(/^\d*$/, "Must be a number").optional(),
+  smtpUser: z.string().optional(),
+  fromEmail: z.string().email("Must be a valid email").optional().or(z.literal('')),
+  // Security
+  sessionTimeout: z.string().regex(/^\d+$/, "Must be a number"),
+  passwordMinLength: z.string().regex(/^[8-9]$|^[1-9]\d+$/, "Must be at least 8"),
+  maxLoginAttempts: z.string().regex(/^\d+$/, "Must be a number"),
+  // Integrations
+  apiKey: z.string().optional(),
+  webhookUrl: z.string().url("Must be a valid URL").optional().or(z.literal('')),
+  ssoEnabled: z.string(),
+})
+
 export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState('general')
   const [saving, setSaving] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [showApiKey, setShowApiKey] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [generatingKey, setGeneratingKey] = useState(false)
+  const [sendingTestEmail, setSendingTestEmail] = useState(false)
   const { toast } = useToast()
 
   // Settings state
@@ -206,11 +237,11 @@ export default function AdminSettingsPage() {
             // Security
             sessionTimeout: data.data.sessionTimeout || settings.sessionTimeout,
             passwordMinLength: data.data.passwordMinLength || settings.passwordMinLength,
-            maxLoginAttempts: settings.maxLoginAttempts, // Not in DB yet
+            maxLoginAttempts: data.data.maxLoginAttempts || settings.maxLoginAttempts,
             // Integrations
-            apiKey: settings.apiKey, // Not in DB yet
-            webhookUrl: settings.webhookUrl, // Not in DB yet
-            ssoEnabled: settings.ssoEnabled, // Not in DB yet
+            apiKey: data.data.apiKey || settings.apiKey,
+            webhookUrl: data.data.webhookUrl || settings.webhookUrl,
+            ssoEnabled: data.data.ssoEnabled !== undefined ? String(data.data.ssoEnabled) : settings.ssoEnabled,
           }
           setSettings(fetchedSettings)
           setOriginalSettings(fetchedSettings)
@@ -242,6 +273,26 @@ export default function AdminSettingsPage() {
   const handleSave = async () => {
     try {
       setSaving(true)
+      setValidationErrors({})
+
+      // Validate settings
+      const result = settingsSchema.safeParse(settings)
+
+      if (!result.success) {
+        const errors: Record<string, string> = {}
+        result.error.issues.forEach((err: any) => {
+          if (err.path[0]) {
+            errors[err.path[0].toString()] = err.message
+          }
+        })
+        setValidationErrors(errors)
+        toast({
+          title: 'Validation Error',
+          description: 'Please fix the errors before saving',
+          variant: 'destructive',
+        })
+        return
+      }
 
       // Authentication handled by HTTP-only cookies, no need for Authorization header
       const response = await fetch('/api/admin/settings', {
@@ -296,6 +347,82 @@ export default function AdminSettingsPage() {
       })
     } finally {
       setResetting(false)
+    }
+  }
+
+  const handleGenerateApiKey = async () => {
+    try {
+      setGeneratingKey(true)
+      const response = await fetch('/api/admin/settings/generate-api-key', {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.data?.apiKey) {
+        setSettings(prev => ({ ...prev, apiKey: data.data.apiKey }))
+        toast({
+          title: 'API Key Generated',
+          description: 'New API key has been generated. Remember to save your settings!',
+        })
+      } else {
+        throw new Error(data.error || 'Failed to generate API key')
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to generate API key',
+        variant: 'destructive',
+      })
+    } finally {
+      setGeneratingKey(false)
+    }
+  }
+
+  const handleTestEmail = async () => {
+    if (!settings.smtpHost || !settings.smtpPort || !settings.fromEmail || !settings.adminEmail) {
+      toast({
+        title: 'Missing Configuration',
+        description: 'Please configure SMTP settings and admin email before testing',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      setSendingTestEmail(true)
+      const response = await fetch('/api/admin/settings/test-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          smtpHost: settings.smtpHost,
+          smtpPort: settings.smtpPort,
+          smtpUser: settings.smtpUser,
+          fromEmail: settings.fromEmail,
+          testEmail: settings.adminEmail,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: 'Test Email Sent',
+          description: `Email sent successfully to ${settings.adminEmail}`,
+        })
+      } else {
+        throw new Error(data.message || 'Failed to send test email')
+      }
+    } catch (error) {
+      toast({
+        title: 'Email Failed',
+        description: error instanceof Error ? error.message : 'Failed to send test email',
+        variant: 'destructive',
+      })
+    } finally {
+      setSendingTestEmail(false)
     }
   }
 
@@ -504,16 +631,90 @@ export default function AdminSettingsPage() {
                       {settings[setting.id as keyof typeof settings] === 'true' ? 'Enabled' : 'Disabled'}
                     </span>
                   </div>
+                ) : setting.id === 'apiKey' ? (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Input
+                        type={showApiKey ? "text" : "password"}
+                        value={settings[setting.id as keyof typeof settings]}
+                        onChange={(e) => handleSettingChange(setting.id, e.target.value)}
+                        className="h-12 glass-effect border-2 border-teal-500/30 focus:border-teal-500 font-medium pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700 transition-colors"
+                        aria-label={showApiKey ? "Hide API key" : "Show API key"}
+                      >
+                        {showApiKey ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                    <MagneticButton
+                      onClick={handleGenerateApiKey}
+                      disabled={generatingKey}
+                      className="w-full glass-effect border-2 border-teal-500/30 text-neutral-700 font-bold hover:border-teal-500/60"
+                    >
+                      {generatingKey ? (
+                        <>
+                          <Loader2 className="mr-2 animate-spin" size={16} />
+                          GENERATING...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="mr-2" size={16} />
+                          GENERATE NEW KEY
+                        </>
+                      )}
+                    </MagneticButton>
+                  </div>
                 ) : (
-                  <Input
-                    type={setting.type}
-                    value={settings[setting.id as keyof typeof settings]}
-                    onChange={(e) => handleSettingChange(setting.id, e.target.value)}
-                    className="h-12 glass-effect border-2 border-teal-500/30 focus:border-teal-500 font-medium"
-                  />
+                  <div className="space-y-1">
+                    <Input
+                      type={setting.type}
+                      value={settings[setting.id as keyof typeof settings]}
+                      onChange={(e) => handleSettingChange(setting.id, e.target.value)}
+                      className={`h-12 glass-effect border-2 ${
+                        validationErrors[setting.id]
+                          ? 'border-danger focus:border-danger'
+                          : 'border-teal-500/30 focus:border-teal-500'
+                      } font-medium`}
+                    />
+                    {validationErrors[setting.id] && (
+                      <div className="flex items-center gap-1 text-danger text-xs font-medium">
+                        <AlertCircle size={12} />
+                        <span>{validationErrors[setting.id]}</span>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             ))}
+
+            {/* Test Email Button (only show on Email tab) */}
+            {activeTab === 'email' && (
+              <div className="pt-4 border-t-2 border-neutral-200">
+                <MagneticButton
+                  onClick={handleTestEmail}
+                  disabled={sendingTestEmail}
+                  className="w-full glass-effect border-2 border-primary/30 text-neutral-700 font-bold hover:border-primary/60"
+                >
+                  {sendingTestEmail ? (
+                    <>
+                      <Loader2 className="mr-2 animate-spin" size={16} />
+                      SENDING TEST EMAIL...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2" size={16} />
+                      SEND TEST EMAIL
+                    </>
+                  )}
+                </MagneticButton>
+                <p className="text-xs text-neutral-500 text-center mt-2">
+                  Test email will be sent to the admin email address
+                </p>
+              </div>
+            )}
 
             {/* Save Button */}
             <div className="pt-4 border-t-2 border-neutral-200">

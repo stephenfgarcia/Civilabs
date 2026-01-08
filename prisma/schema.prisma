@@ -726,8 +726,14 @@ model Settings {
   fromEmail  String?
 
   // Security Settings
-  sessionTimeout   String @default("30")
-  passwordMinLength String @default("8")
+  sessionTimeout     String @default("30")
+  passwordMinLength  String @default("8")
+  maxLoginAttempts   String @default("5")
+
+  // Integration Settings
+  apiKey             String?
+  webhookUrl         String?
+  ssoEnabled         Boolean @default(false)
 
   // Notification Settings
   emailNotifications  Boolean @default(true)

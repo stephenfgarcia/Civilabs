@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
@@ -210,15 +210,20 @@ export default function DepartmentsPage() {
     }
   }, [loading])
 
-  const filteredDepartments = departments.filter(dept => {
-    const matchesSearch = !searchQuery ||
-      dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (dept.description && dept.description.toLowerCase().includes(searchQuery.toLowerCase()))
-    return matchesSearch
-  })
+  const filteredDepartments = useMemo(() => {
+    return departments.filter(dept => {
+      const matchesSearch = !searchQuery ||
+        dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (dept.description && dept.description.toLowerCase().includes(searchQuery.toLowerCase()))
+      return matchesSearch
+    })
+  }, [departments, searchQuery])
 
-  const totalUsers = departments.reduce((sum, dept) => sum + dept.userCount, 0)
-  const avgUsersPerDept = departments.length > 0 ? Math.round(totalUsers / departments.length) : 0
+  const { totalUsers, avgUsersPerDept } = useMemo(() => {
+    const total = departments.reduce((sum, dept) => sum + dept.userCount, 0)
+    const avg = departments.length > 0 ? Math.round(total / departments.length) : 0
+    return { totalUsers: total, avgUsersPerDept: avg }
+  }, [departments])
 
   // Loading state
   if (loading) {

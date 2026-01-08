@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { Input } from '@/components/ui/input'
@@ -156,18 +156,20 @@ export default function ContentPage() {
     }
   }
 
-  const filteredFiles = files.filter(file => {
-    const matchesSearch = !searchQuery ||
-      file.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredFiles = useMemo(() => {
+    return files.filter(file => {
+      const matchesSearch = !searchQuery ||
+        file.name.toLowerCase().includes(searchQuery.toLowerCase())
 
-    let matchesType = selectedType === 'All'
-    if (selectedType === 'Videos') matchesType = file.type === 'video'
-    if (selectedType === 'Documents') matchesType = file.type === 'document'
-    if (selectedType === 'Images') matchesType = file.type === 'image'
-    if (selectedType === 'Other') matchesType = file.type === 'other'
+      let matchesType = selectedType === 'All'
+      if (selectedType === 'Videos') matchesType = file.type === 'video'
+      if (selectedType === 'Documents') matchesType = file.type === 'document'
+      if (selectedType === 'Images') matchesType = file.type === 'image'
+      if (selectedType === 'Other') matchesType = file.type === 'other'
 
-    return matchesSearch && matchesType
-  })
+      return matchesSearch && matchesType
+    })
+  }, [files, searchQuery, selectedType])
 
   const getFileIcon = (type: string) => {
     switch (type) {

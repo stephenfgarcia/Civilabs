@@ -74,6 +74,14 @@ export const PUT = withAdmin(async (request, user) => {
     if (body.sessionTimeout !== undefined) updateData.sessionTimeout = body.sessionTimeout
     if (body.passwordMinLength !== undefined)
       updateData.passwordMinLength = body.passwordMinLength
+    if (body.maxLoginAttempts !== undefined)
+      updateData.maxLoginAttempts = body.maxLoginAttempts
+
+    // Integration Settings
+    if (body.apiKey !== undefined) updateData.apiKey = body.apiKey
+    if (body.webhookUrl !== undefined) updateData.webhookUrl = body.webhookUrl
+    if (body.ssoEnabled !== undefined)
+      updateData.ssoEnabled = body.ssoEnabled === 'true' || body.ssoEnabled === true
 
     // Notification Settings
     if (body.emailNotifications !== undefined)
