@@ -3,6 +3,19 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
+/**
+ * Get the appropriate dashboard redirect based on user role (client-side)
+ */
+function getRoleDashboard(role: string): string {
+  const normalizedRole = role.toUpperCase()
+  if (normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN') {
+    return '/admin'
+  } else if (normalizedRole === 'INSTRUCTOR') {
+    return '/instructor/dashboard'
+  }
+  return '/dashboard'
+}
+
 export function useAuth(requiredRole?: string[]) {
   const router = useRouter()
 
@@ -23,8 +36,8 @@ export function useAuth(requiredRole?: string[]) {
       try {
         const user = JSON.parse(userStr)
         if (!requiredRole.includes(user.role)) {
-          // Not authorized, redirect to dashboard
-          router.push('/dashboard')
+          // Not authorized, redirect to appropriate dashboard based on role
+          router.push(getRoleDashboard(user.role))
           return
         }
       } catch (error) {

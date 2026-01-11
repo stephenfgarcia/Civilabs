@@ -93,6 +93,8 @@ export default function LoginPage() {
       setTimeout(() => {
         if (data.user.role === 'ADMIN' || data.user.role === 'SUPER_ADMIN') {
           router.push('/admin')
+        } else if (data.user.role === 'INSTRUCTOR') {
+          router.push('/instructor/dashboard')
         } else {
           router.push('/dashboard')
         }
