@@ -71,19 +71,6 @@ export async function requireAuth(): Promise<TokenPayload> {
 }
 
 /**
- * Get the appropriate dashboard redirect based on user role
- */
-export function getRoleDashboard(role: string): string {
-  const normalizedRole = role.toUpperCase()
-  if (normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN') {
-    return '/admin'
-  } else if (normalizedRole === 'INSTRUCTOR') {
-    return '/instructor/dashboard'
-  }
-  return '/dashboard'
-}
-
-/**
  * Require specific role - throws redirect if user doesn't have required role
  */
 export async function requireRole(
@@ -96,7 +83,7 @@ export async function requireRole(
   const normalizedRoles = allowedRoles.map(r => r.toLowerCase())
 
   if (!normalizedRoles.includes(userRole)) {
-    redirect(getRoleDashboard(user.role))
+    redirect('/dashboard')
   }
 
   return user
