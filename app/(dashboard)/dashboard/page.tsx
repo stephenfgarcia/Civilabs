@@ -3,17 +3,21 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
-import { BookOpen, Award, Clock, TrendingUp, HardHat, Target, Zap, AlertCircle, ChevronRight, Loader2 } from 'lucide-react'
+import { BookOpen, Award, Clock, TrendingUp, HardHat, Target, Zap, AlertCircle, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { coursesService, certificatesService } from '@/lib/services'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { useEntranceAnimation } from '@/lib/hooks'
+import { LoadingState, ErrorState } from '@/components/ui/page-states'
+import type { DashboardStats, EnrollmentWithCourse } from '@/lib/types'
+import type { User } from '@/lib/services'
 
 export default function DashboardPage() {
   // Require authentication (any role)
   useAuth()
 
-  const [user, setUser] = useState<any>(null)
-  const [stats, setStats] = useState({
+  const [user, setUser] = useState<User | null>(null)
+  const [stats, setStats] = useState<DashboardStats>({
     enrolled: 0,
     inProgress: 0,
     completed: 0,
@@ -21,7 +25,7 @@ export default function DashboardPage() {
     learningHours: 0,
     streak: 7
   })
-  const [enrollments, setEnrollments] = useState<any[]>([])
+  const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -35,13 +39,6 @@ export default function DashboardPage() {
 
     // Fetch dashboard data
     fetchDashboardData()
-
-    // Simple CSS-only entrance animations
-    const elements = document.querySelectorAll('.dashboard-item')
-    elements.forEach((el, index) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.animation = `fadeInUp 0.5s ease-out forwards ${index * 0.1}s`
-    })
   }, [])
 
   // Helper function to get enrollment card border classes
@@ -130,11 +127,11 @@ export default function DashboardPage() {
 
       // Calculate stats from enrollments
       const enrolled = enrollmentsData.length
-      const inProgress = enrollmentsData.filter((e: any) => {
+      const inProgress = enrollmentsData.filter((e: EnrollmentWithCourse) => {
         const progress = e.calculatedProgress || e.progressPercentage || 0
         return e.status === 'ENROLLED' && progress > 0 && progress < 100
       }).length
-      const completed = enrollmentsData.filter((e: any) => {
+      const completed = enrollmentsData.filter((e: EnrollmentWithCourse) => {
         const progress = e.calculatedProgress || e.progressPercentage || 0
         return e.status === 'COMPLETED' || progress === 100
       }).length
@@ -156,37 +153,22 @@ export default function DashboardPage() {
     }
   }
 
+  // Use entrance animation hook
+  useEntranceAnimation({ selector: '.dashboard-item', staggerDelay: 0.1 }, [loading])
+
   // Show loading state
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
-          <p className="text-lg font-bold text-neutral-700">Loading your dashboard...</p>
-        </div>
-      </div>
-    )
+    return <LoadingState message="Loading your dashboard..." size="lg" />
   }
 
   // Show error state
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Card className="glass-effect concrete-texture border-4 border-red-500/40 max-w-md">
-          <CardHeader>
-            <CardTitle className="text-xl font-black flex items-center gap-2 text-red-600">
-              <AlertCircle />
-              Error Loading Dashboard
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-neutral-700 mb-4">{error}</p>
-            <MagneticButton onClick={fetchDashboardData} className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
-              Try Again
-            </MagneticButton>
-          </CardContent>
-        </Card>
-      </div>
+      <ErrorState
+        title="Error Loading Dashboard"
+        message={error}
+        onRetry={fetchDashboardData}
+      />
     )
   }
 

@@ -4,12 +4,16 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
-import { Award, Download, Share2, Calendar, CheckCircle, Shield, HardHat, Zap, Eye, ExternalLink, Loader2, AlertCircle, BookOpen, Wrench } from 'lucide-react'
+import { Award, Download, Share2, Calendar, CheckCircle, Shield, HardHat, Eye, ExternalLink, BookOpen, Wrench } from 'lucide-react'
 import { certificatesService } from '@/lib/services'
-import { useToast } from '@/lib/hooks'
+import { useToast, useEntranceAnimation } from '@/lib/hooks'
+import { LoadingState, ErrorState, EmptyState } from '@/components/ui/page-states'
+import type { Certificate } from '@/lib/types'
+import type { User as UserType } from '@/lib/types'
+import type { LucideIcon } from 'lucide-react'
 
-// Icon mapping for certificate categories
-const CATEGORY_ICONS: Record<string, any> = {
+// Icon mapping for certificate categories with proper typing
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Safety: Shield,
   Equipment: Wrench,
   Technical: BookOpen,
@@ -31,13 +35,36 @@ const CATEGORY_COLORS: Record<string, string> = {
 }
 
 
+// Extended certificate type for API response
+interface CertificateResponse {
+  id: string
+  title?: string
+  issuedAt: string
+  expiresAt?: string
+  verificationCode?: string
+  certificate?: {
+    course?: {
+      title?: string
+      category?: {
+        name: string
+      }
+    }
+  }
+  course?: {
+    title?: string
+  }
+}
+
 export default function CertificatesPage() {
   const { toast } = useToast()
-  const [user, setUser] = useState<any>(null)
-  const [certificates, setCertificates] = useState<any[]>([])
+  const [user, setUser] = useState<UserType | null>(null)
+  const [certificates, setCertificates] = useState<CertificateResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedCertificate, setSelectedCertificate] = useState<any>(null)
+  const [selectedCertificate, setSelectedCertificate] = useState<CertificateResponse | null>(null)
+
+  // Use entrance animation hook
+  useEntranceAnimation({ selector: '.certificates-item', staggerDelay: 0.05 }, [loading, certificates.length])
 
   useEffect(() => {
     // Load user from localStorage
@@ -49,17 +76,6 @@ export default function CertificatesPage() {
     }
     fetchCertificates()
   }, [])
-
-  useEffect(() => {
-    if (certificates.length === 0) return
-
-    // Simple CSS-only entrance animations
-    const elements = document.querySelectorAll('.certificates-item')
-    elements.forEach((el, index) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.animation = `fadeInUp 0.4s ease-out forwards ${index * 0.05}s`
-    })
-  }, [certificates])
 
   const fetchCertificates = async () => {
     try {
@@ -81,7 +97,7 @@ export default function CertificatesPage() {
     }
   }
 
-  const handleDownload = async (certificate: any) => {
+  const handleDownload = async (certificate: CertificateResponse) => {
     try {
       // Open the certificate download URL in a new window
       window.open(`/api/certificates/${certificate.id}/download`, '_blank')
@@ -89,8 +105,8 @@ export default function CertificatesPage() {
         title: 'Download Started',
         description: 'Your certificate download has been initiated.',
       })
-    } catch (error) {
-      console.error('Error downloading certificate:', error)
+    } catch (err) {
+      console.error('Error downloading certificate:', err)
       toast({
         title: 'Error',
         description: 'Failed to download certificate. Please try again.',
@@ -99,7 +115,7 @@ export default function CertificatesPage() {
     }
   }
 
-  const handleShare = async (certificate: any) => {
+  const handleShare = async (certificate: CertificateResponse) => {
     try {
       const shareUrl = `${window.location.origin}/certificates/${certificate.id}`
       const shareText = `I earned a certificate for "${certificate.certificate?.course?.title || certificate.course?.title || 'this course'}" from Civilabs LMS!`
@@ -119,10 +135,10 @@ export default function CertificatesPage() {
           description: 'Certificate link copied to clipboard! You can now share it.',
         })
       }
-    } catch (error) {
-      console.error('Error sharing certificate:', error)
+    } catch (err) {
+      console.error('Error sharing certificate:', err)
       // Only show error if it's not a user cancellation
-      if (error instanceof Error && error.name !== 'AbortError') {
+      if (err instanceof Error && err.name !== 'AbortError') {
         toast({
           title: 'Error',
           description: 'Failed to share certificate. Please try again.',
@@ -132,7 +148,7 @@ export default function CertificatesPage() {
     }
   }
 
-  const handleView = (certificate: any) => {
+  const handleView = (certificate: CertificateResponse) => {
     setSelectedCertificate(certificate)
   }
 
@@ -151,40 +167,22 @@ export default function CertificatesPage() {
 
   // Loading state
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
-          <p className="text-lg font-bold text-neutral-700">Loading your certificates...</p>
-        </div>
-      </div>
-    )
+    return <LoadingState message="Loading your certificates..." size="lg" />
   }
 
   // Error state
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Card className="glass-effect concrete-texture border-4 border-red-500/40 max-w-md">
-          <CardHeader>
-            <CardTitle className="text-xl font-black flex items-center gap-2 text-red-600">
-              <AlertCircle />
-              Error Loading Certificates
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-neutral-700 mb-4">{error}</p>
-            <MagneticButton onClick={fetchCertificates} className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
-              Try Again
-            </MagneticButton>
-          </CardContent>
-        </Card>
-      </div>
+      <ErrorState
+        title="Error Loading Certificates"
+        message={error}
+        onRetry={fetchCertificates}
+      />
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="main" aria-label="Certificates">
       {/* Page Header */}
       <div className="certificates-item opacity-0">
         <div className="flex items-center justify-between">
@@ -196,7 +194,7 @@ export default function CertificatesPage() {
               View and download your earned certifications
             </p>
           </div>
-          <div className="hidden md:block">
+          <div className="hidden md:block" aria-hidden="true">
             <div className="w-16 h-16 bg-gradient-to-br from-success to-green-600 rounded-xl flex items-center justify-center">
               <Award className="text-white" size={32} />
             </div>
@@ -205,18 +203,18 @@ export default function CertificatesPage() {
       </div>
 
       {/* Stats Summary */}
-      <div className="certificates-item opacity-0 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <section className="certificates-item opacity-0 grid grid-cols-1 md:grid-cols-3 gap-4" aria-label="Certificate statistics">
         <Card className="glass-effect concrete-texture border-4 border-success/40 relative">
-          <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-success to-green-600"></div>
+          <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-success to-green-600" aria-hidden="true" />
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-neutral-600 uppercase">Total Earned</p>
-                <p className="text-4xl font-black bg-gradient-to-r from-success to-green-600 bg-clip-text text-transparent mt-1">
+                <p className="text-sm font-bold text-neutral-600 uppercase" id="stat-total-label">Total Earned</p>
+                <p className="text-4xl font-black bg-gradient-to-r from-success to-green-600 bg-clip-text text-transparent mt-1" aria-labelledby="stat-total-label">
                   {certificates.length}
                 </p>
               </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-success to-green-600 rounded-xl flex items-center justify-center">
+              <div className="w-14 h-14 bg-gradient-to-br from-success to-green-600 rounded-xl flex items-center justify-center" aria-hidden="true">
                 <Award className="text-white" size={28} />
               </div>
             </div>
@@ -224,16 +222,16 @@ export default function CertificatesPage() {
         </Card>
 
         <Card className="glass-effect concrete-texture border-4 border-primary/40 relative">
-          <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-primary to-blue-600"></div>
+          <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-primary to-blue-600" aria-hidden="true" />
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-neutral-600 uppercase">Active</p>
-                <p className="text-4xl font-black bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent mt-1">
+                <p className="text-sm font-bold text-neutral-600 uppercase" id="stat-active-label">Active</p>
+                <p className="text-4xl font-black bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent mt-1" aria-labelledby="stat-active-label">
                   {certificates.filter(c => !c.expiresAt || new Date(c.expiresAt) > new Date()).length}
                 </p>
               </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center">
+              <div className="w-14 h-14 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center" aria-hidden="true">
                 <CheckCircle className="text-white" size={28} />
               </div>
             </div>
@@ -241,12 +239,12 @@ export default function CertificatesPage() {
         </Card>
 
         <Card className="glass-effect concrete-texture border-4 border-warning/40 relative">
-          <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-warning to-orange-600"></div>
+          <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-warning to-orange-600" aria-hidden="true" />
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-neutral-600 uppercase">Recent</p>
-                <p className="text-4xl font-black bg-gradient-to-r from-warning to-orange-600 bg-clip-text text-transparent mt-1">
+                <p className="text-sm font-bold text-neutral-600 uppercase" id="stat-recent-label">Recent</p>
+                <p className="text-4xl font-black bg-gradient-to-r from-warning to-orange-600 bg-clip-text text-transparent mt-1" aria-labelledby="stat-recent-label">
                   {certificates.filter(c => {
                     const issuedDate = new Date(c.issuedAt)
                     const thirtyDaysAgo = new Date()
@@ -255,31 +253,34 @@ export default function CertificatesPage() {
                   }).length}
                 </p>
               </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-warning to-orange-600 rounded-xl flex items-center justify-center">
+              <div className="w-14 h-14 bg-gradient-to-br from-warning to-orange-600 rounded-xl flex items-center justify-center" aria-hidden="true">
                 <Calendar className="text-white" size={28} />
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>
+      </section>
 
       {/* Certificates List */}
       {certificates.length > 0 ? (
-        <div className="space-y-4">
-          {certificates.map((certificate, index) => {
+        <div className="space-y-4" role="list" aria-label="Earned certificates">
+          {certificates.map((certificate) => {
             const categoryName = certificate.certificate?.course?.category?.name || 'General'
             const IconComponent = CATEGORY_ICONS[categoryName] || Award
             const color = CATEGORY_COLORS[categoryName] || 'from-success to-green-600'
+            const certTitle = certificate.certificate?.course?.title || 'Certificate'
 
             return (
-              <Card
+              <article
                 key={certificate.id}
-                className="certificates-item opacity-0 glass-effect concrete-texture border-4 border-success/20 hover:border-success/40 transition-all group relative overflow-hidden"
+                className="certificates-item opacity-0 glass-effect concrete-texture border-4 border-success/20 hover:border-success/40 transition-all group relative overflow-hidden rounded-lg"
+                role="listitem"
+                aria-label={`Certificate: ${certTitle}`}
               >
                 {/* Accent Bar */}
-                <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${color}`}></div>
+                <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${color}`} aria-hidden="true" />
 
-                <CardContent className="p-6">
+                <div className="p-6">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Certificate Info */}
                     <div className="lg:col-span-7">
@@ -342,12 +343,13 @@ export default function CertificatesPage() {
 
                     {/* Actions */}
                     <div className="lg:col-span-5">
-                      <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-3" role="group" aria-label="Certificate actions">
                         <Link href={`/certificates/${certificate.id}`} className="w-full">
                           <MagneticButton
                             className="w-full bg-gradient-to-r from-primary to-blue-600 text-white font-black flex items-center justify-center gap-2"
+                            aria-label={`View certificate: ${certTitle}`}
                           >
-                            <Eye size={18} />
+                            <Eye size={18} aria-hidden="true" />
                             VIEW CERTIFICATE
                           </MagneticButton>
                         </Link>
@@ -355,34 +357,36 @@ export default function CertificatesPage() {
                         <MagneticButton
                           onClick={() => handleDownload(certificate)}
                           className="w-full bg-gradient-to-r from-success to-green-600 text-white font-black flex items-center justify-center gap-2"
+                          aria-label={`Download PDF for ${certTitle}`}
                         >
-                          <Download size={18} />
+                          <Download size={18} aria-hidden="true" />
                           DOWNLOAD PDF
                         </MagneticButton>
 
                         <MagneticButton
                           onClick={() => handleShare(certificate)}
                           className="w-full bg-gradient-to-r from-warning to-orange-600 text-white font-black flex items-center justify-center gap-2"
+                          aria-label={`Share certificate: ${certTitle}`}
                         >
-                          <Share2 size={18} />
+                          <Share2 size={18} aria-hidden="true" />
                           SHARE
                         </MagneticButton>
 
                         <button
                           onClick={() => {
-                            // Open verification page in new tab
                             const verifyUrl = `${window.location.origin}/verify/${certificate.verificationCode}`
                             window.open(verifyUrl, '_blank')
                           }}
                           className="w-full glass-effect border-2 border-secondary/30 hover:border-secondary/60 rounded-lg py-3 font-bold text-sm text-secondary flex items-center justify-center gap-2 transition-all hover:scale-105"
+                          aria-label={`Verify credential for ${certTitle}`}
                         >
-                          <ExternalLink size={16} />
+                          <ExternalLink size={16} aria-hidden="true" />
                           Verify Credential
                         </button>
                       </div>
 
                       {/* Certificate Preview Card */}
-                      <div className="mt-4 glass-effect border-4 border-success/20 rounded-lg p-4 bg-gradient-to-br from-success/5 to-warning/5">
+                      <div className="mt-4 glass-effect border-4 border-success/20 rounded-lg p-4 bg-gradient-to-br from-success/5 to-warning/5" aria-hidden="true">
                         <div className="text-center">
                           <Award className="mx-auto text-success mb-2" size={32} />
                           <p className="text-xs font-bold text-neutral-600 uppercase mb-1">Certificate of Completion</p>
@@ -397,28 +401,21 @@ export default function CertificatesPage() {
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </article>
             )
           })}
         </div>
       ) : (
-        <Card className="certificates-item opacity-0 glass-effect concrete-texture border-4 border-neutral-300">
-          <CardContent className="py-16 text-center">
-            <div className="w-24 h-24 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Award className="text-neutral-400" size={48} />
-            </div>
-            <h3 className="text-xl font-bold text-neutral-700 mb-2">No certificates earned yet</h3>
-            <p className="text-neutral-500 mb-6">
-              Complete courses to earn certificates
-            </p>
-            <Link href="/courses">
-              <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
-                BROWSE COURSES
-              </MagneticButton>
-            </Link>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Award className="text-neutral-400" size={48} />}
+          title="No certificates earned yet"
+          description="Complete courses to earn certificates"
+          action={{
+            label: 'BROWSE COURSES',
+            href: '/courses'
+          }}
+        />
       )}
 
       {/* Certificate Modal/Viewer (Simple placeholder) */}
@@ -426,6 +423,9 @@ export default function CertificatesPage() {
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
           onClick={() => setSelectedCertificate(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
         >
           <Card
             className="max-w-2xl w-full glass-effect concrete-texture border-4 border-success/40"
@@ -433,12 +433,13 @@ export default function CertificatesPage() {
           >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-2xl font-black">Certificate Preview</CardTitle>
+                <CardTitle id="modal-title" className="text-2xl font-black">Certificate Preview</CardTitle>
                 <button
                   onClick={() => setSelectedCertificate(null)}
                   className="w-10 h-10 bg-danger/20 hover:bg-danger/30 rounded-lg flex items-center justify-center transition-colors"
+                  aria-label="Close certificate preview"
                 >
-                  <span className="text-danger font-black text-xl">×</span>
+                  <span className="text-danger font-black text-xl" aria-hidden="true">×</span>
                 </button>
               </div>
             </CardHeader>
@@ -455,11 +456,11 @@ export default function CertificatesPage() {
                 <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t-2 border-neutral-200">
                   <div>
                     <p className="text-xs font-bold text-neutral-500">Issue Date</p>
-                    <p className="text-sm font-semibold text-neutral-800">{new Date(selectedCertificate.issueDate).toLocaleDateString()}</p>
+                    <p className="text-sm font-semibold text-neutral-800">{new Date(selectedCertificate.issuedAt).toLocaleDateString()}</p>
                   </div>
                   <div>
                     <p className="text-xs font-bold text-neutral-500">Credential ID</p>
-                    <p className="text-sm font-mono font-semibold text-neutral-800">{selectedCertificate.credentialId}</p>
+                    <p className="text-sm font-mono font-semibold text-neutral-800">{selectedCertificate.id}</p>
                   </div>
                 </div>
               </div>

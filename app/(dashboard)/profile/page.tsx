@@ -7,9 +7,13 @@ import { MagneticButton } from '@/components/ui/magnetic-button'
 import { User, Mail, Building2, Briefcase, Phone, MapPin, Calendar, Award, Edit2, Save, X, Camera, Shield, Trophy, Target, Zap, Loader2, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
 import { usersService } from '@/lib/services'
+import { useEntranceAnimation } from '@/lib/hooks'
+import { LoadingState } from '@/components/ui/page-states'
+import type { User as UserType, Badge, Achievement } from '@/lib/types'
+import type { LucideIcon } from 'lucide-react'
 
-// Icon mapping for achievements/badges
-const ACHIEVEMENT_ICONS: Record<string, any> = {
+// Icon mapping for achievements/badges with proper typing
+const ACHIEVEMENT_ICONS: Record<string, LucideIcon> = {
   'First Course': Award,
   'Safety Expert': Shield,
   'Quick Learner': Zap,
@@ -32,13 +36,13 @@ const ACHIEVEMENT_COLORS: Record<string, string> = {
 }
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<UserType | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [achievements, setAchievements] = useState<any[]>([])
-  const [badges, setBadges] = useState<any[]>([])
+  const [achievements, setAchievements] = useState<Achievement[]>([])
+  const [badges, setBadges] = useState<Badge[]>([])
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -52,15 +56,11 @@ export default function ProfilePage() {
     location: ''
   })
 
+  // Use entrance animation hook
+  useEntranceAnimation({ selector: '.profile-item', staggerDelay: 0.05 }, [loading])
+
   useEffect(() => {
     fetchProfileData()
-
-    // Simple CSS-only entrance animations
-    const elements = document.querySelectorAll('.profile-item')
-    elements.forEach((el, index) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.animation = `fadeInUp 0.4s ease-out forwards ${index * 0.05}s`
-    })
   }, [])
 
   const fetchProfileData = async () => {
@@ -225,14 +225,7 @@ export default function ProfilePage() {
 
   // Show loading state
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
-          <p className="text-lg font-bold text-neutral-700">Loading your profile...</p>
-        </div>
-      </div>
-    )
+    return <LoadingState message="Loading your profile..." size="lg" />
   }
 
   // Combine achievements and badges for display
@@ -261,13 +254,13 @@ export default function ProfilePage() {
   const lockedAchievements = allAchievements.filter(a => !a.earned)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="main" aria-label="Profile">
       {/* Error Alert */}
       {error && (
-        <Card className="glass-effect concrete-texture border-4 border-red-500/40">
+        <Card className="glass-effect concrete-texture border-4 border-red-500/40" role="alert" aria-live="polite">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <AlertCircle className="text-red-500" size={24} />
+              <AlertCircle className="text-red-500" size={24} aria-hidden="true" />
               <div>
                 <p className="font-bold text-red-600">Error</p>
                 <p className="text-sm text-neutral-700">{error}</p>
@@ -288,7 +281,7 @@ export default function ProfilePage() {
               Manage your account and view achievements
             </p>
           </div>
-          <div className="hidden md:block">
+          <div className="hidden md:block" aria-hidden="true">
             <div className="w-16 h-16 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center">
               <User className="text-white" size={32} />
             </div>
@@ -313,25 +306,28 @@ export default function ProfilePage() {
               <MagneticButton
                 onClick={() => setIsEditing(true)}
                 className="bg-gradient-to-r from-warning to-orange-600 text-white font-black flex items-center gap-2"
+                aria-label="Edit profile information"
               >
-                <Edit2 size={16} />
+                <Edit2 size={16} aria-hidden="true" />
                 EDIT PROFILE
               </MagneticButton>
             ) : (
-              <div className="flex gap-2">
+              <div className="flex gap-2" role="group" aria-label="Edit actions">
                 <MagneticButton
                   onClick={handleSave}
                   disabled={saving}
                   className="bg-gradient-to-r from-success to-green-600 text-white font-black flex items-center gap-2 disabled:opacity-50"
+                  aria-label={saving ? 'Saving changes' : 'Save profile changes'}
+                  aria-busy={saving}
                 >
                   {saving ? (
                     <>
-                      <Loader2 size={16} className="animate-spin" />
+                      <Loader2 size={16} className="animate-spin" aria-hidden="true" />
                       SAVING...
                     </>
                   ) : (
                     <>
-                      <Save size={16} />
+                      <Save size={16} aria-hidden="true" />
                       SAVE
                     </>
                   )}
@@ -340,8 +336,9 @@ export default function ProfilePage() {
                   onClick={handleCancel}
                   disabled={saving}
                   className="bg-gradient-to-r from-neutral-400 to-neutral-600 text-white font-black flex items-center gap-2 disabled:opacity-50"
+                  aria-label="Cancel editing"
                 >
-                  <X size={16} />
+                  <X size={16} aria-hidden="true" />
                   CANCEL
                 </MagneticButton>
               </div>
@@ -356,16 +353,16 @@ export default function ProfilePage() {
               <div className="flex flex-col items-center">
                 <div className="relative group">
                   <div className="w-48 h-48 bg-gradient-to-br from-warning to-orange-600 rounded-2xl flex items-center justify-center overflow-hidden border-4 border-warning/40">
-                    {avatarPreview || user?.avatarUrl ? (
+                    {avatarPreview || user?.avatar ? (
                       <Image
-                        src={avatarPreview || user.avatarUrl}
-                        alt="Avatar"
+                        src={avatarPreview || user?.avatar || ''}
+                        alt="Profile avatar"
                         width={192}
                         height={192}
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <User className="text-white" size={96} />
+                      <User className="text-white" size={96} aria-hidden="true" />
                     )}
                   </div>
                   {isEditing && (
@@ -376,12 +373,16 @@ export default function ProfilePage() {
                         accept="image/*"
                         onChange={handleAvatarChange}
                         className="hidden"
+                        aria-label="Upload new profile picture"
                       />
                       <label
                         htmlFor="avatar-upload"
                         className="absolute bottom-2 right-2 w-12 h-12 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center shadow-lg hover:scale-110 transition-transform cursor-pointer"
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Choose profile picture"
                       >
-                        <Camera className="text-white" size={20} />
+                        <Camera className="text-white" size={20} aria-hidden="true" />
                       </label>
                     </>
                   )}
@@ -427,20 +428,22 @@ export default function ProfilePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* First Name */}
                 <div>
-                  <label className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
-                    <User size={16} className="text-primary" />
+                  <label htmlFor="firstName" className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
+                    <User size={16} className="text-primary" aria-hidden="true" />
                     FIRST NAME
                   </label>
                   {isEditing ? (
                     <Input
                       type="text"
+                      id="firstName"
                       name="firstName"
                       value={formData.firstName}
                       onChange={handleInputChange}
                       className="glass-effect border-2 border-primary/30 focus:border-primary font-medium"
+                      aria-required="true"
                     />
                   ) : (
-                    <div className="glass-effect border-2 border-neutral-200 rounded-lg px-4 py-3 font-semibold text-neutral-800">
+                    <div className="glass-effect border-2 border-neutral-200 rounded-lg px-4 py-3 font-semibold text-neutral-800" aria-label={`First name: ${formData.firstName}`}>
                       {formData.firstName}
                     </div>
                   )}
@@ -448,20 +451,22 @@ export default function ProfilePage() {
 
                 {/* Last Name */}
                 <div>
-                  <label className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
-                    <User size={16} className="text-primary" />
+                  <label htmlFor="lastName" className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
+                    <User size={16} className="text-primary" aria-hidden="true" />
                     LAST NAME
                   </label>
                   {isEditing ? (
                     <Input
                       type="text"
+                      id="lastName"
                       name="lastName"
                       value={formData.lastName}
                       onChange={handleInputChange}
                       className="glass-effect border-2 border-primary/30 focus:border-primary font-medium"
+                      aria-required="true"
                     />
                   ) : (
-                    <div className="glass-effect border-2 border-neutral-200 rounded-lg px-4 py-3 font-semibold text-neutral-800">
+                    <div className="glass-effect border-2 border-neutral-200 rounded-lg px-4 py-3 font-semibold text-neutral-800" aria-label={`Last name: ${formData.lastName}`}>
                       {formData.lastName}
                     </div>
                   )}
@@ -469,20 +474,22 @@ export default function ProfilePage() {
 
                 {/* Email */}
                 <div>
-                  <label className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
-                    <Mail size={16} className="text-warning" />
+                  <label htmlFor="email" className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
+                    <Mail size={16} className="text-warning" aria-hidden="true" />
                     EMAIL
                   </label>
                   {isEditing ? (
                     <Input
                       type="email"
+                      id="email"
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
                       className="glass-effect border-2 border-warning/30 focus:border-warning font-medium"
+                      aria-required="true"
                     />
                   ) : (
-                    <div className="glass-effect border-2 border-neutral-200 rounded-lg px-4 py-3 font-semibold text-neutral-800">
+                    <div className="glass-effect border-2 border-neutral-200 rounded-lg px-4 py-3 font-semibold text-neutral-800" aria-label={`Email: ${formData.email}`}>
                       {formData.email}
                     </div>
                   )}
@@ -490,20 +497,21 @@ export default function ProfilePage() {
 
                 {/* Phone */}
                 <div>
-                  <label className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
-                    <Phone size={16} className="text-success" />
+                  <label htmlFor="phone" className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
+                    <Phone size={16} className="text-success" aria-hidden="true" />
                     PHONE
                   </label>
                   {isEditing ? (
                     <Input
                       type="tel"
+                      id="phone"
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
                       className="glass-effect border-2 border-success/30 focus:border-success font-medium"
                     />
                   ) : (
-                    <div className="glass-effect border-2 border-neutral-200 rounded-lg px-4 py-3 font-semibold text-neutral-800">
+                    <div className="glass-effect border-2 border-neutral-200 rounded-lg px-4 py-3 font-semibold text-neutral-800" aria-label={`Phone: ${formData.phone || 'Not set'}`}>
                       {formData.phone}
                     </div>
                   )}
@@ -511,20 +519,21 @@ export default function ProfilePage() {
 
                 {/* Department */}
                 <div>
-                  <label className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
-                    <Building2 size={16} className="text-secondary" />
+                  <label htmlFor="department" className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
+                    <Building2 size={16} className="text-secondary" aria-hidden="true" />
                     DEPARTMENT
                   </label>
                   {isEditing ? (
                     <Input
                       type="text"
+                      id="department"
                       name="department"
                       value={formData.department}
                       onChange={handleInputChange}
                       className="glass-effect border-2 border-secondary/30 focus:border-secondary font-medium"
                     />
                   ) : (
-                    <div className="glass-effect border-2 border-neutral-200 rounded-lg px-4 py-3 font-semibold text-neutral-800">
+                    <div className="glass-effect border-2 border-neutral-200 rounded-lg px-4 py-3 font-semibold text-neutral-800" aria-label={`Department: ${formData.department || 'Not set'}`}>
                       {formData.department}
                     </div>
                   )}
@@ -532,20 +541,21 @@ export default function ProfilePage() {
 
                 {/* Position */}
                 <div>
-                  <label className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
-                    <Briefcase size={16} className="text-primary" />
+                  <label htmlFor="position" className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
+                    <Briefcase size={16} className="text-primary" aria-hidden="true" />
                     POSITION
                   </label>
                   {isEditing ? (
                     <Input
                       type="text"
+                      id="position"
                       name="position"
                       value={formData.position}
                       onChange={handleInputChange}
                       className="glass-effect border-2 border-primary/30 focus:border-primary font-medium"
                     />
                   ) : (
-                    <div className="glass-effect border-2 border-neutral-200 rounded-lg px-4 py-3 font-semibold text-neutral-800">
+                    <div className="glass-effect border-2 border-neutral-200 rounded-lg px-4 py-3 font-semibold text-neutral-800" aria-label={`Position: ${formData.position || 'Not set'}`}>
                       {formData.position}
                     </div>
                   )}
@@ -553,20 +563,21 @@ export default function ProfilePage() {
 
                 {/* Location */}
                 <div className="md:col-span-2">
-                  <label className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
-                    <MapPin size={16} className="text-danger" />
+                  <label htmlFor="location" className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
+                    <MapPin size={16} className="text-danger" aria-hidden="true" />
                     LOCATION
                   </label>
                   {isEditing ? (
                     <Input
                       type="text"
+                      id="location"
                       name="location"
                       value={formData.location}
                       onChange={handleInputChange}
                       className="glass-effect border-2 border-danger/30 focus:border-danger font-medium"
                     />
                   ) : (
-                    <div className="glass-effect border-2 border-neutral-200 rounded-lg px-4 py-3 font-semibold text-neutral-800">
+                    <div className="glass-effect border-2 border-neutral-200 rounded-lg px-4 py-3 font-semibold text-neutral-800" aria-label={`Location: ${formData.location || 'Not set'}`}>
                       {formData.location}
                     </div>
                   )}
@@ -583,7 +594,7 @@ export default function ProfilePage() {
                     <div>
                       <p className="text-xs font-bold text-neutral-600">MEMBER SINCE</p>
                       <p className="text-lg font-black text-neutral-800">
-                        {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}
+                        {user?.joinedDate ? new Date(user.joinedDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}
                       </p>
                     </div>
                   </div>
@@ -607,83 +618,89 @@ export default function ProfilePage() {
       </Card>
 
       {/* Achievements Section */}
-      <Card className="profile-item opacity-0 glass-effect concrete-texture border-4 border-warning/40">
-        <CardHeader>
-          <CardTitle className="text-2xl font-black flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-warning to-orange-600 rounded-lg flex items-center justify-center">
-              <Trophy className="text-white" size={20} />
-            </div>
-            ACHIEVEMENTS & BADGES
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Earned Achievements */}
-          <div className="mb-8">
-            <h3 className="text-lg font-black text-neutral-800 mb-4 flex items-center gap-2">
-              <Award className="text-success" size={20} />
-              EARNED ({earnedAchievements.length})
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {earnedAchievements.map(achievement => {
-                const IconComponent = achievement.icon
-                return (
-                  <div
-                    key={achievement.id}
-                    className="glass-effect border-2 border-success/30 rounded-lg p-4 hover:border-success/60 transition-all group"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`w-14 h-14 bg-gradient-to-br ${achievement.color} rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
-                        <IconComponent className="text-white" size={28} />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-black text-neutral-800">{achievement.title}</h4>
-                        <p className="text-xs text-neutral-600 mt-1">{achievement.description}</p>
-                        <div className="flex items-center gap-1 mt-2">
-                          <Calendar size={12} className="text-success" />
-                          <span className="text-xs font-semibold text-success">{achievement.date}</span>
+      <section className="profile-item opacity-0" aria-labelledby="achievements-heading">
+        <Card className="glass-effect concrete-texture border-4 border-warning/40">
+          <CardHeader>
+            <CardTitle id="achievements-heading" className="text-2xl font-black flex items-center gap-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-warning to-orange-600 rounded-lg flex items-center justify-center" aria-hidden="true">
+                <Trophy className="text-white" size={20} />
+              </div>
+              ACHIEVEMENTS & BADGES
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Earned Achievements */}
+            <div className="mb-8">
+              <h3 id="earned-heading" className="text-lg font-black text-neutral-800 mb-4 flex items-center gap-2">
+                <Award className="text-success" size={20} aria-hidden="true" />
+                EARNED ({earnedAchievements.length})
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" role="list" aria-labelledby="earned-heading">
+                {earnedAchievements.map(achievement => {
+                  const IconComponent = achievement.icon
+                  return (
+                    <article
+                      key={achievement.id}
+                      className="glass-effect border-2 border-success/30 rounded-lg p-4 hover:border-success/60 transition-all group"
+                      role="listitem"
+                      aria-label={`Achievement: ${achievement.title}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-14 h-14 bg-gradient-to-br ${achievement.color} rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`} aria-hidden="true">
+                          <IconComponent className="text-white" size={28} />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-black text-neutral-800">{achievement.title}</h4>
+                          <p className="text-xs text-neutral-600 mt-1">{achievement.description}</p>
+                          <div className="flex items-center gap-1 mt-2">
+                            <Calendar size={12} className="text-success" aria-hidden="true" />
+                            <span className="text-xs font-semibold text-success">Earned {achievement.date}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                )
-              })}
+                    </article>
+                  )
+                })}
+              </div>
             </div>
-          </div>
 
-          {/* Locked Achievements */}
-          <div>
-            <h3 className="text-lg font-black text-neutral-800 mb-4 flex items-center gap-2">
-              <Target className="text-neutral-400" size={20} />
-              LOCKED ({lockedAchievements.length})
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {lockedAchievements.map(achievement => {
-                const IconComponent = achievement.icon
-                return (
-                  <div
-                    key={achievement.id}
-                    className="glass-effect border-2 border-neutral-200 rounded-lg p-4 opacity-60"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="w-14 h-14 bg-neutral-200 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <IconComponent className="text-neutral-400" size={28} />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-black text-neutral-600">{achievement.title}</h4>
-                        <p className="text-xs text-neutral-500 mt-1">{achievement.description}</p>
-                        <div className="flex items-center gap-1 mt-2">
-                          <Target size={12} className="text-neutral-400" />
-                          <span className="text-xs font-semibold text-neutral-400">Keep training to unlock</span>
+            {/* Locked Achievements */}
+            <div>
+              <h3 id="locked-heading" className="text-lg font-black text-neutral-800 mb-4 flex items-center gap-2">
+                <Target className="text-neutral-400" size={20} aria-hidden="true" />
+                LOCKED ({lockedAchievements.length})
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" role="list" aria-labelledby="locked-heading">
+                {lockedAchievements.map(achievement => {
+                  const IconComponent = achievement.icon
+                  return (
+                    <article
+                      key={achievement.id}
+                      className="glass-effect border-2 border-neutral-200 rounded-lg p-4 opacity-60"
+                      role="listitem"
+                      aria-label={`Locked achievement: ${achievement.title}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-14 h-14 bg-neutral-200 rounded-xl flex items-center justify-center flex-shrink-0" aria-hidden="true">
+                          <IconComponent className="text-neutral-400" size={28} />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-black text-neutral-600">{achievement.title}</h4>
+                          <p className="text-xs text-neutral-500 mt-1">{achievement.description}</p>
+                          <div className="flex items-center gap-1 mt-2">
+                            <Target size={12} className="text-neutral-400" aria-hidden="true" />
+                            <span className="text-xs font-semibold text-neutral-400">Keep training to unlock</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                )
-              })}
+                    </article>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </section>
     </div>
   )
 }

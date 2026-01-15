@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
@@ -89,6 +89,92 @@ export default function QuizPage() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  // Refs to track latest state for timer callback (prevents stale closure)
+  const quizRef = useRef<Quiz | null>(null)
+  const attemptRef = useRef<QuizAttempt | null>(null)
+  const answersRef = useRef<Record<string, string>>({})
+
+  // LocalStorage key for persisting quiz progress
+  const getStorageKey = (attemptId: string) => `quiz_progress_${quizId}_${attemptId}`
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    quizRef.current = quiz
+  }, [quiz])
+
+  useEffect(() => {
+    attemptRef.current = attempt
+  }, [attempt])
+
+  useEffect(() => {
+    answersRef.current = answers
+  }, [answers])
+
+  // Persist answers to localStorage when they change
+  useEffect(() => {
+    if (attempt && quizState === 'in-progress' && Object.keys(answers).length > 0) {
+      try {
+        const storageKey = getStorageKey(attempt.id)
+        const progressData = {
+          answers,
+          currentQuestion,
+          timeRemaining,
+          savedAt: new Date().toISOString(),
+        }
+        localStorage.setItem(storageKey, JSON.stringify(progressData))
+      } catch (err) {
+        console.error('Error saving quiz progress to localStorage:', err)
+      }
+    }
+  }, [answers, currentQuestion, timeRemaining, attempt, quizState, quizId])
+
+  // Clear localStorage when quiz is completed
+  const clearQuizProgress = useCallback((attemptId: string) => {
+    try {
+      const storageKey = getStorageKey(attemptId)
+      localStorage.removeItem(storageKey)
+    } catch (err) {
+      console.error('Error clearing quiz progress from localStorage:', err)
+    }
+  }, [quizId])
+
+  // Restore progress from localStorage
+  const restoreProgress = useCallback((attemptId: string) => {
+    try {
+      const storageKey = getStorageKey(attemptId)
+      const savedData = localStorage.getItem(storageKey)
+      if (savedData) {
+        const { answers: savedAnswers, currentQuestion: savedQuestion, timeRemaining: savedTime, savedAt } = JSON.parse(savedData)
+
+        // Calculate elapsed time since save
+        const savedTimestamp = new Date(savedAt).getTime()
+        const now = new Date().getTime()
+        const elapsedSeconds = Math.floor((now - savedTimestamp) / 1000)
+
+        // Adjust remaining time
+        const adjustedTime = Math.max(0, savedTime - elapsedSeconds)
+
+        if (adjustedTime > 0) {
+          setAnswers(savedAnswers || {})
+          setCurrentQuestion(savedQuestion || 0)
+          setTimeRemaining(adjustedTime)
+          toast({
+            title: 'Progress Restored',
+            description: 'Your previous answers have been restored.',
+          })
+          return true
+        } else {
+          // Time expired, clear progress
+          clearQuizProgress(attemptId)
+          return false
+        }
+      }
+    } catch (err) {
+      console.error('Error restoring quiz progress from localStorage:', err)
+    }
+    return false
+  }, [quizId, toast, clearQuizProgress])
+
   useEffect(() => {
     fetchQuiz()
   }, [quizId])
@@ -103,12 +189,67 @@ export default function QuizPage() {
     })
   }, [quiz, quizState, currentQuestion])
 
+  // Stable callback for timer auto-submit (uses refs to avoid stale closures)
+  const submitQuizFromTimer = useCallback(async () => {
+    const currentQuiz = quizRef.current
+    const currentAttempt = attemptRef.current
+    const currentAnswers = answersRef.current
+
+    if (!currentQuiz || !currentAttempt) return
+
+    try {
+      setSubmitting(true)
+      setError(null)
+
+      const submissionAnswers = Object.entries(currentAnswers).map(([questionId, selectedAnswer]) => ({
+        questionId,
+        selectedAnswer
+      }))
+
+      const response = await apiClient.post(`/quizzes/${quizId}/submit`, {
+        attemptId: currentAttempt.id,
+        answers: submissionAnswers
+      })
+
+      if (response.status >= 200 && response.status < 300 && response.data) {
+        const apiData = response.data as any
+        setResults(apiData.data.results)
+        setQuizState('completed')
+        // Clear localStorage on successful auto-submission
+        if (currentAttempt) {
+          clearQuizProgress(currentAttempt.id)
+        }
+        toast({
+          title: 'Time\'s Up!',
+          description: 'Your quiz has been automatically submitted.',
+        })
+      } else {
+        setError(response.error || 'Failed to submit quiz')
+        toast({
+          title: 'Error',
+          description: response.error || 'Failed to submit quiz.',
+          variant: 'destructive',
+        })
+      }
+    } catch (err) {
+      console.error('Error submitting quiz:', err)
+      setError(err instanceof Error ? err.message : 'Failed to submit quiz')
+      toast({
+        title: 'Error',
+        description: 'Failed to submit quiz.',
+        variant: 'destructive',
+      })
+    } finally {
+      setSubmitting(false)
+    }
+  }, [quizId, toast, clearQuizProgress])
+
   useEffect(() => {
     if (quizState === 'in-progress' && timeRemaining > 0) {
       const timer = setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
-            handleSubmitQuiz()
+            submitQuizFromTimer()
             return 0
           }
           return prev - 1
@@ -116,7 +257,7 @@ export default function QuizPage() {
       }, 1000)
       return () => clearInterval(timer)
     }
-  }, [quizState, timeRemaining])
+  }, [quizState, timeRemaining, submitQuizFromTimer])
 
   const fetchQuiz = async () => {
     try {
@@ -147,15 +288,23 @@ export default function QuizPage() {
 
       if (response.status >= 200 && response.status < 300 && response.data) {
         const apiData = response.data as any
-        setAttempt(apiData.data)
+        const newAttempt = apiData.data
+        setAttempt(newAttempt)
         setQuizState('in-progress')
-        setTimeRemaining((quiz?.timeLimitMinutes || 30) * 60)
-        setCurrentQuestion(0)
-        setAnswers({})
-        toast({
-          title: 'Quiz Started',
-          description: 'Good luck! Answer all questions carefully.',
-        })
+
+        // Try to restore progress from localStorage
+        const restored = restoreProgress(newAttempt.id)
+
+        if (!restored) {
+          // No saved progress, start fresh
+          setTimeRemaining((quiz?.timeLimitMinutes || 30) * 60)
+          setCurrentQuestion(0)
+          setAnswers({})
+          toast({
+            title: 'Quiz Started',
+            description: 'Good luck! Answer all questions carefully.',
+          })
+        }
       } else {
         setError(response.error || 'Failed to start quiz')
         toast({
@@ -216,6 +365,8 @@ export default function QuizPage() {
         const apiData = response.data as any
         setResults(apiData.data.results)
         setQuizState('completed')
+        // Clear localStorage on successful submission
+        clearQuizProgress(attempt.id)
         toast({
           title: 'Quiz Submitted',
           description: 'Your quiz has been submitted successfully!',
@@ -242,6 +393,10 @@ export default function QuizPage() {
   }
 
   const handleRetakeQuiz = () => {
+    // Clear any saved progress from previous attempt
+    if (attempt) {
+      clearQuizProgress(attempt.id)
+    }
     setQuizState('not-started')
     setCurrentQuestion(0)
     setAnswers({})

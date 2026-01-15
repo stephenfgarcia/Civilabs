@@ -1,14 +1,18 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
-import { BookOpen, Award, Clock, TrendingUp, HardHat, Shield, Wrench, Play, CheckCircle, AlertCircle, Filter, Loader2 } from 'lucide-react'
+import { BookOpen, Award, Clock, HardHat, Shield, Wrench, Play, CheckCircle, AlertCircle, Filter } from 'lucide-react'
 import Link from 'next/link'
 import { coursesService } from '@/lib/services'
+import { useEntranceAnimation } from '@/lib/hooks'
+import { LoadingState, ErrorState } from '@/components/ui/page-states'
+import type { EnrollmentWithCourse } from '@/lib/types'
+import type { LucideIcon } from 'lucide-react'
 
-// Icon mapping for categories
-const CATEGORY_ICONS: Record<string, any> = {
+// Icon mapping for categories with proper typing
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Safety: Shield,
   Equipment: Wrench,
   Technical: BookOpen,
@@ -93,21 +97,16 @@ const STATUS_FILTERS = [
 
 export default function MyLearningPage() {
   const [selectedStatus, setSelectedStatus] = useState('all')
-  const [enrollments, setEnrollments] = useState<any[]>([])
-  const [filteredCourses, setFilteredCourses] = useState<any[]>([])
+  const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([])
+  const [filteredCourses, setFilteredCourses] = useState<EnrollmentWithCourse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    // Fetch enrollments on mount
-    fetchEnrollments()
+  // Use entrance animation hook
+  useEntranceAnimation({ selector: '.learning-item', staggerDelay: 0.05 }, [loading])
 
-    // Simple CSS-only entrance animations
-    const elements = document.querySelectorAll('.learning-item')
-    elements.forEach((el, index) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.animation = `fadeInUp 0.4s ease-out forwards ${index * 0.05}s`
-    })
+  useEffect(() => {
+    fetchEnrollments()
   }, [])
 
   useEffect(() => {
@@ -144,7 +143,7 @@ export default function MyLearningPage() {
     }
   }
 
-  const getEnrollmentStatus = (enrollment: any) => {
+  const getEnrollmentStatus = (enrollment: EnrollmentWithCourse): string => {
     const progress = enrollment.progressPercentage || 0
     if (progress === 0) return 'not_started'
     if (progress === 100 || enrollment.status === 'COMPLETED') return 'completed'
@@ -166,35 +165,17 @@ export default function MyLearningPage() {
 
   // Show loading state
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
-          <p className="text-lg font-bold text-neutral-700">Loading your courses...</p>
-        </div>
-      </div>
-    )
+    return <LoadingState message="Loading your courses..." size="lg" />
   }
 
   // Show error state
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Card className="glass-effect concrete-texture border-4 border-red-500/40 max-w-md">
-          <CardHeader>
-            <CardTitle className="text-xl font-black flex items-center gap-2 text-red-600">
-              <AlertCircle />
-              Error Loading Courses
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-neutral-700 mb-4">{error}</p>
-            <MagneticButton onClick={fetchEnrollments} className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
-              Try Again
-            </MagneticButton>
-          </CardContent>
-        </Card>
-      </div>
+      <ErrorState
+        title="Error Loading Courses"
+        message={error}
+        onRetry={fetchEnrollments}
+      />
     )
   }
 
@@ -204,7 +185,7 @@ export default function MyLearningPage() {
   const completed = enrollments.filter(e => getEnrollmentStatus(e) === 'completed').length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="main" aria-label="My Learning">
       {/* Page Header */}
       <div className="learning-item opacity-0">
         <div className="flex items-center justify-between">
@@ -216,7 +197,7 @@ export default function MyLearningPage() {
               Track your progress and continue training
             </p>
           </div>
-          <div className="hidden md:block">
+          <div className="hidden md:block" aria-hidden="true">
             <div className="w-16 h-16 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center">
               <BookOpen className="text-white" size={32} />
             </div>
@@ -225,18 +206,18 @@ export default function MyLearningPage() {
       </div>
 
       {/* Stats Summary */}
-      <div className="learning-item opacity-0 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <section className="learning-item opacity-0 grid grid-cols-1 md:grid-cols-3 gap-4" aria-label="Learning statistics">
         <Card className="glass-effect concrete-texture border-4 border-primary/40 relative">
-          <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-primary to-blue-600"></div>
+          <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-primary to-blue-600" aria-hidden="true" />
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-neutral-600 uppercase">Total Enrolled</p>
-                <p className="text-4xl font-black bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent mt-1">
+                <p className="text-sm font-bold text-neutral-600 uppercase" id="stat-enrolled-label">Total Enrolled</p>
+                <p className="text-4xl font-black bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent mt-1" aria-labelledby="stat-enrolled-label">
                   {totalEnrolled}
                 </p>
               </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center">
+              <div className="w-14 h-14 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center" aria-hidden="true">
                 <BookOpen className="text-white" size={28} />
               </div>
             </div>
@@ -244,16 +225,16 @@ export default function MyLearningPage() {
         </Card>
 
         <Card className="glass-effect concrete-texture border-4 border-warning/40 relative">
-          <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-warning to-orange-600"></div>
+          <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-warning to-orange-600" aria-hidden="true" />
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-neutral-600 uppercase">In Progress</p>
-                <p className="text-4xl font-black bg-gradient-to-r from-warning to-orange-600 bg-clip-text text-transparent mt-1">
+                <p className="text-sm font-bold text-neutral-600 uppercase" id="stat-progress-label">In Progress</p>
+                <p className="text-4xl font-black bg-gradient-to-r from-warning to-orange-600 bg-clip-text text-transparent mt-1" aria-labelledby="stat-progress-label">
                   {inProgress}
                 </p>
               </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-warning to-orange-600 rounded-xl flex items-center justify-center">
+              <div className="w-14 h-14 bg-gradient-to-br from-warning to-orange-600 rounded-xl flex items-center justify-center" aria-hidden="true">
                 <Play className="text-white" size={28} />
               </div>
             </div>
@@ -261,27 +242,27 @@ export default function MyLearningPage() {
         </Card>
 
         <Card className="glass-effect concrete-texture border-4 border-success/40 relative">
-          <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-success to-green-600"></div>
+          <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-success to-green-600" aria-hidden="true" />
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-neutral-600 uppercase">Completed</p>
-                <p className="text-4xl font-black bg-gradient-to-r from-success to-green-600 bg-clip-text text-transparent mt-1">
+                <p className="text-sm font-bold text-neutral-600 uppercase" id="stat-completed-label">Completed</p>
+                <p className="text-4xl font-black bg-gradient-to-r from-success to-green-600 bg-clip-text text-transparent mt-1" aria-labelledby="stat-completed-label">
                   {completed}
                 </p>
               </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-success to-green-600 rounded-xl flex items-center justify-center">
+              <div className="w-14 h-14 bg-gradient-to-br from-success to-green-600 rounded-xl flex items-center justify-center" aria-hidden="true">
                 <CheckCircle className="text-white" size={28} />
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>
+      </section>
 
       {/* Filter Tabs */}
       <Card className="learning-item opacity-0 glass-effect concrete-texture border-4 border-warning/40">
         <CardContent className="p-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter courses by status">
             {STATUS_FILTERS.map(filter => {
               const IconComponent = filter.icon
               const isActive = selectedStatus === filter.id
@@ -289,13 +270,16 @@ export default function MyLearningPage() {
                 <button
                   key={filter.id}
                   onClick={() => setSelectedStatus(filter.id)}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls="course-list"
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${
                     isActive
                       ? 'bg-gradient-to-r from-warning to-orange-600 text-white shadow-lg'
                       : 'glass-effect border-2 border-warning/30 text-neutral-700 hover:border-warning/60'
                   }`}
                 >
-                  <IconComponent size={16} />
+                  <IconComponent size={16} aria-hidden="true" />
                   {filter.label}
                 </button>
               )
@@ -306,8 +290,8 @@ export default function MyLearningPage() {
 
       {/* Course List */}
       {filteredCourses.length > 0 ? (
-        <div className="space-y-4">
-          {filteredCourses.map((enrollment, index) => {
+        <div id="course-list" role="tabpanel" className="space-y-4" aria-label="Enrolled courses">
+          {filteredCourses.map((enrollment) => {
             const course = enrollment.course
             const status = getEnrollmentStatus(enrollment)
             const progress = enrollment.progressPercentage || 0
@@ -316,19 +300,20 @@ export default function MyLearningPage() {
             const lastAccessedDate = enrollment.updatedAt ? new Date(enrollment.updatedAt).toLocaleDateString() : 'Never'
 
             return (
-              <Card
+              <article
                 key={enrollment.id}
-                className="learning-item opacity-0 glass-effect concrete-texture border-4 border-primary/20 hover:border-primary/40 transition-all group relative overflow-hidden"
+                className="learning-item opacity-0 glass-effect concrete-texture border-4 border-primary/20 hover:border-primary/40 transition-all group relative overflow-hidden rounded-lg"
+                aria-label={`Course: ${course?.title || 'Untitled Course'}`}
               >
                 {/* Accent Bar */}
-                <div className={getCategoryAccentBarClass(categoryName)}></div>
+                <div className={getCategoryAccentBarClass(categoryName)} aria-hidden="true" />
 
-                <CardContent className="p-6">
+                <div className="p-6">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Course Info */}
                     <div className="lg:col-span-7">
                       <div className="flex items-start gap-4">
-                        <div className={getCategoryIconBgClass(categoryName)}>
+                        <div className={getCategoryIconBgClass(categoryName)} aria-hidden="true">
                           <IconComponent className="text-white" size={32} />
                         </div>
                         <div className="flex-1">
@@ -371,16 +356,23 @@ export default function MyLearningPage() {
                         {/* Progress Bar */}
                         <div>
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-bold text-neutral-600">PROGRESS</span>
+                            <span className="text-sm font-bold text-neutral-600" id={`progress-label-${enrollment.id}`}>PROGRESS</span>
                             <span className={`text-lg font-black ${progress === 100 ? 'text-success' : 'text-primary'}`}>
                               {progress}%
                             </span>
                           </div>
-                          <div className="w-full bg-neutral-200 rounded-full h-3 mb-3">
+                          <div
+                            className="w-full bg-neutral-200 rounded-full h-3 mb-3"
+                            role="progressbar"
+                            aria-valuenow={progress}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-labelledby={`progress-label-${enrollment.id}`}
+                          >
                             <div
                               className={getCategoryProgressBarClass(categoryName)}
                               style={{ width: `${progress}%` }}
-                            ></div>
+                            />
                           </div>
                           <p className="text-xs text-neutral-500">Last accessed: {lastAccessedDate}</p>
                         </div>
@@ -393,20 +385,21 @@ export default function MyLearningPage() {
                                 ? 'bg-gradient-to-r from-success to-green-600'
                                 : 'bg-gradient-to-r from-primary to-blue-600'
                             } text-white font-black flex items-center justify-center gap-2`}
+                            aria-label={status === 'not_started' ? `Start course: ${course?.title}` : status === 'completed' ? `Review course: ${course?.title}` : `Continue learning: ${course?.title}`}
                           >
                             {status === 'not_started' ? (
                               <>
-                                <Play size={18} />
+                                <Play size={18} aria-hidden="true" />
                                 START COURSE
                               </>
                             ) : status === 'completed' ? (
                               <>
-                                <BookOpen size={18} />
+                                <BookOpen size={18} aria-hidden="true" />
                                 REVIEW COURSE
                               </>
                             ) : (
                               <>
-                                <Play size={18} />
+                                <Play size={18} aria-hidden="true" />
                                 CONTINUE LEARNING
                               </>
                             )}
@@ -415,15 +408,15 @@ export default function MyLearningPage() {
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </article>
             )
           })}
         </div>
       ) : (
-        <Card className="learning-item opacity-0 glass-effect concrete-texture border-4 border-neutral-300">
-          <CardContent className="py-16 text-center">
-            <div className="w-24 h-24 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <Card className="learning-item opacity-0 glass-effect concrete-texture border-4 border-neutral-300" id="course-list" role="tabpanel">
+          <CardContent className="py-16 text-center" role="status">
+            <div className="w-24 h-24 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4" aria-hidden="true">
               <BookOpen className="text-neutral-400" size={48} />
             </div>
             <h3 className="text-xl font-bold text-neutral-700 mb-2">No courses found</h3>
@@ -434,8 +427,8 @@ export default function MyLearningPage() {
             </p>
             {selectedStatus === 'all' ? (
               <Link href="/courses">
-                <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
-                  <BookOpen className="mr-2" size={18} />
+                <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black" aria-label="Browse available courses">
+                  <BookOpen className="mr-2" size={18} aria-hidden="true" />
                   BROWSE COURSES
                 </MagneticButton>
               </Link>
@@ -443,6 +436,7 @@ export default function MyLearningPage() {
               <MagneticButton
                 onClick={() => setSelectedStatus('all')}
                 className="bg-gradient-to-r from-primary to-blue-600 text-white font-black"
+                aria-label="Clear filter and view all courses"
               >
                 VIEW ALL COURSES
               </MagneticButton>

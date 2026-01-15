@@ -4,13 +4,40 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { MagneticButton } from '@/components/ui/magnetic-button'
-import { BookOpen, Search, Filter, HardHat, Award, Clock, Users, ChevronRight, Zap, Shield, Wrench, Loader2, AlertCircle, Bookmark, BookmarkCheck } from 'lucide-react'
+import { LoadingState, ErrorState, EmptyState } from '@/components/ui/page-states'
+import { BookOpen, Search, Filter, HardHat, Award, Clock, Users, ChevronRight, Zap, Shield, Wrench, Loader2, AlertCircle, Bookmark, BookmarkCheck, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { coursesService } from '@/lib/services'
-import { useToast } from '@/lib/hooks'
+import { useToast, useEntranceAnimation } from '@/lib/hooks'
+import { sanitizeSearchQuery } from '@/lib/utils/sanitize'
+
+// Course interface based on API response
+interface CourseCategory {
+  id: string | number
+  name: string
+}
+
+interface CourseInstructor {
+  firstName: string
+  lastName: string
+}
+
+interface CourseData {
+  id: string | number
+  title: string
+  description?: string
+  difficultyLevel?: string
+  durationMinutes?: number
+  category?: CourseCategory
+  instructor?: CourseInstructor
+  _count?: {
+    enrollments?: number
+    lessons?: number
+  }
+}
 
 // Icon mapping for categories
-const CATEGORY_ICONS: Record<string, any> = {
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Safety: Shield,
   Equipment: Wrench,
   Technical: BookOpen,
@@ -71,25 +98,21 @@ export default function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedLevel, setSelectedLevel] = useState('All Levels')
-  const [courses, setCourses] = useState<any[]>([])
+  const [courses, setCourses] = useState<CourseData[]>([])
   const [categories, setCategories] = useState<string[]>(['All'])
-  const [filteredCourses, setFilteredCourses] = useState<any[]>([])
+  const [filteredCourses, setFilteredCourses] = useState<CourseData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [bookmarkedCourses, setBookmarkedCourses] = useState<Set<string>>(new Set())
   const [togglingBookmarks, setTogglingBookmarks] = useState<Set<string>>(new Set())
 
+  // Use entrance animation hook
+  useEntranceAnimation({ selector: '.courses-item', staggerDelay: 0.05 }, [loading, filteredCourses])
+
   useEffect(() => {
     // Fetch courses and bookmarks on mount
     fetchCourses()
     fetchBookmarks()
-
-    // Simple CSS-only entrance animations
-    const elements = document.querySelectorAll('.courses-item')
-    elements.forEach((el, index) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.animation = `fadeInUp 0.4s ease-out forwards ${index * 0.05}s`
-    })
   }, [])
 
   useEffect(() => {
@@ -123,12 +146,13 @@ export default function CoursesPage() {
       const response = await coursesService.getCourses()
 
       if (response.status >= 200 && response.status < 300 && response.data) {
-        const coursesData = Array.isArray(response.data) ? response.data : []
+        // Cast to CourseData[] since API response format differs from service types
+        const coursesData = (Array.isArray(response.data) ? response.data : []) as unknown as CourseData[]
         setCourses(coursesData)
         setFilteredCourses(coursesData)
 
         // Extract unique categories
-        const uniqueCategories = ['All', ...Array.from(new Set(coursesData.map((c: any) => c.category?.name).filter(Boolean)))]
+        const uniqueCategories = ['All', ...Array.from(new Set(coursesData.map((c) => c.category?.name).filter(Boolean)))] as string[]
         setCategories(uniqueCategories)
       } else {
         throw new Error(response.error || 'Failed to load courses')
@@ -257,40 +281,16 @@ export default function CoursesPage() {
 
   // Show loading state
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
-          <p className="text-lg font-bold text-neutral-700">Loading courses...</p>
-        </div>
-      </div>
-    )
+    return <LoadingState message="Loading courses..." size="lg" />
   }
 
   // Show error state
   if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Card className="glass-effect concrete-texture border-4 border-red-500/40 max-w-md">
-          <CardHeader>
-            <CardTitle className="text-xl font-black flex items-center gap-2 text-red-600">
-              <AlertCircle />
-              Error Loading Courses
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-neutral-700 mb-4">{error}</p>
-            <MagneticButton onClick={fetchCourses} className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
-              Try Again
-            </MagneticButton>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    return <ErrorState title="Error Loading Courses" message={error} onRetry={fetchCourses} />
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="main" aria-label="Training Catalog">
       {/* Page Header */}
       <div className="courses-item opacity-0">
         <div className="flex items-center justify-between">
@@ -302,7 +302,7 @@ export default function CoursesPage() {
               Browse available construction training courses
             </p>
           </div>
-          <div className="hidden md:block">
+          <div className="hidden md:block" aria-hidden="true">
             <div className="w-16 h-16 bg-gradient-to-br from-warning to-orange-600 rounded-xl flex items-center justify-center">
               <BookOpen className="text-white" size={32} />
             </div>
@@ -313,16 +313,19 @@ export default function CoursesPage() {
       {/* Search and Filters */}
       <Card className="courses-item opacity-0 glass-effect concrete-texture border-4 border-warning/40">
         <CardContent className="p-6">
-          <div className="space-y-4">
+          <form role="search" aria-label="Search and filter courses" onSubmit={(e) => e.preventDefault()} className="space-y-4">
             {/* Search Bar */}
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400" size={20} />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400" size={20} aria-hidden="true" />
               <Input
-                type="text"
+                id="course-search"
+                type="search"
                 placeholder="Search for courses..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => setSearchQuery(sanitizeSearchQuery(e.target.value))}
                 className="pl-12 h-14 glass-effect border-2 border-warning/30 focus:border-warning text-base font-medium"
+                aria-label="Search courses by title or description"
+                maxLength={200}
               />
             </div>
 
@@ -330,14 +333,16 @@ export default function CoursesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Category Filter */}
               <div>
-                <label className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
-                  <Filter size={16} className="text-warning" />
+                <label htmlFor="category-filter" className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
+                  <Filter size={16} className="text-warning" aria-hidden="true" />
                   CATEGORY
                 </label>
                 <select
+                  id="category-filter"
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="w-full h-12 glass-effect border-2 border-warning/30 focus:border-warning rounded-lg px-4 font-medium"
+                  aria-label="Filter by category"
                 >
                   {categories.map(category => (
                     <option key={category} value={category}>{category}</option>
@@ -347,14 +352,16 @@ export default function CoursesPage() {
 
               {/* Level Filter */}
               <div>
-                <label className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
-                  <Award size={16} className="text-warning" />
+                <label htmlFor="level-filter" className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
+                  <Award size={16} className="text-warning" aria-hidden="true" />
                   SKILL LEVEL
                 </label>
                 <select
+                  id="level-filter"
                   value={selectedLevel}
                   onChange={(e) => setSelectedLevel(e.target.value)}
                   className="w-full h-12 glass-effect border-2 border-warning/30 focus:border-warning rounded-lg px-4 font-medium"
+                  aria-label="Filter by skill level"
                 >
                   {LEVELS.map(level => (
                     <option key={level} value={level}>{level}</option>
@@ -365,150 +372,150 @@ export default function CoursesPage() {
 
             {/* Results Count */}
             <div className="flex items-center justify-between pt-2">
-              <p className="text-sm font-bold text-neutral-600">
+              <p className="text-sm font-bold text-neutral-600" aria-live="polite" aria-atomic="true">
                 {filteredCourses.length} {filteredCourses.length === 1 ? 'course' : 'courses'} found
               </p>
               {(searchQuery || selectedCategory !== 'All' || selectedLevel !== 'All Levels') && (
                 <button
+                  type="button"
                   onClick={() => {
                     setSearchQuery('')
                     setSelectedCategory('All')
                     setSelectedLevel('All Levels')
                   }}
                   className="text-sm font-bold text-danger hover:text-danger/80"
+                  aria-label="Clear all filters"
                 >
                   Clear Filters
                 </button>
               )}
             </div>
-          </div>
+          </form>
         </CardContent>
       </Card>
 
       {/* Course Grid */}
       {filteredCourses.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCourses.map((course, index) => {
-            const categoryName = course.category?.name || 'General'
-            const IconComponent = CATEGORY_ICONS[categoryName] || BookOpen
-            const difficultyLevel = course.difficultyLevel || 'BEGINNER'
+        <section aria-label="Course listings">
+          <ul role="list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-label={`${filteredCourses.length} courses available`}>
+            {filteredCourses.map((course) => {
+              const categoryName = course.category?.name || 'General'
+              const IconComponent = CATEGORY_ICONS[categoryName] || BookOpen
+              const difficultyLevel = course.difficultyLevel || 'BEGINNER'
 
-            const isBookmarked = bookmarkedCourses.has(course.id)
+              const courseId = String(course.id)
+              const isBookmarked = bookmarkedCourses.has(courseId)
 
-            return (
-              <div key={course.id} className="relative">
-                <Link href={`/courses/${course.id}`}>
-                  <Card
-                    className="courses-item opacity-0 glass-effect concrete-texture border-4 border-primary/20 hover:border-primary/40 transition-all group relative overflow-hidden cursor-pointer"
-                  >
-                    {/* Accent Bar */}
-                    <div className={getCategoryAccentBarClass(categoryName)}></div>
+              return (
+                <li key={courseId}>
+                  <article className="courses-item opacity-0 relative h-full">
+                    <Link href={`/courses/${courseId}`} className="block h-full" aria-label={`View ${course.title} course`}>
+                      <Card
+                        className="glass-effect concrete-texture border-4 border-primary/20 hover:border-primary/40 transition-all group relative overflow-hidden cursor-pointer h-full"
+                      >
+                        {/* Accent Bar */}
+                        <div className={getCategoryAccentBarClass(categoryName)} aria-hidden="true"></div>
 
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className={getCategoryIconBgClass(categoryName)}>
-                          <IconComponent className="text-white" size={28} />
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <button
-                            onClick={(e) => toggleBookmark(course.id, e)}
-                            disabled={togglingBookmarks.has(course.id)}
-                            className={`p-2 rounded-lg transition-all ${
-                              togglingBookmarks.has(course.id)
-                                ? 'bg-neutral-100 text-neutral-300 cursor-not-allowed opacity-50'
-                                : isBookmarked
-                                ? 'bg-warning/20 text-warning hover:bg-warning/30'
-                                : 'bg-neutral-100 text-neutral-400 hover:bg-neutral-200'
-                            }`}
-                            title={
-                              togglingBookmarks.has(course.id)
-                                ? 'Processing...'
-                                : isBookmarked
-                                ? 'Remove bookmark'
-                                : 'Bookmark course'
-                            }
-                          >
-                            {isBookmarked ? (
-                              <BookmarkCheck size={18} />
-                            ) : (
-                              <Bookmark size={18} />
-                            )}
-                          </button>
-                          <div className="flex flex-col items-end gap-1">
-                            <span className="text-xs font-bold px-3 py-1 rounded-full bg-warning/20 text-warning">
-                              {categoryName}
-                            </span>
-                            <span className="text-xs font-semibold text-neutral-600">
-                              {difficultyLevel}
-                            </span>
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div className={getCategoryIconBgClass(categoryName)} aria-hidden="true">
+                              <IconComponent className="text-white" size={28} />
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <button
+                                onClick={(e) => toggleBookmark(courseId, e)}
+                                disabled={togglingBookmarks.has(courseId)}
+                                className={`p-2 rounded-lg transition-all ${
+                                  togglingBookmarks.has(courseId)
+                                    ? 'bg-neutral-100 text-neutral-300 cursor-not-allowed opacity-50'
+                                    : isBookmarked
+                                    ? 'bg-warning/20 text-warning hover:bg-warning/30'
+                                    : 'bg-neutral-100 text-neutral-400 hover:bg-neutral-200'
+                                }`}
+                                aria-label={
+                                  togglingBookmarks.has(courseId)
+                                    ? 'Processing bookmark...'
+                                    : isBookmarked
+                                    ? `Remove ${course.title} from bookmarks`
+                                    : `Bookmark ${course.title}`
+                                }
+                                aria-pressed={isBookmarked}
+                              >
+                                {isBookmarked ? (
+                                  <BookmarkCheck size={18} aria-hidden="true" />
+                                ) : (
+                                  <Bookmark size={18} aria-hidden="true" />
+                                )}
+                              </button>
+                              <div className="flex flex-col items-end gap-1">
+                                <span className="text-xs font-bold px-3 py-1 rounded-full bg-warning/20 text-warning">
+                                  {categoryName}
+                                </span>
+                                <span className="text-xs font-semibold text-neutral-600">
+                                  {difficultyLevel}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    <CardTitle className="text-xl font-black mt-4 group-hover:text-primary transition-colors">
-                      {course.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-neutral-600 text-sm mb-6 line-clamp-2">
-                      {course.description}
-                    </p>
+                          <CardTitle className="text-xl font-black mt-4 group-hover:text-primary transition-colors">
+                            {course.title}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-neutral-600 text-sm mb-6 line-clamp-2">
+                            {course.description}
+                          </p>
 
-                    {/* Course Stats */}
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                          <Clock className="text-primary" size={16} />
-                        </div>
-                        <div>
-                          <p className="text-xs text-neutral-500">Duration</p>
-                          <p className="text-sm font-bold text-neutral-800">{course.durationMinutes ? `${Math.ceil(course.durationMinutes / 60)}h` : 'N/A'}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-success/10 rounded-lg flex items-center justify-center">
-                          <Users className="text-success" size={16} />
-                        </div>
-                        <div>
-                          <p className="text-xs text-neutral-500">Students</p>
-                          <p className="text-sm font-bold text-neutral-800">{course._count?.enrollments || 0}</p>
-                        </div>
-                      </div>
-                    </div>
+                          {/* Course Stats */}
+                          <dl className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center" aria-hidden="true">
+                                <Clock className="text-primary" size={16} />
+                              </div>
+                              <div>
+                                <dt className="text-xs text-neutral-500">Duration</dt>
+                                <dd className="text-sm font-bold text-neutral-800">{course.durationMinutes ? `${Math.ceil(course.durationMinutes / 60)}h` : 'N/A'}</dd>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 bg-success/10 rounded-lg flex items-center justify-center" aria-hidden="true">
+                                <Users className="text-success" size={16} />
+                              </div>
+                              <div>
+                                <dt className="text-xs text-neutral-500">Students</dt>
+                                <dd className="text-sm font-bold text-neutral-800">{course._count?.enrollments || 0}</dd>
+                              </div>
+                            </div>
+                          </dl>
 
-                    {/* View Course Button */}
-                    <div className="w-full bg-gradient-to-r from-warning to-orange-600 text-white font-black flex items-center justify-center gap-2 py-3 rounded-lg">
-                      VIEW COURSE
-                      <ChevronRight size={18} />
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-              </div>
-            )
-          })}
-        </div>
+                          {/* View Course Button */}
+                          <div className="w-full bg-gradient-to-r from-warning to-orange-600 text-white font-black flex items-center justify-center gap-2 py-3 rounded-lg" aria-hidden="true">
+                            VIEW COURSE
+                            <ChevronRight size={18} />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  </article>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
       ) : (
-        <Card className="courses-item opacity-0 glass-effect concrete-texture border-4 border-neutral-300">
-          <CardContent className="py-16 text-center">
-            <div className="w-24 h-24 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search className="text-neutral-400" size={48} />
-            </div>
-            <h3 className="text-xl font-bold text-neutral-700 mb-2">No courses found</h3>
-            <p className="text-neutral-500 mb-6">
-              Try adjusting your search or filters
-            </p>
-            <MagneticButton
-              onClick={() => {
-                setSearchQuery('')
-                setSelectedCategory('All')
-                setSelectedLevel('All Levels')
-              }}
-              className="bg-gradient-to-r from-primary to-blue-600 text-white font-black"
-            >
-              Reset Filters
-            </MagneticButton>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Search size={48} />}
+          title="No courses found"
+          description="Try adjusting your search or filters"
+          action={{
+            label: 'Reset Filters',
+            onClick: () => {
+              setSearchQuery('')
+              setSelectedCategory('All')
+              setSelectedLevel('All Levels')
+            }
+          }}
+        />
       )}
     </div>
   )

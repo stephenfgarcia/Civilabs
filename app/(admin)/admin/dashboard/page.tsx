@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Clock,
   BarChart3,
+  type LucideIcon,
 } from 'lucide-react'
 
 // Initial state for stats
@@ -47,7 +48,7 @@ interface ActivityItem {
   action: string
   details: string
   time: string
-  icon: any
+  icon: LucideIcon
   color: string
 }
 
@@ -436,7 +437,7 @@ function StatCard({
   title: string
   value: string | number
   change: number
-  icon: any
+  icon: LucideIcon
   color: string
   loading?: boolean
 }) {

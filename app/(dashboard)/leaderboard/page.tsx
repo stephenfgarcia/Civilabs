@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Trophy, Medal, Award, Target, Zap, TrendingUp, Crown, Star, User, Loader2 } from 'lucide-react'
-import { useToast } from '@/lib/hooks'
+import { Trophy, Medal, Award, Target, Zap, TrendingUp, Crown, Star, User } from 'lucide-react'
+import { useToast, useEntranceAnimation } from '@/lib/hooks'
+import { LoadingState } from '@/components/ui/page-states'
 
 // Leaderboard types
 interface LeaderboardEntry {
@@ -35,20 +36,12 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
+  // Use entrance animation hook
+  useEntranceAnimation({ selector: '.leaderboard-item', staggerDelay: 0.05 }, [loading, leaderboard.length])
+
   useEffect(() => {
     fetchLeaderboard()
   }, [selectedFilter])
-
-  useEffect(() => {
-    if (leaderboard.length > 0) {
-      // Simple CSS-only entrance animations
-      const elements = document.querySelectorAll('.leaderboard-item')
-      elements.forEach((el, index) => {
-        const htmlEl = el as HTMLElement
-        htmlEl.style.animation = `fadeInUp 0.4s ease-out forwards ${index * 0.05}s`
-      })
-    }
-  }, [leaderboard])
 
   const fetchLeaderboard = async () => {
     try {
@@ -121,14 +114,7 @@ export default function LeaderboardPage() {
 
   // Loading state
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
-          <p className="text-lg font-bold text-neutral-700">Loading leaderboard...</p>
-        </div>
-      </div>
-    )
+    return <LoadingState message="Loading leaderboard..." size="lg" />
   }
 
   // Find current user's position
@@ -136,7 +122,7 @@ export default function LeaderboardPage() {
   const currentUserRank = currentUserEntry?.rank || 8
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="main" aria-label="Leaderboard">
       {/* Page Header */}
       <div className="leaderboard-item opacity-0">
         <div className="flex items-center justify-between">
@@ -148,7 +134,7 @@ export default function LeaderboardPage() {
               Compete with your peers and track your ranking
             </p>
           </div>
-          <div className="hidden md:block">
+          <div className="hidden md:block" aria-hidden="true">
             <div className="w-16 h-16 bg-gradient-to-br from-warning to-orange-600 rounded-xl flex items-center justify-center">
               <Trophy className="text-white" size={32} />
             </div>
@@ -159,7 +145,7 @@ export default function LeaderboardPage() {
       {/* Filter Tabs */}
       <Card className="leaderboard-item opacity-0 glass-effect concrete-texture border-4 border-warning/40">
         <CardContent className="p-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter leaderboard by time period">
             {FILTER_TABS.map(filter => {
               const IconComponent = filter.icon
               const isActive = selectedFilter === filter.id
@@ -167,13 +153,16 @@ export default function LeaderboardPage() {
                 <button
                   key={filter.id}
                   onClick={() => setSelectedFilter(filter.id)}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls="leaderboard-rankings"
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${
                     isActive
                       ? 'bg-gradient-to-r from-warning to-orange-600 text-white shadow-lg'
                       : 'glass-effect border-2 border-warning/30 text-neutral-700 hover:border-warning/60'
                   }`}
                 >
-                  <IconComponent size={16} />
+                  <IconComponent size={16} aria-hidden="true" />
                   {filter.label}
                 </button>
               )
@@ -257,20 +246,22 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Full Leaderboard List */}
-      <Card className="leaderboard-item opacity-0 glass-effect concrete-texture border-4 border-primary/40">
+      <Card className="leaderboard-item opacity-0 glass-effect concrete-texture border-4 border-primary/40" id="leaderboard-rankings" role="tabpanel">
         <CardHeader>
           <CardTitle className="text-2xl font-black flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center" aria-hidden="true">
               <Trophy className="text-white" size={20} />
             </div>
             FULL RANKINGS
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {leaderboard.map((user, index) => (
-              <div
+          <div className="space-y-2" role="list" aria-label="Leaderboard rankings">
+            {leaderboard.map((user) => (
+              <article
                 key={user.userId}
+                role="listitem"
+                aria-label={`Rank ${user.rank}: ${user.name} with ${user.points} points`}
                 className={`glass-effect border-2 rounded-lg p-4 transition-all ${
                   user.isCurrentUser
                     ? 'border-warning/60 bg-warning/5'
@@ -330,7 +321,7 @@ export default function LeaderboardPage() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         </CardContent>

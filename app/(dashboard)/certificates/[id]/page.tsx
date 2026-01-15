@@ -15,7 +15,9 @@ import {
   Star,
   Shield,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Printer,
+  Eye,
 } from 'lucide-react'
 import Link from 'next/link'
 import { apiClient } from '@/lib/services'
@@ -107,7 +109,30 @@ export default function CertificateDetailPage() {
   }
 
   const handleDownload = () => {
+    // Open certificate with print dialog for PDF save
+    const printWindow = window.open(`/api/certificates/${certId}/download?print=true`, '_blank')
+    if (printWindow) {
+      toast({
+        title: 'Save as PDF',
+        description: 'Use "Save as PDF" in the print dialog to download your certificate.',
+      })
+    }
+  }
+
+  const handlePreview = () => {
+    // Open certificate preview without print dialog
     window.open(`/api/certificates/${certId}/download`, '_blank')
+  }
+
+  const handlePrint = () => {
+    // Open certificate and trigger print
+    const printWindow = window.open(`/api/certificates/${certId}/download?print=true`, '_blank')
+    if (printWindow) {
+      toast({
+        title: 'Printing',
+        description: 'Print dialog will open in the new window.',
+      })
+    }
   }
 
   const handleShare = async () => {
@@ -201,11 +226,25 @@ export default function CertificateDetailPage() {
           DOWNLOAD PDF
         </MagneticButton>
         <MagneticButton
+          onClick={handlePrint}
+          className="bg-gradient-to-r from-warning to-orange-600 text-white font-black"
+        >
+          <Printer className="mr-2" size={20} />
+          PRINT
+        </MagneticButton>
+        <MagneticButton
+          onClick={handlePreview}
+          className="bg-gradient-to-r from-secondary to-purple-600 text-white font-black"
+        >
+          <Eye className="mr-2" size={20} />
+          PREVIEW
+        </MagneticButton>
+        <MagneticButton
           onClick={handleShare}
           className="bg-gradient-to-r from-primary to-blue-600 text-white font-black"
         >
           <Share2 className="mr-2" size={20} />
-          SHARE CERTIFICATE
+          SHARE
         </MagneticButton>
       </div>
 

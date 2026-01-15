@@ -5,7 +5,10 @@ import Image from 'next/image'
 import { Send, Search, MessageSquare, Loader2 } from 'lucide-react'
 import { messagesService, type Conversation, type Message } from '@/lib/services'
 import { useMessageStream } from '@/lib/hooks/useMessageStream'
+import { useEntranceAnimation } from '@/lib/hooks'
+import { LoadingState, ErrorState, EmptyState } from '@/components/ui/page-states'
 import { formatDistanceToNow } from 'date-fns'
+import { sanitizeSearchQuery } from '@/lib/utils/sanitize'
 
 export default function MessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -15,7 +18,11 @@ export default function MessagesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Use entrance animation hook
+  useEntranceAnimation({ selector: '.message-item', staggerDelay: 0.03 }, [conversations, isLoading])
 
   useEffect(() => {
     loadConversations()
@@ -107,65 +114,66 @@ export default function MessagesPage() {
 
   const currentUser = getUserData()
 
+  // Filter conversations by search query
+  const filteredConversations = conversations.filter(conv => {
+    if (!searchQuery) return true
+    const name = `${conv.participant.firstName} ${conv.participant.lastName}`.toLowerCase()
+    return name.includes(searchQuery.toLowerCase())
+  })
+
   if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Loader2 className="animate-spin h-12 w-12 text-yellow-500" />
-      </div>
-    )
+    return <LoadingState message="Loading messages..." size="lg" />
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <MessageSquare className="w-8 h-8 text-red-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Unable to Load Messages</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button
-            onClick={loadConversations}
-            className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-lg transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
+      <ErrorState
+        title="Unable to Load Messages"
+        message={error}
+        onRetry={loadConversations}
+      />
     )
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex gap-4">
+    <div className="h-[calc(100vh-8rem)] flex gap-4" role="main" aria-label="Messages">
       {/* Conversations List */}
-      <div className="w-80 bg-white rounded-lg border-2 border-gray-200 overflow-hidden flex flex-col">
+      <aside className="w-80 bg-white rounded-lg border-2 border-gray-200 overflow-hidden flex flex-col" aria-label="Conversations">
         <div className="p-4 border-b-2 border-gray-200">
           <h2 className="text-xl font-bold text-gray-900 mb-3">Messages</h2>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <div className="relative" role="search">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
             <input
               type="text"
               placeholder="Search conversations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(sanitizeSearchQuery(e.target.value))}
+              maxLength={200}
               className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              aria-label="Search conversations"
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {conversations.length === 0 ? (
-            <div className="p-8 text-center">
-              <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-              <p className="text-gray-500 text-sm">No conversations yet</p>
-            </div>
+        <div className="flex-1 overflow-y-auto" role="list" aria-label="Conversation list">
+          {filteredConversations.length === 0 ? (
+            <EmptyState
+              icon={<MessageSquare size={40} />}
+              title="No conversations"
+              description={searchQuery ? `No conversations match "${searchQuery}"` : "No conversations yet"}
+            />
           ) : (
-            conversations.map((conversation) => (
+            filteredConversations.map((conversation) => (
               <button
                 key={conversation.id}
                 onClick={() => setSelectedConversation(conversation)}
-                className={`w-full p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors text-left ${ selectedConversation?.id === conversation.id ? 'bg-yellow-50' : '' }`}
+                role="listitem"
+                aria-selected={selectedConversation?.id === conversation.id}
+                aria-label={`Conversation with ${conversation.participant.firstName} ${conversation.participant.lastName}${conversation.unreadCount > 0 ? `, ${conversation.unreadCount} unread` : ''}`}
+                className={`message-item opacity-0 w-full p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors text-left ${ selectedConversation?.id === conversation.id ? 'bg-yellow-50' : '' }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 relative rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                  <div className="w-12 h-12 relative rounded-full overflow-hidden bg-gray-200 flex-shrink-0" aria-hidden="true">
                     {conversation.participant.avatarUrl ? (
                       <Image
                         src={conversation.participant.avatarUrl}
@@ -186,7 +194,7 @@ export default function MessagesPage() {
                         {conversation.participant.firstName} {conversation.participant.lastName}
                       </h3>
                       {conversation.unreadCount > 0 && (
-                        <span className="bg-yellow-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        <span className="bg-yellow-500 text-white text-xs font-bold px-2 py-0.5 rounded-full" aria-label={`${conversation.unreadCount} unread messages`}>
                           {conversation.unreadCount}
                         </span>
                       )}
@@ -198,9 +206,11 @@ export default function MessagesPage() {
                     )}
                     {conversation.lastMessageAt && (
                       <p className="text-xs text-gray-400 mt-1">
-                        {formatDistanceToNow(new Date(conversation.lastMessageAt), {
-                          addSuffix: true,
-                        })}
+                        <time dateTime={new Date(conversation.lastMessageAt).toISOString()}>
+                          {formatDistanceToNow(new Date(conversation.lastMessageAt), {
+                            addSuffix: true,
+                          })}
+                        </time>
                       </p>
                     )}
                   </div>
@@ -209,15 +219,15 @@ export default function MessagesPage() {
             ))
           )}
         </div>
-      </div>
+      </aside>
 
       {/* Messages Area */}
-      <div className="flex-1 bg-white rounded-lg border-2 border-gray-200 overflow-hidden flex flex-col">
+      <section className="flex-1 bg-white rounded-lg border-2 border-gray-200 overflow-hidden flex flex-col" aria-label="Message thread">
         {selectedConversation ? (
           <>
             {/* Header */}
-            <div className="p-4 border-b-2 border-gray-200 flex items-center gap-3">
-              <div className="w-10 h-10 relative rounded-full overflow-hidden bg-gray-200">
+            <header className="p-4 border-b-2 border-gray-200 flex items-center gap-3">
+              <div className="w-10 h-10 relative rounded-full overflow-hidden bg-gray-200" aria-hidden="true">
                 {selectedConversation.participant.avatarUrl ? (
                   <Image
                     src={selectedConversation.participant.avatarUrl}
@@ -241,17 +251,18 @@ export default function MessagesPage() {
                   {selectedConversation.participant.role.toLowerCase()}
                 </p>
               </div>
-            </div>
+            </header>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4" role="log" aria-label="Message history" aria-live="polite">
               {messages.map((message) => {
                 const isOwnMessage = message.senderId === currentUser?.userId
 
                 return (
-                  <div
+                  <article
                     key={message.id}
                     className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                    aria-label={`Message from ${isOwnMessage ? 'you' : selectedConversation.participant.firstName}`}
                   >
                     <div
                       className={`max-w-[70%] ${
@@ -266,49 +277,56 @@ export default function MessagesPage() {
                           isOwnMessage ? 'text-yellow-100' : 'text-gray-500'
                         }`}
                       >
-                        {formatDistanceToNow(new Date(message.createdAt), {
-                          addSuffix: true,
-                        })}
+                        <time dateTime={new Date(message.createdAt).toISOString()}>
+                          {formatDistanceToNow(new Date(message.createdAt), {
+                            addSuffix: true,
+                          })}
+                        </time>
                       </p>
                     </div>
-                  </div>
+                  </article>
                 )
               })}
               <div ref={messagesEndRef} />
             </div>
 
             {/* Input */}
-            <form onSubmit={handleSendMessage} className="p-4 border-t-2 border-gray-200">
+            <form onSubmit={handleSendMessage} className="p-4 border-t-2 border-gray-200" aria-label="Send a message">
               <div className="flex gap-2">
+                <label htmlFor="message-input" className="sr-only">Type a message</label>
                 <input
+                  id="message-input"
                   type="text"
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
                   placeholder="Type a message..."
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                   disabled={isSending}
+                  aria-describedby={isSending ? 'sending-status' : undefined}
                 />
                 <button
                   type="submit"
                   disabled={!messageText.trim() || isSending}
                   className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  aria-label={isSending ? 'Sending message...' : 'Send message'}
                 >
                   {isSending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                   ) : (
-                    <Send className="w-4 h-4" />
+                    <Send className="w-4 h-4" aria-hidden="true" />
                   )}
                   Send
                 </button>
+                {isSending && <span id="sending-status" className="sr-only">Sending message...</span>}
               </div>
             </form>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
+          <div className="flex-1 flex items-center justify-center text-gray-500" role="status">
             Select a conversation to start messaging
           </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }

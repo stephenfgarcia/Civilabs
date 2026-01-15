@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import { HelpCircle, Mail, Phone, MessageCircle, Book, Video, FileText, ChevronDown, ChevronUp, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { useToast } from '@/lib/hooks'
+import { useToast, useEntranceAnimation } from '@/lib/hooks'
+import { LoadingState, NoResultsState } from '@/components/ui/page-states'
+import { sanitizeSearchQuery } from '@/lib/utils/sanitize'
 
 // Mock FAQ data
 const FAQ_CATEGORIES = [
@@ -136,6 +138,9 @@ export default function HelpPage() {
   const [filteredCategories, setFilteredCategories] = useState(FAQ_CATEGORIES)
   const [loading, setLoading] = useState(true)
 
+  // Use entrance animation hook
+  useEntranceAnimation({ selector: '.help-item', staggerDelay: 0.05 }, [loading])
+
   useEffect(() => {
     // Fetch FAQs from API
     const fetchFaqs = async () => {
@@ -168,13 +173,6 @@ export default function HelpPage() {
     }
 
     fetchFaqs()
-
-    // Simple CSS-only entrance animations
-    const elements = document.querySelectorAll('.help-item')
-    elements.forEach((el, index) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.animation = `fadeInUp 0.4s ease-out forwards ${index * 0.05}s`
-    })
   }, [])
 
   useEffect(() => {
@@ -198,8 +196,13 @@ export default function HelpPage() {
     setExpandedFaq(expandedFaq === faqId ? null : faqId)
   }
 
+  // Show loading state
+  if (loading) {
+    return <LoadingState message="Loading help resources..." />
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="main" aria-label="Help and Support">
       {/* Page Header */}
       <div className="help-item opacity-0">
         <div className="flex items-center justify-between">
@@ -222,81 +225,105 @@ export default function HelpPage() {
       {/* Search Bar */}
       <Card className="help-item opacity-0 glass-effect concrete-texture border-4 border-primary/40">
         <CardContent className="p-6">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400" size={24} />
+          <div className="relative" role="search">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400" size={24} aria-hidden="true" />
             <Input
-              type="text"
+              type="search"
               placeholder="Search for help articles..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(sanitizeSearchQuery(e.target.value))}
               className="pl-14 h-16 glass-effect border-2 border-primary/30 focus:border-primary text-lg font-medium"
+              aria-label="Search help articles"
+              maxLength={200}
+              aria-describedby="search-results-count"
             />
+            <span id="search-results-count" className="sr-only">
+              {searchQuery && `${filteredCategories.reduce((acc, cat) => acc + cat.faqs.length, 0)} results found`}
+            </span>
           </div>
         </CardContent>
       </Card>
 
       {/* Contact Options */}
-      <div className="help-item opacity-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-        {CONTACT_OPTIONS.map(option => {
-          const IconComponent = option.icon
-          return (
-            <Card key={option.id} className="glass-effect concrete-texture border-4 border-primary/20 hover:border-primary/40 transition-all group">
-              <CardContent className="pt-6 pb-6 text-center">
-                <div className={`w-16 h-16 bg-gradient-to-br ${option.color} rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`}>
-                  <IconComponent className="text-white" size={32} />
-                </div>
-                <h3 className="text-lg font-black text-neutral-800 mb-1">{option.title}</h3>
-                <p className="text-sm text-neutral-600 mb-3">{option.description}</p>
-                <p className="text-sm font-bold text-primary">{option.contact}</p>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+      <section className="help-item opacity-0" aria-labelledby="contact-options-heading">
+        <h2 id="contact-options-heading" className="sr-only">Contact Options</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {CONTACT_OPTIONS.map(option => {
+            const IconComponent = option.icon
+            return (
+              <Card key={option.id} className="glass-effect concrete-texture border-4 border-primary/20 hover:border-primary/40 transition-all group">
+                <CardContent className="pt-6 pb-6 text-center">
+                  <div className={`w-16 h-16 bg-gradient-to-br ${option.color} rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`} aria-hidden="true">
+                    <IconComponent className="text-white" size={32} />
+                  </div>
+                  <h3 className="text-lg font-black text-neutral-800 mb-1">{option.title}</h3>
+                  <p className="text-sm text-neutral-600 mb-3">{option.description}</p>
+                  <p className="text-sm font-bold text-primary">{option.contact}</p>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      </section>
 
       {/* FAQ Categories */}
-      {filteredCategories.map((category, categoryIndex) => {
+      {filteredCategories.map((category) => {
         const IconComponent = category.icon
         return (
           <Card
             key={category.id}
             className="help-item opacity-0 glass-effect concrete-texture border-4 border-warning/40"
+            role="region"
+            aria-labelledby={`faq-category-${category.id}`}
           >
             <CardHeader>
-              <CardTitle className="text-2xl font-black flex items-center gap-2">
-                <div className="w-10 h-10 bg-gradient-to-br from-warning to-orange-600 rounded-lg flex items-center justify-center">
+              <CardTitle
+                id={`faq-category-${category.id}`}
+                className="text-2xl font-black flex items-center gap-2"
+              >
+                <div className="w-10 h-10 bg-gradient-to-br from-warning to-orange-600 rounded-lg flex items-center justify-center" aria-hidden="true">
                   <IconComponent className="text-white" size={20} />
                 </div>
                 {category.title.toUpperCase()}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-3" role="list" aria-label={`${category.title} frequently asked questions`}>
                 {category.faqs.map((faq, faqIndex) => {
                   const faqId = `${category.id}-${faqIndex}`
                   const isExpanded = expandedFaq === faqId
+                  const answerId = `faq-answer-${faqId}`
 
                   return (
                     <div
                       key={faqIndex}
                       className="glass-effect border-2 border-neutral-200 rounded-lg overflow-hidden transition-all"
+                      role="listitem"
                     >
                       <button
                         onClick={() => toggleFaq(category.id, faqIndex)}
                         className="w-full p-4 flex items-center justify-between hover:bg-primary/5 transition-colors text-left"
+                        aria-expanded={isExpanded}
+                        aria-controls={answerId}
                       >
                         <span className="font-bold text-neutral-800 pr-4">{faq.question}</span>
                         {isExpanded ? (
-                          <ChevronUp className="text-primary flex-shrink-0" size={24} />
+                          <ChevronUp className="text-primary flex-shrink-0" size={24} aria-hidden="true" />
                         ) : (
-                          <ChevronDown className="text-neutral-400 flex-shrink-0" size={24} />
+                          <ChevronDown className="text-neutral-400 flex-shrink-0" size={24} aria-hidden="true" />
                         )}
                       </button>
-                      {isExpanded && (
-                        <div className="px-4 pb-4 border-t-2 border-neutral-200 pt-4 bg-primary/5">
+                      <div
+                        id={answerId}
+                        role="region"
+                        aria-labelledby={`faq-question-${faqId}`}
+                        hidden={!isExpanded}
+                        className={isExpanded ? "px-4 pb-4 border-t-2 border-neutral-200 pt-4 bg-primary/5" : ""}
+                      >
+                        {isExpanded && (
                           <p className="text-neutral-700 leading-relaxed">{faq.answer}</p>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   )
                 })}
@@ -308,23 +335,12 @@ export default function HelpPage() {
 
       {/* No Results */}
       {searchQuery && filteredCategories.length === 0 && (
-        <Card className="help-item opacity-0 glass-effect concrete-texture border-4 border-neutral-300">
-          <CardContent className="py-16 text-center">
-            <div className="w-24 h-24 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search className="text-neutral-400" size={48} />
-            </div>
-            <h3 className="text-xl font-bold text-neutral-700 mb-2">No results found</h3>
-            <p className="text-neutral-500 mb-6">
-              Try searching with different keywords or browse all FAQs
-            </p>
-            <MagneticButton
-              onClick={() => setSearchQuery('')}
-              className="bg-gradient-to-r from-primary to-blue-600 text-white font-black"
-            >
-              Clear Search
-            </MagneticButton>
-          </CardContent>
-        </Card>
+        <div className="help-item opacity-0">
+          <NoResultsState
+            searchTerm={searchQuery}
+            onClear={() => setSearchQuery('')}
+          />
+        </div>
       )}
 
       {/* Additional Resources */}

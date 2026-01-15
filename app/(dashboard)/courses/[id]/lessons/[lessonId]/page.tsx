@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MagneticButton } from '@/components/ui/magnetic-button'
+import { LoadingState, ErrorState } from '@/components/ui/page-states'
+import { useEntranceAnimation, useToast } from '@/lib/hooks'
 import {
   BookOpen,
   CheckCircle,
@@ -11,14 +13,51 @@ import {
   ArrowRight,
   Clock,
   Loader2,
-  AlertCircle,
   Award,
   PlayCircle,
   FileText,
+  type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
 import DOMPurify from 'dompurify'
-import { useToast } from '@/lib/hooks'
+
+// Type definitions
+interface LessonQuiz {
+  title: string
+  description: string
+  timeLimitMinutes: number | null
+  passingScore: number
+  _count?: {
+    questions: number
+  }
+}
+
+interface LessonData {
+  id: string
+  title: string
+  description: string | null
+  contentType: 'VIDEO' | 'TEXT' | 'QUIZ' | 'AUDIO' | 'DOCUMENT'
+  contentUrl: string | null
+  contentData: {
+    html?: string
+  } | null
+  durationMinutes: number | null
+  quiz: LessonQuiz | null
+}
+
+interface LessonNavigation {
+  current: number
+  total: number
+  previous: { id: string; title: string } | null
+  next: { id: string; title: string } | null
+}
+
+interface LessonResponse {
+  lesson: LessonData
+  isCompleted: boolean
+  navigation: LessonNavigation
+  progress: number
+}
 
 export default function LessonViewerPage() {
   const params = useParams()
@@ -27,10 +66,13 @@ export default function LessonViewerPage() {
   const courseId = params.id as string
   const lessonId = params.lessonId as string
 
-  const [lesson, setLesson] = useState<any>(null)
+  const [lesson, setLesson] = useState<LessonResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [completing, setCompleting] = useState(false)
+
+  // Use entrance animation hook
+  useEntranceAnimation({ selector: '.lesson-item', staggerDelay: 0.1 }, [lesson, loading])
 
   useEffect(() => {
     fetchLesson()
@@ -58,6 +100,8 @@ export default function LessonViewerPage() {
   }
 
   const handleCompleteLesson = async () => {
+    if (!lesson) return
+
     try {
       setCompleting(true)
 
@@ -106,52 +150,31 @@ export default function LessonViewerPage() {
 
   // Loading state
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Loader2 className="animate-spin h-12 w-12 mx-auto text-warning mb-4" />
-          <p className="text-lg font-bold text-neutral-700">Loading lesson...</p>
-        </div>
-      </div>
-    )
+    return <LoadingState message="Loading lesson..." size="lg" />
   }
 
   // Error state
   if (error || !lesson) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Card className="glass-effect concrete-texture border-4 border-red-500/40 max-w-md">
-          <CardHeader>
-            <CardTitle className="text-xl font-black flex items-center gap-2 text-red-600">
-              <AlertCircle />
-              ERROR LOADING LESSON
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-neutral-700 mb-4">{error || 'Lesson not found'}</p>
-            <div className="flex gap-2">
-              <Link href={`/courses/${courseId}`}>
-                <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
-                  BACK TO COURSE
-                </MagneticButton>
-              </Link>
-              {error && (
-                <MagneticButton
-                  onClick={fetchLesson}
-                  className="glass-effect border-2 border-primary/40 text-neutral-700 font-black"
-                >
-                  Try Again
-                </MagneticButton>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="space-y-4">
+        <ErrorState
+          title="Error Loading Lesson"
+          message={error || 'Lesson not found'}
+          onRetry={fetchLesson}
+        />
+        <div className="text-center">
+          <Link href={`/courses/${courseId}`} aria-label="Back to course">
+            <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
+              BACK TO COURSE
+            </MagneticButton>
+          </Link>
+        </div>
       </div>
     )
   }
 
-  const { lesson: lessonData, isCompleted, navigation, progress } = lesson
-  const contentTypeMap: Record<string, { icon: any; label: string }> = {
+  const { lesson: lessonData, isCompleted, navigation } = lesson
+  const contentTypeMap: Record<string, { icon: LucideIcon; label: string }> = {
     VIDEO: { icon: PlayCircle, label: 'Video Lesson' },
     TEXT: { icon: FileText, label: 'Reading Material' },
     QUIZ: { icon: Award, label: 'Quiz' },
@@ -163,47 +186,48 @@ export default function LessonViewerPage() {
   const ContentIcon = contentInfo.icon
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="main" aria-label={`Lesson: ${lessonData.title}`}>
       {/* Back Button & Navigation */}
-      <div className="flex items-center justify-between">
+      <nav className="lesson-item opacity-0 flex items-center justify-between" aria-label="Lesson navigation">
         <button
           onClick={() => router.push(`/courses/${courseId}`)}
           className="flex items-center gap-2 text-neutral-700 hover:text-primary font-bold transition-colors"
+          aria-label="Back to course"
         >
-          <ArrowLeft size={20} />
+          <ArrowLeft size={20} aria-hidden="true" />
           BACK TO COURSE
         </button>
 
-        <div className="flex items-center gap-2 text-sm font-bold text-neutral-600">
-          <BookOpen size={16} />
-          Lesson {navigation.current} of {navigation.total}
+        <div className="flex items-center gap-2 text-sm font-bold text-neutral-600" aria-live="polite">
+          <BookOpen size={16} aria-hidden="true" />
+          <span>Lesson {navigation.current} of {navigation.total}</span>
         </div>
-      </div>
+      </nav>
 
       {/* Lesson Header */}
-      <div className="glass-effect concrete-texture rounded-xl p-6 md:p-8 relative overflow-hidden border-4 border-primary/40">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary to-blue-600 opacity-10"></div>
-        <div className="absolute inset-0 blueprint-grid opacity-20"></div>
+      <header className="lesson-item opacity-0 glass-effect concrete-texture rounded-xl p-6 md:p-8 relative overflow-hidden border-4 border-primary/40">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary to-blue-600 opacity-10" aria-hidden="true"></div>
+        <div className="absolute inset-0 blueprint-grid opacity-20" aria-hidden="true"></div>
 
         <div className="relative z-10">
           <div className="flex items-start gap-4 mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+            <div className="w-16 h-16 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0" aria-hidden="true">
               <ContentIcon className="text-white" size={32} />
             </div>
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2 flex-wrap">
+              <div className="flex items-center gap-3 mb-2 flex-wrap" role="group" aria-label="Lesson metadata">
                 <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-primary to-blue-600 text-white">
                   {contentInfo.label}
                 </span>
                 {isCompleted && (
-                  <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-success to-green-600 text-white flex items-center gap-1">
-                    <CheckCircle size={14} />
+                  <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-success to-green-600 text-white flex items-center gap-1" aria-label="Lesson completed">
+                    <CheckCircle size={14} aria-hidden="true" />
                     COMPLETED
                   </span>
                 )}
                 {lessonData.durationMinutes && (
-                  <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-neutral-600 to-neutral-800 text-white flex items-center gap-1">
-                    <Clock size={14} />
+                  <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-neutral-600 to-neutral-800 text-white flex items-center gap-1" aria-label={`Duration: ${lessonData.durationMinutes} minutes`}>
+                    <Clock size={14} aria-hidden="true" />
                     {lessonData.durationMinutes} min
                   </span>
                 )}
@@ -217,122 +241,140 @@ export default function LessonViewerPage() {
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Lesson Content */}
-      <Card className="glass-effect concrete-texture border-4 border-primary/40">
-        <CardContent className="p-6 md:p-8">
-          {lessonData.contentType === 'VIDEO' && lessonData.contentUrl && (
-            <div className="aspect-video bg-neutral-900 rounded-lg mb-6">
-              <video
-                controls
-                className="w-full h-full rounded-lg"
-                src={lessonData.contentUrl}
-              >
-                Your browser does not support the video tag.
-              </video>
-            </div>
-          )}
+      <section className="lesson-item opacity-0" aria-labelledby="lesson-content-heading">
+        <h2 id="lesson-content-heading" className="sr-only">Lesson Content</h2>
+        <Card className="glass-effect concrete-texture border-4 border-primary/40">
+          <CardContent className="p-6 md:p-8">
+            {lessonData.contentType === 'VIDEO' && lessonData.contentUrl && (
+              <div className="aspect-video bg-neutral-900 rounded-lg mb-6">
+                <video
+                  controls
+                  className="w-full h-full rounded-lg"
+                  src={lessonData.contentUrl}
+                  aria-label={`Video: ${lessonData.title}`}
+                >
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            )}
 
-          {lessonData.contentType === 'AUDIO' && lessonData.contentUrl && (
-            <div className="bg-gradient-to-r from-primary/10 to-blue-600/10 rounded-lg p-6 mb-6">
-              <audio controls className="w-full">
-                <source src={lessonData.contentUrl} />
-                Your browser does not support the audio element.
-              </audio>
-            </div>
-          )}
+            {lessonData.contentType === 'AUDIO' && lessonData.contentUrl && (
+              <div className="bg-gradient-to-r from-primary/10 to-blue-600/10 rounded-lg p-6 mb-6">
+                <audio controls className="w-full" aria-label={`Audio: ${lessonData.title}`}>
+                  <source src={lessonData.contentUrl} />
+                  Your browser does not support the audio element.
+                </audio>
+              </div>
+            )}
 
-          {lessonData.contentData?.html && (
-            <div
-              className="prose prose-lg max-w-none"
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(lessonData.contentData.html) }}
-            />
-          )}
+            {lessonData.contentData?.html && (
+              <article
+                className="prose prose-lg max-w-none"
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(lessonData.contentData.html) }}
+              />
+            )}
 
-          {lessonData.contentType === 'TEXT' && lessonData.contentUrl && (
-            <div className="text-center py-8">
-              <FileText className="mx-auto h-16 w-16 text-primary mb-4" />
-              <p className="text-neutral-700 font-semibold mb-4">Download lesson materials</p>
-              <a
-                href={lessonData.contentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block"
-              >
-                <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
-                  DOWNLOAD MATERIALS
-                </MagneticButton>
-              </a>
-            </div>
-          )}
+            {lessonData.contentType === 'TEXT' && lessonData.contentUrl && (
+              <div className="text-center py-8">
+                <FileText className="mx-auto h-16 w-16 text-primary mb-4" aria-hidden="true" />
+                <p className="text-neutral-700 font-semibold mb-4">Download lesson materials</p>
+                <a
+                  href={lessonData.contentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block"
+                  aria-label="Download lesson materials (opens in new tab)"
+                >
+                  <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
+                    DOWNLOAD MATERIALS
+                  </MagneticButton>
+                </a>
+              </div>
+            )}
 
-          {!lessonData.contentData?.html && !lessonData.contentUrl && (
-            <div className="text-center py-12">
-              <BookOpen className="mx-auto h-16 w-16 text-neutral-400 mb-4" />
-              <p className="text-neutral-600 font-semibold">No content available for this lesson</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            {!lessonData.contentData?.html && !lessonData.contentUrl && (
+              <div className="text-center py-12" role="status">
+                <BookOpen className="mx-auto h-16 w-16 text-neutral-400 mb-4" aria-hidden="true" />
+                <p className="text-neutral-600 font-semibold">No content available for this lesson</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
 
       {/* Quiz Section */}
       {lessonData.quiz && (
-        <Card className="glass-effect concrete-texture border-4 border-warning/40">
-          <CardHeader>
-            <CardTitle className="text-2xl font-black flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-warning to-orange-600 rounded-lg flex items-center justify-center">
-                <Award className="text-white" size={20} />
-              </div>
-              {lessonData.quiz.title}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-neutral-700 mb-4">{lessonData.quiz.description}</p>
-            <div className="flex items-center gap-4 text-sm font-bold text-neutral-600 mb-4">
-              <span>{lessonData.quiz._count?.questions || 0} questions</span>
-              {lessonData.quiz.timeLimitMinutes && (
-                <span>• {lessonData.quiz.timeLimitMinutes} minutes</span>
-              )}
-              <span>• Passing score: {lessonData.quiz.passingScore}%</span>
-            </div>
-            <Link href={`/courses/${courseId}/lessons/${lessonId}/quiz`}>
-              <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
-                START QUIZ
-              </MagneticButton>
-            </Link>
-          </CardContent>
-        </Card>
+        <section className="lesson-item opacity-0" aria-labelledby="quiz-heading">
+          <Card className="glass-effect concrete-texture border-4 border-warning/40">
+            <CardHeader>
+              <CardTitle id="quiz-heading" className="text-2xl font-black flex items-center gap-2">
+                <div className="w-10 h-10 bg-gradient-to-br from-warning to-orange-600 rounded-lg flex items-center justify-center" aria-hidden="true">
+                  <Award className="text-white" size={20} />
+                </div>
+                {lessonData.quiz.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-neutral-700 mb-4">{lessonData.quiz.description}</p>
+              <dl className="flex items-center gap-4 text-sm font-bold text-neutral-600 mb-4">
+                <div>
+                  <dt className="sr-only">Number of questions</dt>
+                  <dd>{lessonData.quiz._count?.questions || 0} questions</dd>
+                </div>
+                {lessonData.quiz.timeLimitMinutes && (
+                  <div>
+                    <dt className="sr-only">Time limit</dt>
+                    <dd>• {lessonData.quiz.timeLimitMinutes} minutes</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="sr-only">Passing score</dt>
+                  <dd>• Passing score: {lessonData.quiz.passingScore}%</dd>
+                </div>
+              </dl>
+              <Link href={`/courses/${courseId}/lessons/${lessonId}/quiz`} aria-label={`Start quiz: ${lessonData.quiz.title}`}>
+                <MagneticButton className="bg-gradient-to-r from-warning to-orange-600 text-white font-black">
+                  START QUIZ
+                </MagneticButton>
+              </Link>
+            </CardContent>
+          </Card>
+        </section>
       )}
 
       {/* Navigation & Completion */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <nav className="lesson-item opacity-0 flex items-center justify-between gap-4 flex-wrap" aria-label="Lesson navigation controls">
         {navigation.previous ? (
-          <Link href={`/courses/${courseId}/lessons/${navigation.previous.id}`}>
+          <Link href={`/courses/${courseId}/lessons/${navigation.previous.id}`} aria-label={`Previous lesson: ${navigation.previous.title}`}>
             <MagneticButton className="glass-effect border-2 border-primary/40 text-neutral-700 font-black">
-              <ArrowLeft className="mr-2" size={20} />
+              <ArrowLeft className="mr-2" size={20} aria-hidden="true" />
               PREVIOUS LESSON
             </MagneticButton>
           </Link>
         ) : (
-          <div></div>
+          <div aria-hidden="true"></div>
         )}
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4" role="group" aria-label="Lesson actions">
           {!isCompleted && (
             <MagneticButton
               onClick={handleCompleteLesson}
               disabled={completing}
               className="bg-gradient-to-r from-success to-green-600 text-white font-black disabled:opacity-50"
+              aria-busy={completing}
+              aria-label={completing ? 'Marking lesson as complete...' : 'Mark this lesson as complete'}
             >
               {completing ? (
                 <>
-                  <Loader2 className="mr-2 animate-spin" size={20} />
+                  <Loader2 className="mr-2 animate-spin" size={20} aria-hidden="true" />
                   COMPLETING...
                 </>
               ) : (
                 <>
-                  <CheckCircle className="mr-2" size={20} />
+                  <CheckCircle className="mr-2" size={20} aria-hidden="true" />
                   MARK AS COMPLETE
                 </>
               )}
@@ -340,22 +382,22 @@ export default function LessonViewerPage() {
           )}
 
           {navigation.next ? (
-            <Link href={`/courses/${courseId}/lessons/${navigation.next.id}`}>
+            <Link href={`/courses/${courseId}/lessons/${navigation.next.id}`} aria-label={`Next lesson: ${navigation.next.title}`}>
               <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
                 NEXT LESSON
-                <ArrowRight className="ml-2" size={20} />
+                <ArrowRight className="ml-2" size={20} aria-hidden="true" />
               </MagneticButton>
             </Link>
           ) : (
-            <Link href={`/courses/${courseId}`}>
+            <Link href={`/courses/${courseId}`} aria-label="Course completed, return to course overview">
               <MagneticButton className="bg-gradient-to-r from-primary to-blue-600 text-white font-black">
                 BACK TO COURSE
-                <CheckCircle className="ml-2" size={20} />
+                <CheckCircle className="ml-2" size={20} aria-hidden="true" />
               </MagneticButton>
             </Link>
           )}
         </div>
-      </div>
+      </nav>
     </div>
   )
 }
