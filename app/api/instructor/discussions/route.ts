@@ -18,6 +18,11 @@ export const GET = withInstructor(async (request, user) => {
     const status = searchParams.get('status') // 'all', 'flagged', 'solved', 'unsolved'
     const search = searchParams.get('search')
 
+    // Pagination parameters
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')))
+    const skip = (page - 1) * limit
+
     // Get instructor's courses
     const instructorCourses = await prisma.course.findMany({
       where: { instructorId: String(user.userId) },
@@ -48,7 +53,10 @@ export const GET = withInstructor(async (request, user) => {
       ]
     }
 
-    // Fetch discussions with related data
+    // Count total for pagination
+    const totalCount = await prisma.discussionThread.count({ where })
+
+    // Fetch discussions with related data (paginated)
     const discussions = await prisma.discussionThread.findMany({
       where,
       include: {
@@ -74,6 +82,8 @@ export const GET = withInstructor(async (request, user) => {
         },
       },
       orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
+      skip,
+      take: limit,
     })
 
     // Get total counts for stats
@@ -88,6 +98,8 @@ export const GET = withInstructor(async (request, user) => {
     const solvedCount = await prisma.discussionThread.count({
       where: { courseId: { in: courseIds }, isSolved: true },
     })
+
+    const totalPages = Math.ceil(totalCount / limit)
 
     return NextResponse.json({
       success: true,
@@ -112,6 +124,14 @@ export const GET = withInstructor(async (request, user) => {
           createdAt: d.createdAt,
           updatedAt: d.updatedAt,
         })),
+        pagination: {
+          page,
+          limit,
+          total: totalCount,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
         stats: {
           total: totalDiscussions,
           flagged: flaggedCount,

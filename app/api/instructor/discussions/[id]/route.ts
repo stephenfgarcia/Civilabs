@@ -136,12 +136,27 @@ export async function PATCH(
         )
       }
 
-      // Update based on action
-      const updateData: any = {}
+      // Update based on action (legacy format) or direct properties
+      const updateData: Record<string, boolean> = {}
+
+      // Support action-based updates (legacy)
       if (action === 'pin') updateData.isPinned = value
       if (action === 'lock') updateData.isLocked = value
       if (action === 'solve') updateData.isSolved = value
       if (action === 'flag') updateData.isFlagged = value
+
+      // Support direct property updates
+      if (typeof body.isPinned === 'boolean') updateData.isPinned = body.isPinned
+      if (typeof body.isLocked === 'boolean') updateData.isLocked = body.isLocked
+      if (typeof body.isSolved === 'boolean') updateData.isSolved = body.isSolved
+      if (typeof body.isFlagged === 'boolean') updateData.isFlagged = body.isFlagged
+
+      if (Object.keys(updateData).length === 0) {
+        return NextResponse.json(
+          { success: false, error: 'No valid update fields provided' },
+          { status: 400 }
+        )
+      }
 
       const updated = await prisma.discussionThread.update({
         where: { id },

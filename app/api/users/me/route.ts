@@ -86,20 +86,32 @@ const updateProfile = withAuth(async (request, user) => {
   try {
     const body = await request.json()
 
-    // Prevent updating sensitive fields
-    const {
-      id,
-      email,
-      role,
-      points,
-      createdAt,
-      lastLogin,
-      password,
-      ...allowedUpdates
-    } = body
+    // Only allow specific fields that exist in the User schema
+    const updateData: Record<string, string | undefined> = {}
 
-    // Handle password update separately if provided
-    const updateData: any = { ...allowedUpdates }
+    // Whitelist of allowed profile fields
+    if (body.firstName !== undefined) updateData.firstName = body.firstName
+    if (body.lastName !== undefined) updateData.lastName = body.lastName
+    if (body.avatarUrl !== undefined) updateData.avatarUrl = body.avatarUrl
+
+    // Store additional profile fields (phone, location, bio, etc.) in metadata
+    const metadataFields: Record<string, unknown> = {}
+    if (body.phone !== undefined) metadataFields.phone = body.phone
+    if (body.location !== undefined) metadataFields.location = body.location
+    if (body.bio !== undefined) metadataFields.bio = body.bio
+    if (body.timezone !== undefined) metadataFields.timezone = body.timezone
+
+    // If there are metadata fields, merge with existing metadata
+    if (Object.keys(metadataFields).length > 0) {
+      const existingUser = await prisma.user.findUnique({
+        where: { id: String(user.userId) },
+        select: { metadata: true }
+      })
+      const existingMetadata = (existingUser?.metadata as Record<string, unknown>) || {}
+      ;(updateData as Record<string, unknown>).metadata = { ...existingMetadata, ...metadataFields }
+    }
+
+    const password = body.password
 
     if (password) {
       // Validate password strength

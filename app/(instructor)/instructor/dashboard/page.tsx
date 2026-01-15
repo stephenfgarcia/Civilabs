@@ -299,7 +299,7 @@ export default function InstructorDashboardPage() {
                       <p className="font-black text-neutral-800 text-sm">{course.title}</p>
                       <div className="flex items-center gap-1 text-amber-500">
                         <Star size={14} fill="currentColor" />
-                        <span className="text-xs font-black">{data.stats.avgRating}</span>
+                        <span className="text-xs font-black">{course.rating || 0}</span>
                       </div>
                     </div>
 

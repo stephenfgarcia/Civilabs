@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { apiClient } from '@/lib/services'
-import { useToast } from '@/lib/hooks'
+import { useToast, useDebounce } from '@/lib/hooks'
 
 interface Assignment {
   id: string
@@ -42,6 +42,7 @@ export default function InstructorAssignmentsPage() {
   })
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const debouncedSearchTerm = useDebounce(searchTerm, 300) // Debounce search input to avoid excessive API calls
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [courses, setCourses] = useState<Array<{ id: string; title: string }>>([])
@@ -60,7 +61,7 @@ export default function InstructorAssignmentsPage() {
   useEffect(() => {
     fetchAssignments()
     fetchInstructorCourses()
-  }, [statusFilter, searchTerm])
+  }, [statusFilter, debouncedSearchTerm]) // Use debounced search term to reduce API calls
 
   const fetchInstructorCourses = async () => {
     try {
@@ -79,7 +80,7 @@ export default function InstructorAssignmentsPage() {
       setLoading(true)
       const params = new URLSearchParams()
       if (statusFilter !== 'all') params.append('status', statusFilter)
-      if (searchTerm) params.append('search', searchTerm)
+      if (debouncedSearchTerm) params.append('search', debouncedSearchTerm)
 
       const query = params.toString() ? `?${params.toString()}` : ''
       const response = await apiClient.get(`/instructor/assignments${query}`)

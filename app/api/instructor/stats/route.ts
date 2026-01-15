@@ -125,26 +125,61 @@ export const GET = withRole(['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'], async (reque
       },
     })
 
+    // Count quiz attempts that may need manual review
+    // These are quizzes with essay or short answer questions where the score might need instructor review
+    const quizzesWithManualReview = await prisma.quizAttempt.count({
+      where: {
+        enrollment: {
+          course: {
+            instructorId,
+          },
+        },
+        completedAt: { not: null },
+        quiz: {
+          questions: {
+            some: {
+              questionType: {
+                in: ['ESSAY', 'SHORT_ANSWER'],
+              },
+            },
+          },
+        },
+        // Only count recent attempts (last 7 days) that haven't been reviewed
+        // For now, we consider completed attempts as potentially needing review
+        startedAt: {
+          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+        },
+      },
+    })
+
     const pendingTasks = {
       assignmentsToGrade,
       discussionsToRespond,
-      quizzesToReview: 0, // Quiz reviews handled automatically
+      quizzesToReview: quizzesWithManualReview,
     }
 
-    // Get top performing courses
+    // Get top performing courses with their individual ratings
     const topCourses = courses
-      .map(course => ({
-        id: course.id,
-        title: course.title,
-        students: course._count.enrollments,
-        lessons: course._count.lessons,
-        completionRate: course.enrollments.length > 0
-          ? Math.round(
-              (course.enrollments.filter(e => e.status === 'COMPLETED').length /
-                course.enrollments.length) * 100
-            )
-          : 0,
-      }))
+      .map(course => {
+        // Calculate course-specific rating
+        const courseRating = course.reviews.length > 0
+          ? Math.round((course.reviews.reduce((sum, r) => sum + r.rating, 0) / course.reviews.length) * 10) / 10
+          : 0
+
+        return {
+          id: course.id,
+          title: course.title,
+          students: course._count.enrollments,
+          lessons: course._count.lessons,
+          rating: courseRating, // Course-specific rating instead of using avgRating
+          completionRate: course.enrollments.length > 0
+            ? Math.round(
+                (course.enrollments.filter(e => e.status === 'COMPLETED').length /
+                  course.enrollments.length) * 100
+              )
+            : 0,
+        }
+      })
       .sort((a, b) => b.students - a.students)
       .slice(0, 5)
 

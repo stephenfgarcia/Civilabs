@@ -53,6 +53,7 @@ export const GET = withRole(['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'], async (reque
             },
             lessonProgress: {
               select: {
+                lessonId: true,
                 status: true,
                 timeSpentSeconds: true,
                 completedAt: true,
@@ -127,11 +128,12 @@ export const GET = withRole(['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'], async (reque
       const avgTimeSpentHours =
         totalEnrollments > 0 ? Math.round(totalTimeSpent / totalEnrollments / 3600) : 0
 
-      // Calculate lesson completion rates
+      // Calculate lesson completion rates - fixed to check specific lesson completion
       const lessonCompletionRates = course.lessons.map(lesson => {
         const completedCount = course.enrollments.reduce((count, enrollment) => {
+          // Find progress for THIS specific lesson, not just any completed lesson
           const lessonProgress = enrollment.lessonProgress.find(
-            p => p.status === 'COMPLETED'
+            p => p.lessonId === lesson.id && p.status === 'COMPLETED'
           )
           return lessonProgress ? count + 1 : count
         }, 0)

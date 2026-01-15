@@ -36,6 +36,9 @@ export {
 // Toast hook
 export { useToast } from './use-toast'
 
+// Debounce hook
+export { useDebounce, useDebouncedCallback, useDebouncedState } from './use-debounce'
+
 // Real-time messaging hooks
 export { useMessageStream } from './useMessageStream'
 export { useWebSocket } from './useWebSocket'

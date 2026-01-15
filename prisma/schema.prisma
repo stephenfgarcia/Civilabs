@@ -114,6 +114,9 @@ model User {
   firstName         String
   lastName          String
   avatarUrl         String?
+  phone             String?
+  location          String?
+  position          String?
   role              UserRole   @default(LEARNER)
   status            UserStatus @default(ACTIVE)
   departmentId      String?

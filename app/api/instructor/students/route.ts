@@ -20,6 +20,10 @@ export const GET = withRole(['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'], async (reque
     const search = searchParams.get('search')
     const status = searchParams.get('status') // ENROLLED, IN_PROGRESS, COMPLETED
 
+    // Pagination parameters
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')))
+
     // Build where clause for enrollments
     const where: any = {
       course: {
@@ -150,13 +154,26 @@ export const GET = withRole(['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'], async (reque
       return bLatest - aLatest
     })
 
+    // Apply pagination
+    const totalStudents = students.length
+    const totalPages = Math.ceil(totalStudents / limit)
+    const skip = (page - 1) * limit
+    const paginatedStudents = students.slice(skip, skip + limit)
+
     return NextResponse.json({
       success: true,
       data: {
-        students,
-        total: students.length,
+        students: paginatedStudents,
+        total: totalStudents,
+        pagination: {
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
         stats: {
-          totalStudents: students.length,
+          totalStudents,
           totalEnrollments: filteredEnrollments.length,
           activeStudents: students.filter(s =>
             s.courses.some((c: any) => c.status === 'ENROLLED' || c.status === 'IN_PROGRESS')
