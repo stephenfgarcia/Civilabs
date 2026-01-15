@@ -74,7 +74,8 @@ export default function ProfilePage() {
         throw new Error(userResponse.error || 'Failed to fetch user profile')
       }
 
-      const userData = userResponse.data
+      const responseData = userResponse.data as { data?: UserType }
+      const userData = responseData?.data
       if (!userData) {
         throw new Error('User data not found')
       }
@@ -96,11 +97,13 @@ export default function ProfilePage() {
       const badgesResponse = await usersService.getUserBadges()
 
       if (achievementsResponse.status >= 200 && achievementsResponse.status < 300 && achievementsResponse.data) {
-        setAchievements(achievementsResponse.data)
+        const achievementsData = achievementsResponse.data as { data?: Achievement[] }
+        setAchievements(achievementsData.data || [])
       }
 
       if (badgesResponse.status >= 200 && badgesResponse.status < 300 && badgesResponse.data) {
-        setBadges(badgesResponse.data)
+        const badgesData = badgesResponse.data as { data?: Badge[] }
+        setBadges(badgesData.data || [])
       }
     } catch (err) {
       console.error('Error fetching profile data:', err)

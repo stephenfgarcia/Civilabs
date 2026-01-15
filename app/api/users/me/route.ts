@@ -79,10 +79,10 @@ export const GET = withAuth(async (request, user) => {
 })
 
 /**
- * PUT /api/users/me
+ * PUT/PATCH /api/users/me
  * Update current user profile
  */
-export const PUT = withAuth(async (request, user) => {
+const updateProfile = withAuth(async (request, user) => {
   try {
     const body = await request.json()
 
@@ -154,3 +154,7 @@ export const PUT = withAuth(async (request, user) => {
     )
   }
 })
+
+// Export both PUT and PATCH methods using the same handler
+export const PUT = updateProfile
+export const PATCH = updateProfile
